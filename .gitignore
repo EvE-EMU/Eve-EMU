@@ -1,0 +1,6 @@
+# Environment variables
+.env
+bot.env
+*.env
+.env.*
+!.env.example
