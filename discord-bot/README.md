@@ -33,6 +33,9 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 | **Use Slash Commands** | Run `/help`, `/miner`, etc. |
 | **Send Messages** | Ephemeral slash followups; mining/moon alert channels if configured. |
 | **Attach Files** | `/mumble` GIF, belt images in ephemeral followups, DMs, and mining alert channel. |
+| **Manage Roles** | Optional **reaction roles** (see **`EVE_ROLE_REACTION_*`** keys in `example.env`): map emojis on one message to roles; message can be explicit id or **pinned** in the channel if id omitted. |
+
+**Reaction role setup:** set **`EVE_ROLE_REACTION_CHANNEL_ID`**. Set **`EVE_ROLE_REACTION_MESSAGE_ID`** to a specific post, or **leave it unset** to use a **pinned** message in that channel (pick which pin with **`EVE_ROLE_REACTION_PINNED_INDEX`**, default **`0`**). Use **`EVE_ROLE_REACTION_MAPPINGS`** with semicolon-separated **`Role=emoji`** pairs (e.g. **`EUTZ=🌍;USTZ=🌎;AUTZ=🌏`** for Discord’s globe emojis). If **`EVE_ROLE_REACTION_MAPPINGS`** is empty, the legacy defaults (**`🍌`** → **Secure Testing Group**) apply. Put the bot’s role **above** every role it may grant. **Manage Roles** permission bit: **`268435456`** (e.g. **`2415954944`** = **`2147519488`** + **`268435456`**).
 
 **Mining belt is due:** the author still gets a **DM** (no interaction available for ephemeral). If **`EVE_MINING_PING_CHANNEL_ID`** is set, the bot also posts in that channel, with optional **`@here`** when **`EVE_MINING_PING_HERE=1`**. Grant **Mention @here** in that channel if you use **`@here`**.
 

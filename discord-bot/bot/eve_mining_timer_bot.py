@@ -18,6 +18,11 @@ and ``EVE_MINING_PING_HERE`` to also post an **@here** belt alert in a shared ch
 refreshed on a timer (default daily). System names are resolved from ``mapSolarSystems`` CSV (local ``EVE_SYSTEM_NAMES_CSV_PATH`` or
 ``EVE_SYSTEM_NAMES_CSV_URL``). If sovereignty is unset or yields no names, the bot loads the full CSV list as before.
 
+**Reaction role (optional):** set ``EVE_ROLE_REACTION_CHANNEL_ID`` and either ``EVE_ROLE_REACTION_MESSAGE_ID`` or leave the
+message unset to use a **pinned** message in that channel (``EVE_ROLE_REACTION_PINNED_INDEX``, default ``0``). Configure
+``EVE_ROLE_REACTION_MAPPINGS`` (``Role=emoji`` pairs separated by ``;``) or legacy single-role vars. Reacting adds the
+matching role; removing the reaction removes it. The bot needs **Manage Roles** and its highest role must be above each granted role.
+
 Set ``EVE_DISCORD_BOT_TOKEN`` in the environment or ``bot/.env`` (see ``example.env``).
 """
 
@@ -448,6 +453,74 @@ def _parse_discord_admin_user_ids(raw: str | None) -> frozenset[int]:
     return frozenset(out)
 
 
+_ROLE_REACTION_CUSTOM_RE = re.compile(r"^<a?:\w{2,32}:(\d{5,25})>$")
+
+
+def _parse_role_reaction_emoji_spec(raw: str) -> tuple[int | None, str] | None:
+    """Parse emoji side of a mapping: custom id, ``<:name:id>``, or Unicode. Empty → ``None``."""
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if s.isdigit():
+        return int(s), ""
+    m = _ROLE_REACTION_CUSTOM_RE.match(s)
+    if m:
+        return int(m.group(1)), ""
+    return None, s
+
+
+def _parse_role_reaction_emoji_env_default_banana(raw: str) -> tuple[int | None, str]:
+    """Legacy single-emoji env: default to banana Unicode when unset."""
+    r = _parse_role_reaction_emoji_spec(raw)
+    if r:
+        return r
+    return (None, "🍌")
+
+
+def _role_reaction_emoji_matches(partial: discord.PartialEmoji, custom_id: int | None, unicode_lit: str) -> bool:
+    if partial.id is not None:
+        return custom_id is not None and int(partial.id) == custom_id
+    if unicode_lit and partial.name == unicode_lit:
+        return True
+    return False
+
+
+@dataclass(frozen=True)
+class RoleReactionPair:
+    """One emoji on the watched message maps to one role (by id or exact role name)."""
+
+    role_id: int | None
+    role_name: str
+    emoji_custom_id: int | None
+    emoji_unicode: str
+
+
+def _parse_role_reaction_mappings(raw: str) -> tuple[RoleReactionPair, ...]:
+    """``RoleNameOrId=emoji;...`` — emoji may be Unicode, numeric custom id, or ``<:name:id>``."""
+    out: list[RoleReactionPair] = []
+    text = (raw or "").strip()
+    if not text:
+        return ()
+    for chunk in text.split(";"):
+        chunk = chunk.strip()
+        if not chunk or "=" not in chunk:
+            continue
+        key, emo = chunk.split("=", 1)
+        key = key.strip()
+        emo = emo.strip()
+        if not key or not emo:
+            continue
+        parsed_emoji = _parse_role_reaction_emoji_spec(emo)
+        if parsed_emoji is None:
+            continue
+        ecid, ulit = parsed_emoji
+        if key.isdigit():
+            out.append(RoleReactionPair(int(key), "", ecid, ulit))
+        else:
+            out.append(RoleReactionPair(None, key, ecid, ulit))
+    return tuple(out)
+
+
 @dataclass
 class BotConfig:
     token: str
@@ -478,6 +551,10 @@ class BotConfig:
     docker_compose_file: str | None
     docker_compose_service: str | None
     docker_compose_timeout_sec: int
+    role_reaction_channel_id: int | None
+    role_reaction_message_id: int | None
+    role_reaction_pinned_index: int
+    role_reaction_rules: tuple[RoleReactionPair, ...]
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -579,6 +656,23 @@ class BotConfig:
         docker_compose_service = os.getenv("EVE_DOCKER_COMPOSE_SERVICE", "").strip() or None
         docker_compose_timeout_sec = max(30, int(os.getenv("EVE_DOCKER_COMPOSE_TIMEOUT_SEC", "900").strip() or "900"))
 
+        rr_ch = os.getenv("EVE_ROLE_REACTION_CHANNEL_ID", "").strip()
+        rr_msg = os.getenv("EVE_ROLE_REACTION_MESSAGE_ID", "").strip()
+        role_reaction_channel_id = int(rr_ch) if rr_ch.isdigit() else None
+        role_reaction_message_id = int(rr_msg) if rr_msg.isdigit() else None
+        role_reaction_pinned_index = max(0, int(os.getenv("EVE_ROLE_REACTION_PINNED_INDEX", "0").strip() or "0"))
+        rr_map_raw = os.getenv("EVE_ROLE_REACTION_MAPPINGS", "").strip()
+        role_reaction_rules = _parse_role_reaction_mappings(rr_map_raw)
+        if not role_reaction_rules:
+            rr_rid = os.getenv("EVE_ROLE_REACTION_ROLE_ID", "").strip()
+            legacy_rid = int(rr_rid) if rr_rid.isdigit() else None
+            legacy_name = (
+                os.getenv("EVE_ROLE_REACTION_ROLE_NAME", "Secure Testing Group").strip() or "Secure Testing Group"
+            )
+            rr_emoji_raw = os.getenv("EVE_ROLE_REACTION_EMOJI", "🍌").strip() or "🍌"
+            ecid, ulit = _parse_role_reaction_emoji_env_default_banana(rr_emoji_raw)
+            role_reaction_rules = (RoleReactionPair(legacy_rid, legacy_name, ecid, ulit),)
+
         return cls(
             token=token,
             slash_guild_id=slash_guild_id,
@@ -608,6 +702,10 @@ class BotConfig:
             docker_compose_file=docker_compose_file,
             docker_compose_service=docker_compose_service,
             docker_compose_timeout_sec=docker_compose_timeout_sec,
+            role_reaction_channel_id=role_reaction_channel_id,
+            role_reaction_message_id=role_reaction_message_id,
+            role_reaction_pinned_index=role_reaction_pinned_index,
+            role_reaction_rules=role_reaction_rules,
         )
 
 
@@ -1174,6 +1272,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     intents.members = False
     intents.messages = False
     intents.message_content = False
+    intents.reactions = True
 
     bot = commands.Bot(
         command_prefix=lambda _bot, _message: [],
@@ -1186,6 +1285,118 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     moon_ping_store = MoonTimerPingStore(cfg.moon_timers_ping_state_file)
     slash_synced = False
     bot_started_at: datetime | None = None
+    role_reaction_effective_message_id: int | None = cfg.role_reaction_message_id
+
+    async def _resolve_role_reaction_target_message() -> None:
+        """If ``EVE_ROLE_REACTION_MESSAGE_ID`` is unset, use a pinned message in ``EVE_ROLE_REACTION_CHANNEL_ID``."""
+        nonlocal role_reaction_effective_message_id
+        if cfg.role_reaction_channel_id is None or not cfg.role_reaction_rules:
+            return
+        if cfg.role_reaction_message_id is not None:
+            role_reaction_effective_message_id = cfg.role_reaction_message_id
+            return
+        try:
+            ch = bot.get_channel(cfg.role_reaction_channel_id)
+            if ch is None:
+                ch = await bot.fetch_channel(cfg.role_reaction_channel_id)
+            pins_fn = getattr(ch, "pins", None)
+            if not callable(pins_fn):
+                print("Role reaction: channel has no pins() (unsupported channel type)")
+                role_reaction_effective_message_id = None
+                return
+            pins: list[discord.Message] = await pins_fn()
+            if not pins:
+                print("Role reaction: no pinned messages in configured channel")
+                role_reaction_effective_message_id = None
+                return
+            idx = min(cfg.role_reaction_pinned_index, len(pins) - 1)
+            role_reaction_effective_message_id = pins[idx].id
+            print(
+                f"Role reaction: using pinned message id={role_reaction_effective_message_id} "
+                f"(channel {cfg.role_reaction_channel_id}, pin index {idx} of {len(pins)})"
+            )
+        except Exception as exc:
+            print(f"Role reaction: failed to resolve pinned message: {exc}")
+            role_reaction_effective_message_id = None
+
+    async def _resolve_role_reaction_role(guild: discord.Guild, rule: RoleReactionPair) -> discord.Role | None:
+        if rule.role_id is not None:
+            r = guild.get_role(rule.role_id)
+            if r is not None:
+                return r
+            try:
+                return await guild.fetch_role(rule.role_id)
+            except (discord.NotFound, discord.HTTPException):
+                return None
+        if not rule.role_name:
+            return None
+        return discord.utils.get(guild.roles, name=rule.role_name)
+
+    async def _handle_role_reaction_raw(payload: discord.RawReactionActionEvent, *, add: bool) -> None:
+        if (
+            role_reaction_effective_message_id is None
+            or cfg.role_reaction_channel_id is None
+            or not cfg.role_reaction_rules
+        ):
+            return
+        if (
+            payload.channel_id != cfg.role_reaction_channel_id
+            or payload.message_id != role_reaction_effective_message_id
+        ):
+            return
+        if bot.user and payload.user_id == bot.user.id:
+            return
+        rule: RoleReactionPair | None = None
+        for r in cfg.role_reaction_rules:
+            if _role_reaction_emoji_matches(payload.emoji, r.emoji_custom_id, r.emoji_unicode):
+                rule = r
+                break
+        if rule is None:
+            return
+        if payload.guild_id is None:
+            return
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None:
+            try:
+                guild = await bot.fetch_guild(payload.guild_id)
+            except Exception:
+                return
+        role = await _resolve_role_reaction_role(guild, rule)
+        if role is None:
+            return
+        me = guild.me
+        if me is None:
+            try:
+                me = await guild.fetch_member(bot.user.id)
+            except Exception:
+                return
+        if role.managed or not me.guild_permissions.manage_roles or me.top_role <= role:
+            return
+        try:
+            member = guild.get_member(payload.user_id)
+            if member is None:
+                member = await guild.fetch_member(payload.user_id)
+        except Exception:
+            return
+        reason = "Reaction role (emoji toggle)"
+        try:
+            if add:
+                if role not in member.roles:
+                    await member.add_roles(role, reason=reason)
+            elif role in member.roles:
+                await member.remove_roles(role, reason=reason)
+        except discord.Forbidden:
+            print("Role reaction: forbidden (Manage Roles or role hierarchy).")
+        except discord.HTTPException as exc:
+            print(f"Role reaction: HTTP error: {exc}")
+
+    @bot.event
+    async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
+        await _handle_role_reaction_raw(payload, add=True)
+
+    @bot.event
+    async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent) -> None:
+        await _handle_role_reaction_raw(payload, add=False)
 
     async def ensure_online_presence() -> None:
         """Discord sometimes shows bots as idle/offline after reconnect; force green + activity."""
@@ -1512,6 +1723,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                 except Exception as exc:
                     print(f"Slash command sync failed: {exc}")
             await load_solar_system_names()
+            await _resolve_role_reaction_target_message()
             if _sov_autocomplete_enabled() and not sovereignty_system_names_loop.is_running():
                 sovereignty_system_names_loop.start()
             pending = await store.pending_count()
