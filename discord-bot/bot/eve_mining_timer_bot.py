@@ -5,7 +5,7 @@ Discord mining timer bot for EVE Online anomaly respawns.
 **Timer semantics:** ``eve_time`` is when the belt was **popped** (cleared). Respawn = pop + duration; band lengths
 follow env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` (float or ``H:MM``).
 
-**Slash only:** ``/help``, ``/about``, ``/miner timer``, ``/miner respawns``, ``/srp``, ``/auth``, ``/mumble``,
+**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/srp``, ``/auth``, ``/mumble``,
 ``/intel``, ``/buyback``. Command output uses **ephemeral** replies (visible only to you in the channel where you ran the command).
 
 **Moon timers:** optional Google Sheet CSV (``EVE_MOON_TIMERS_*``). Use ``EVE_MOON_TIMERS_CHANNEL_ID`` for **@here**
@@ -13,6 +13,10 @@ follow env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_
 
 **Mining reminders:** DM the timer author (``EVE_MINING_PING_LEAD_MINUTES``). Optionally set ``EVE_MINING_PING_CHANNEL_ID``
 and ``EVE_MINING_PING_HERE`` to also post an **@here** belt alert in a shared channel.
+
+**Solar system autocomplete:** optional ESI sovereignty map (``EVE_SYSTEM_NAMES_SOV_ALLIANCE_ID`` or ``EVE_SYSTEM_NAMES_SOV_ALLIANCE_NAME``),
+refreshed on a timer (default daily). System names are resolved from ``mapSolarSystems`` CSV (local ``EVE_SYSTEM_NAMES_CSV_PATH`` or
+``EVE_SYSTEM_NAMES_CSV_URL``). If sovereignty is unset or yields no names, the bot loads the full CSV list as before.
 
 Set ``EVE_DISCORD_BOT_TOKEN`` in the environment or ``bot/.env`` (see ``example.env``).
 """
@@ -26,6 +30,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import time
 import threading
 import uuid
@@ -61,7 +66,7 @@ def _default_moon_timers_csv_url() -> str:
     )
 
 
-# Lazy-loaded solar system names for slash autocomplete (Fuzzwork CSV by default).
+# Lazy-loaded solar system names for slash autocomplete (optional ESI sovereignty filter; else Fuzzwork CSV).
 _SYSTEM_NAMES: list[str] | None = None
 _SYSTEM_NAMES_GUARD = threading.Lock()
 BeltImageMap = dict[str, str]
@@ -114,11 +119,233 @@ def _parse_solar_system_names_csv(text: str) -> list[str]:
     return names
 
 
+def _parse_map_solar_systems_csv_id_to_name(text: str) -> dict[int, str]:
+    """Parse Fuzzwork-style ``mapSolarSystems.csv`` into ``solarSystemID`` → ``solarSystemName``."""
+    out: dict[int, str] = {}
+    reader = csv.reader(io.StringIO(text))
+    header = next(reader, None)
+    if not header:
+        return out
+    id_idx = name_idx = 0
+    for i, col in enumerate(header):
+        c = col.strip().casefold()
+        if c == "solarsystemid":
+            id_idx = i
+        elif c == "solarsystemname":
+            name_idx = i
+    for row in reader:
+        if len(row) <= max(id_idx, name_idx):
+            continue
+        try:
+            sid = int(row[id_idx].strip())
+        except ValueError:
+            continue
+        n = row[name_idx].strip()
+        if n:
+            out[sid] = n
+    return out
+
+
+def _sov_alliance_id_from_env_sync() -> int | None:
+    raw = os.getenv("EVE_SYSTEM_NAMES_SOV_ALLIANCE_ID", "").strip()
+    if raw.isdigit():
+        return int(raw)
+    return None
+
+
+def _sov_autocomplete_enabled() -> bool:
+    return _sov_alliance_id_from_env_sync() is not None or bool(
+        os.getenv("EVE_SYSTEM_NAMES_SOV_ALLIANCE_NAME", "").strip()
+    )
+
+
+def _sov_refresh_loop_hours() -> float:
+    raw = os.getenv("EVE_SYSTEM_NAMES_SOV_REFRESH_HOURS", "24").strip().replace(",", ".")
+    try:
+        h = float(raw)
+    except ValueError:
+        h = 24.0
+    return max(1.0, min(168.0, h))
+
+
+_ESI_SOV_USER_AGENT = "EVE-EMU-DiscordBot/1.0 (+sov-system-names; contact: eve-emu)"
+
+
+async def _resolve_sov_alliance_id_async(session: aiohttp.ClientSession) -> int | None:
+    sid = _sov_alliance_id_from_env_sync()
+    if sid is not None:
+        return sid
+    name = os.getenv("EVE_SYSTEM_NAMES_SOV_ALLIANCE_NAME", "").strip()
+    if not name:
+        return None
+    url = "https://esi.evetech.net/latest/universe/ids/"
+    try:
+        async with session.post(
+            url,
+            json=[name],
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+        ) as resp:
+            if resp.status != 200:
+                print(f"ESI universe/ids: HTTP {resp.status} for alliance name lookup")
+                return None
+            data = await resp.json()
+    except Exception as exc:
+        print(f"ESI universe/ids failed ({name!r}): {exc}")
+        return None
+    alliances = data.get("alliances") or []
+    if alliances:
+        try:
+            return int(alliances[0]["id"])
+        except (KeyError, TypeError, ValueError):
+            return None
+    corps = data.get("corporations") or []
+    if not corps:
+        return None
+    try:
+        cid = int(corps[0]["id"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    try:
+        async with session.get(f"https://esi.evetech.net/latest/corporations/{cid}/") as resp2:
+            if resp2.status != 200:
+                return None
+            cdata = await resp2.json()
+    except Exception as exc:
+        print(f"ESI corporations/{cid} failed: {exc}")
+        return None
+    aid = cdata.get("alliance_id")
+    if aid is None:
+        return None
+    try:
+        return int(aid)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _esi_universe_system_name(session: aiohttp.ClientSession, system_id: int) -> str | None:
+    url = f"https://esi.evetech.net/latest/universe/systems/{system_id}/"
+    try:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.json()
+    except Exception:
+        return None
+    n = (data.get("name") or "").strip()
+    return n or None
+
+
+async def _load_map_solar_systems_csv_text_for_sov() -> str:
+    """Same sources as full autocomplete CSV, for ID→name when using sovereignty filter."""
+    local_csv_path = (
+        os.getenv("EVE_SYSTEM_NAMES_CSV_PATH", "").strip()
+        or str(Path(__file__).resolve().parent / "data" / "mapSolarSystems.csv")
+    )
+    if local_csv_path:
+        p = Path(local_csv_path)
+        if p.exists():
+            return await asyncio.to_thread(p.read_text, "utf-8")
+    url = os.getenv(
+        "EVE_SYSTEM_NAMES_CSV_URL",
+        "https://www.fuzzwork.co.uk/dump/latest/mapSolarSystems.csv",
+    ).strip()
+    timeout = aiohttp.ClientTimeout(total=120)
+    async with aiohttp.ClientSession(timeout=timeout, headers={"User-Agent": _ESI_SOV_USER_AGENT}) as session:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"mapSolarSystems.csv: HTTP {resp.status} from {url}")
+            return await resp.text(encoding="utf-8", errors="ignore")
+
+
+async def _fetch_sov_system_names_for_alliance(session: aiohttp.ClientSession, alliance_id: int) -> list[str]:
+    async with session.get("https://esi.evetech.net/latest/sovereignty/map/") as resp:
+        if resp.status != 200:
+            print(f"ESI sovereignty/map: HTTP {resp.status}")
+            return []
+        try:
+            rows: list[dict[str, Any]] = await resp.json()
+        except Exception as exc:
+            print(f"ESI sovereignty/map: invalid JSON: {exc}")
+            return []
+    system_ids: set[int] = set()
+    for row in rows:
+        aid = row.get("alliance_id")
+        if aid is None:
+            continue
+        try:
+            if int(aid) != alliance_id:
+                continue
+        except (TypeError, ValueError):
+            continue
+        sid = row.get("system_id")
+        if sid is None:
+            continue
+        try:
+            system_ids.add(int(sid))
+        except (TypeError, ValueError):
+            continue
+    if not system_ids:
+        return []
+    csv_text = await _load_map_solar_systems_csv_text_for_sov()
+    id_to_name = await asyncio.to_thread(_parse_map_solar_systems_csv_id_to_name, csv_text)
+    names: list[str] = []
+    missing: list[int] = []
+    for sid in sorted(system_ids):
+        n = id_to_name.get(sid)
+        if n:
+            names.append(n)
+        else:
+            missing.append(sid)
+    for sid in missing:
+        n = await _esi_universe_system_name(session, sid)
+        if n:
+            names.append(n)
+        await asyncio.sleep(0.05)
+    names.sort(key=str.casefold)
+    return names
+
+
+async def _load_solar_system_names_via_sovereignty() -> list[str] | None:
+    """``None`` = sovereignty autocomplete not configured. Otherwise a (possibly empty) name list."""
+    if not _sov_autocomplete_enabled():
+        return None
+    timeout = aiohttp.ClientTimeout(total=120)
+    headers = {"User-Agent": _ESI_SOV_USER_AGENT}
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+        alliance_id = await _resolve_sov_alliance_id_async(session)
+        if alliance_id is None:
+            print("ESI sovereignty autocomplete: could not resolve alliance id (check env).")
+            return []
+        names = await _fetch_sov_system_names_for_alliance(session, alliance_id)
+        if names:
+            print(
+                f"Solar system autocomplete (ESI sovereignty): {len(names)} system(s) "
+                f"for alliance_id={alliance_id}"
+            )
+        else:
+            print(f"ESI sovereignty autocomplete: no systems with alliance_id={alliance_id} on sovereignty map.")
+        return names
+
+
 async def load_solar_system_names() -> list[str]:
     global _SYSTEM_NAMES
     with _SYSTEM_NAMES_GUARD:
         if _SYSTEM_NAMES is not None:
             return _SYSTEM_NAMES
+
+    sov_names: list[str] | None
+    try:
+        sov_names = await _load_solar_system_names_via_sovereignty()
+    except Exception as exc:
+        print(f"ESI sovereignty autocomplete failed: {exc}")
+        sov_names = []
+    if sov_names is not None:
+        if sov_names:
+            with _SYSTEM_NAMES_GUARD:
+                if _SYSTEM_NAMES is None:
+                    _SYSTEM_NAMES = sov_names
+            return _SYSTEM_NAMES or []
+        print("ESI sovereignty autocomplete: no names; falling back to full CSV sources.")
 
     local_csv_path = (
         os.getenv("EVE_SYSTEM_NAMES_CSV_PATH", "").strip()
@@ -211,6 +438,16 @@ def _normalize_discord_bot_token(raw: str | None) -> str:
     return s
 
 
+def _parse_discord_admin_user_ids(raw: str | None) -> frozenset[int]:
+    """Comma- or semicolon-separated Discord user snowflakes for `/admin` when set (see ``EVE_DISCORD_ADMIN_USER_IDS``)."""
+    out: list[int] = []
+    for part in (raw or "").replace(";", ",").split(","):
+        p = part.strip()
+        if p.isdigit():
+            out.append(int(p))
+    return frozenset(out)
+
+
 @dataclass
 class BotConfig:
     token: str
@@ -235,6 +472,12 @@ class BotConfig:
     presence_activity: str
     product_display_name: str
     miner_slash_group_description: str
+    discord_admin_user_ids: frozenset[int]
+    docker_admin_enabled: bool
+    docker_compose_workdir: Path | None
+    docker_compose_file: str | None
+    docker_compose_service: str | None
+    docker_compose_timeout_sec: int
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -326,6 +569,16 @@ class BotConfig:
             "Mining timer tools",
         )
 
+        discord_admin_user_ids = _parse_discord_admin_user_ids(os.getenv("EVE_DISCORD_ADMIN_USER_IDS"))
+
+        docker_en = os.getenv("EVE_DOCKER_ADMIN_ENABLED", "").strip().lower()
+        docker_admin_enabled = docker_en in ("1", "true", "yes", "on")
+        dc_dir_raw = os.getenv("EVE_DOCKER_COMPOSE_DIR", "").strip()
+        docker_compose_workdir = Path(dc_dir_raw).resolve() if dc_dir_raw else None
+        docker_compose_file = os.getenv("EVE_DOCKER_COMPOSE_FILE", "").strip() or None
+        docker_compose_service = os.getenv("EVE_DOCKER_COMPOSE_SERVICE", "").strip() or None
+        docker_compose_timeout_sec = max(30, int(os.getenv("EVE_DOCKER_COMPOSE_TIMEOUT_SEC", "900").strip() or "900"))
+
         return cls(
             token=token,
             slash_guild_id=slash_guild_id,
@@ -349,6 +602,12 @@ class BotConfig:
             presence_activity=presence_activity,
             product_display_name=product_display_name,
             miner_slash_group_description=miner_slash_group_description,
+            discord_admin_user_ids=discord_admin_user_ids,
+            docker_admin_enabled=docker_admin_enabled,
+            docker_compose_workdir=docker_compose_workdir,
+            docker_compose_file=docker_compose_file,
+            docker_compose_service=docker_compose_service,
+            docker_compose_timeout_sec=docker_compose_timeout_sec,
         )
 
 
@@ -1253,6 +1512,8 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                 except Exception as exc:
                     print(f"Slash command sync failed: {exc}")
             await load_solar_system_names()
+            if _sov_autocomplete_enabled() and not sovereignty_system_names_loop.is_running():
+                sovereignty_system_names_loop.start()
             pending = await store.pending_count()
             print(f"Logged in as {bot.user} | pending timers: {pending}")
         except Exception as exc:
@@ -1269,6 +1530,27 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     @presence_refresh_loop.before_loop
     async def before_presence_refresh_loop() -> None:
         await bot.wait_until_ready()
+
+    @tasks.loop(hours=24)
+    async def sovereignty_system_names_loop() -> None:
+        global _SYSTEM_NAMES
+        if not _sov_autocomplete_enabled():
+            return
+        try:
+            names = await _load_solar_system_names_via_sovereignty()
+        except Exception as exc:
+            print(f"sovereignty_system_names_loop: {exc}")
+            return
+        if not names:
+            print("sovereignty_system_names_loop: empty result; keeping previous autocomplete list")
+            return
+        with _SYSTEM_NAMES_GUARD:
+            _SYSTEM_NAMES = names
+
+    @sovereignty_system_names_loop.before_loop
+    async def before_sovereignty_system_names_loop() -> None:
+        await bot.wait_until_ready()
+        sovereignty_system_names_loop.change_interval(hours=_sov_refresh_loop_hours())
 
     @tasks.loop(seconds=20)
     async def timer_loop() -> None:
@@ -1417,6 +1699,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             "**Slash commands**\n"
             "`/help` — this list\n"
             "`/about` — credits + invite\n"
+            "`/admin notes` — operator manual; `/admin restart` & `/admin rebuild` if Docker is configured\n"
             "`/miner timer` — ore anomaly timer (**pop** time, UTC)\n"
             "`/miner respawns` — timers in ±10h window\n"
             "`/srp` `/auth` `/mumble` `/intel` `/buyback` — quick links / guides\n\n"
@@ -1490,6 +1773,226 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             [
                 "False Gods buyback: https://discord.com/channels/1446458381945667586/1494398530239074486"
             ],
+        )
+
+    def _slash_admin_allowed(member: discord.Member) -> bool:
+        if cfg.discord_admin_user_ids:
+            return member.id in cfg.discord_admin_user_ids
+        return bool(member.guild_permissions.administrator)
+
+    def _docker_compose_ready() -> bool:
+        return bool(
+            cfg.docker_admin_enabled
+            and cfg.docker_compose_workdir is not None
+            and cfg.docker_compose_workdir.is_dir()
+            and (cfg.docker_compose_service or "").strip()
+        )
+
+    def _compose_base_cmd() -> list[str]:
+        cmd: list[str] = ["docker", "compose"]
+        cf = cfg.docker_compose_file
+        if cf:
+            p = Path(cf)
+            if not p.is_absolute():
+                base = cfg.docker_compose_workdir
+                p = (base / p).resolve() if base is not None else p.resolve()
+            else:
+                p = p.resolve()
+            cmd.extend(["-f", str(p)])
+        return cmd
+
+    async def _admin_must_be_operator(interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            return False
+        m = interaction.user
+        if not isinstance(m, discord.Member):
+            await interaction.response.send_message(
+                "Could not resolve your server membership; run this from a channel in this server.",
+                ephemeral=True,
+            )
+            return False
+        if not _slash_admin_allowed(m):
+            await interaction.response.send_message(
+                "You don’t have permission to use `/admin`. "
+                "Requires **Administrator**, or your user id in **`EVE_DISCORD_ADMIN_USER_IDS`** in the bot `.env`. "
+                "A server admin may need to allow this command under **Server Settings → Integrations**.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    async def _admin_reply_compose_result(
+        interaction: discord.Interaction,
+        *,
+        title: str,
+        code: int,
+        stdout: str,
+        stderr: str,
+    ) -> None:
+        blob = f"{stdout}\n{stderr}".strip() or "(no output)"
+        if len(blob) > 1700:
+            blob = "…(truncated)\n" + blob[-1700:]
+        inner = f"{title} — exit **{code}**\n```\n{blob}\n```"
+        if len(inner) > 1950:
+            inner = inner[:1940] + "\n```"
+        tail = (
+            "\n_If this service is the bot container, Discord may disconnect before you see this; "
+            "check `docker compose logs`._"
+        )
+        msg = inner + tail
+        if len(msg) > 2000:
+            msg = msg[:1997] + "…"
+        await interaction.followup.send(msg, ephemeral=True)
+
+    async def _run_compose_restart() -> tuple[int, str, str]:
+        assert cfg.docker_compose_workdir is not None
+        assert cfg.docker_compose_service is not None
+        svc = cfg.docker_compose_service.strip()
+        wd = str(cfg.docker_compose_workdir)
+        full = _compose_base_cmd() + ["restart", svc]
+
+        def sync_run() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                full,
+                cwd=wd,
+                capture_output=True,
+                text=True,
+                timeout=cfg.docker_compose_timeout_sec,
+                shell=False,
+            )
+
+        try:
+            proc = await asyncio.to_thread(sync_run)
+            return proc.returncode, proc.stdout or "", proc.stderr or ""
+        except FileNotFoundError:
+            return 127, "", "docker: executable not found in PATH"
+        except subprocess.TimeoutExpired:
+            return 124, "", "docker compose restart exceeded EVE_DOCKER_COMPOSE_TIMEOUT_SEC"
+
+    async def _run_compose_rebuild() -> tuple[int, str, str]:
+        assert cfg.docker_compose_workdir is not None
+        assert cfg.docker_compose_service is not None
+        svc = cfg.docker_compose_service.strip()
+        wd = str(cfg.docker_compose_workdir)
+        base = _compose_base_cmd()
+
+        def sync_rebuild() -> tuple[int, str, str]:
+            r1 = subprocess.run(
+                base + ["build", "--no-cache", svc],
+                cwd=wd,
+                capture_output=True,
+                text=True,
+                timeout=cfg.docker_compose_timeout_sec,
+                shell=False,
+            )
+            o1, e1 = r1.stdout or "", r1.stderr or ""
+            if r1.returncode != 0:
+                return r1.returncode, o1, e1
+            r2 = subprocess.run(
+                base + ["up", "-d", svc],
+                cwd=wd,
+                capture_output=True,
+                text=True,
+                timeout=min(300, cfg.docker_compose_timeout_sec),
+                shell=False,
+            )
+            return r2.returncode, o1 + (r2.stdout or ""), e1 + (r2.stderr or "")
+
+        try:
+            return await asyncio.to_thread(sync_rebuild)
+        except FileNotFoundError:
+            return 127, "", "docker: executable not found in PATH"
+        except subprocess.TimeoutExpired:
+            return 124, "", "docker compose build/up exceeded EVE_DOCKER_COMPOSE_TIMEOUT_SEC"
+
+    admin_group = app_commands.Group(
+        name="admin",
+        description="Operator notes and optional Docker Compose restart/rebuild (restricted).",
+    )
+
+    @admin_group.command(name="notes", description="Manual restart/rebuild instructions (ephemeral).")
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    async def admin_notes(interaction: discord.Interaction) -> None:
+        if not await _admin_must_be_operator(interaction):
+            return
+        bot_py = Path(__file__).resolve()
+        bot_dir = bot_py.parent
+        part_a = (
+            "**Bot operator — manual restart / rebuild**\n\n"
+            "If Docker is configured in `.env`, use **`/admin restart`** or **`/admin rebuild`**.\n\n"
+            f"**Bot directory:** `{bot_dir}`\n"
+            f"**Script:** `{bot_py.name}`\n\n"
+            "**Bare Python (venv)**\n"
+            "1. Stop the bot (**Ctrl+C** or stop the service).\n"
+            "2. `cd` to the folder with `eve_mining_timer_bot.py` and `.env`.\n"
+            "3. Optional: `pip install -r ../requirements.txt` (or `..\\\\requirements.txt` on Windows).\n"
+            "4. Start: `python eve_mining_timer_bot.py`\n\n"
+            "**Docker Compose (manual)**\n"
+            "`docker compose restart <service>`\n"
+            "`docker compose build --no-cache <service> && docker compose up -d <service>`\n\n"
+            "**systemd**\n"
+            "`sudo systemctl restart <your-unit>`\n"
+        )
+        part_b = (
+            "For slash-triggered Compose: `EVE_DOCKER_ADMIN_ENABLED=1`, `EVE_DOCKER_COMPOSE_DIR`, "
+            "`EVE_DOCKER_COMPOSE_SERVICE` (optional `EVE_DOCKER_COMPOSE_FILE`, `EVE_DOCKER_COMPOSE_TIMEOUT_SEC`). "
+            "The host needs `docker` on PATH with permission to manage that compose project.\n"
+            "**Slash sync:** set `EVE_DISCORD_GUILD_ID` for faster guild sync during development (see `example.env`)."
+        )
+        await _defer_ephemeral_followups(interaction, [part_a, part_b])
+
+    @admin_group.command(
+        name="restart",
+        description="Runs docker compose restart for EVE_DOCKER_COMPOSE_SERVICE (env-gated).",
+    )
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    async def admin_restart(interaction: discord.Interaction) -> None:
+        if not await _admin_must_be_operator(interaction):
+            return
+        if not _docker_compose_ready():
+            await interaction.response.send_message(
+                "Docker Compose is not enabled or `.env` is incomplete. Set **`EVE_DOCKER_ADMIN_ENABLED=1`**, "
+                "**`EVE_DOCKER_COMPOSE_DIR`** (directory that contains your compose project), and "
+                "**`EVE_DOCKER_COMPOSE_SERVICE`**. See **`example.env`**.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            code, out, err = await _run_compose_restart()
+        except Exception as exc:
+            await interaction.followup.send(f"`docker compose restart` failed: `{exc!r}`", ephemeral=True)
+            return
+        await _admin_reply_compose_result(
+            interaction, title="docker compose restart", code=code, stdout=out, stderr=err
+        )
+
+    @admin_group.command(
+        name="rebuild",
+        description="docker compose build --no-cache then up -d (env-gated; may take minutes).",
+    )
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    async def admin_rebuild(interaction: discord.Interaction) -> None:
+        if not await _admin_must_be_operator(interaction):
+            return
+        if not _docker_compose_ready():
+            await interaction.response.send_message(
+                "Docker Compose is not enabled or `.env` is incomplete. Set **`EVE_DOCKER_ADMIN_ENABLED=1`**, "
+                "**`EVE_DOCKER_COMPOSE_DIR`**, and **`EVE_DOCKER_COMPOSE_SERVICE`**. See **`example.env`**.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            code, out, err = await _run_compose_rebuild()
+        except Exception as exc:
+            await interaction.followup.send(f"`docker compose` rebuild failed: `{exc!r}`", ephemeral=True)
+            return
+        await _admin_reply_compose_result(
+            interaction, title="docker compose build && up -d", code=code, stdout=out, stderr=err
         )
 
     miner_group = app_commands.Group(name="miner", description=cfg.miner_slash_group_description)
@@ -1618,6 +2121,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     miner_timer.autocomplete("system_name")(autocomplete_system_name)
     miner_timer.autocomplete("belt_type")(autocomplete_anom_type)
 
+    bot.tree.add_command(admin_group)
     bot.tree.add_command(miner_group)
 
     return bot

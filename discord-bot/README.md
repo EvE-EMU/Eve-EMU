@@ -1,6 +1,6 @@
 # EVE-EMU Discord bot
 
-Python bot for **EVE-EMU**: **mining anomaly timers** (`/miner`), **moon timer alerts** from a public Google Sheet CSV, and **slash shortcuts** (`/help`, `/about`, `/srp`, `/auth`, `/mumble`, `/intel`, `/buyback`). Slash command replies are **ephemeral** (only the person who ran the command sees them in that channel). There is **no** API or dashboard integration in this build.
+Python bot for **EVE-EMU**: **mining anomaly timers** (`/miner`), **moon timer alerts** from a public Google Sheet CSV, and **slash shortcuts** (`/help`, `/about`, `/admin …`, `/srp`, `/auth`, `/mumble`, `/intel`, `/buyback`). Slash command replies are **ephemeral** (only the person who ran the command sees them in that channel). There is **no** API or dashboard integration in this build.
 
 **Community Discord:** [discord.gg/DHMTKsMNbp](https://discord.gg/DHMTKsMNbp)
 
@@ -46,9 +46,14 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 |--------|----------------|
 | **`/help`** | Command list + Discord invite (ephemeral). |
 | **`/about`** | Credits (**Sevey**) + invite (ephemeral). |
+| **`/admin notes`** | Manual operator instructions (ephemeral). |
+| **`/admin restart`** | Runs `docker compose restart` when **`EVE_DOCKER_*`** env is set (ephemeral output). |
+| **`/admin rebuild`** | `docker compose build --no-cache` then `up -d` for the service (ephemeral). |
 | **`/miner timer`** | Ore respawn from **pop time** (system, anomaly name, UTC). Durations are **inferred from the anomaly name**; **Large / Enormous Mercoxit** use fixed **8h / 12h**. |
 | **`/miner respawns`** | Timers in **±10 hours** (EVE/UTC) (ephemeral). |
 | **`/srp`**, **`/auth`**, **`/mumble`**, **`/intel`**, **`/buyback`** | Static links / guides (`/mumble` can attach a PTT GIF if configured). |
+
+**`/admin restart`** and **`/admin rebuild`** run **`docker compose`** on the host where the bot process runs (`docker` must be on `PATH`, with access to the compose project in **`EVE_DOCKER_COMPOSE_DIR`**). If the bot is **inside** the container it restarts, the ephemeral reply may not show; check **`docker compose logs`**. See **`example.env`** (`EVE_DOCKER_ADMIN_ENABLED`, `EVE_DOCKER_COMPOSE_SERVICE`, etc.).
 
 ---
 
@@ -58,6 +63,7 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 - Bands: **`EVE_T1_RESPAWN_HOURS`**, **`EVE_T2_RESPAWN_HOURS`**, **`EVE_T3_RESPAWN_HOURS`** (default **1h / 4h 20m / 10h**).
 - **`EVE_MINING_PING_LEAD_MINUTES`** (default **30**): **DM** the person who set the timer that many minutes **before** respawn; **`0`** = at respawn.
 - **`EVE_MINING_PING_CHANNEL_ID`** (optional): also post belt alerts (and optional belt images) in this text channel; use **`EVE_MINING_PING_HERE`** (default on) for **`@here`** in that channel.
+- **`/miner timer` system autocomplete:** optional **ESI sovereignty** — set **`EVE_SYSTEM_NAMES_SOV_ALLIANCE_ID`** (or **`EVE_SYSTEM_NAMES_SOV_ALLIANCE_NAME`** for [GetSovereigntyMap](https://developers.eveonline.com/api-explorer#/operations/GetSovereigntyMap)–style filtering). The bot refreshes that list on a timer (default **24h**, **`EVE_SYSTEM_NAMES_SOV_REFRESH_HOURS`**). Names come from **`mapSolarSystems`** CSV (**`EVE_SYSTEM_NAMES_CSV_*`**); if sovereignty is unset or yields no names, the full CSV list is used as before.
 - State: `data/mining_timers.json` (override: `EVE_MINING_TIMER_STATE_FILE`).
 
 ---
