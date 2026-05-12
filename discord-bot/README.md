@@ -2,9 +2,11 @@
 
 Python bot for **INDEX / WOMP**–style EVE communities: mining timers, comms shortcuts, and optional hooks into the EvE-EMU API.
 
+**EvE-EMU community Discord:** [discord.gg/DHMTKsMNbp](https://discord.gg/DHMTKsMNbp)
+
 ## Slash commands
 
-- **`/miner timer`** — Register a **T1 / T2 / T3** ore anomaly respawn timer (system name, anomaly type, EVE/UTC time). Uses autocomplete for systems and anomaly names where configured.
+- **`/miner timer`** — Register an ore anomaly respawn from **pop time** (system, anomaly name, UTC time). Duration is **inferred from the anomaly name** (e.g. Average → ~4h20m band, Large → ~10h band, Type A/B/C belt → A/B/C crystal band). Large / Enormous Mercoxit use fixed **8h / 12h** from the sheet. Uses autocomplete for systems and anomaly names where configured.
 - **`/miner respawns`** — List timers whose respawn falls in a **±10 hour** window (EVE/UTC).
 - **`/website`** — Reply with the configured alliance **EvE-EMU** site URL.
 - **`/help`** — Short list of slash and text commands.
@@ -14,7 +16,7 @@ Python bot for **INDEX / WOMP**–style EVE communities: mining timers, comms sh
 
 ## Text commands (no slash permissions)
 
-- **`!miner timer`** — Same behavior as **`/miner timer`** after the tier token (`T1` / `T2` / `T3`).
+- **`!miner timer`** — Same as **`/miner timer`**. Optional prefix **`T1`/`T2`/`T3`** overrides the inferred band if the name alone is ambiguous.
 - **`!miner respawns`** — Same as **`/miner respawns`** (also accepts **`!miner resawns`** as a typo alias).
 - **`!help`** — Lists the main text commands.
 - **`!srp`**, **`!auth`**, **`!mumble`**, **`!intel`**, **`!buyback`** — Static alliance links and guides (mumble can attach a push-to-talk GIF when the file is present).
@@ -31,6 +33,13 @@ Python bot for **INDEX / WOMP**–style EVE communities: mining timers, comms sh
 ## Member welcome (optional)
 
 - On **first join** in a configured guild, can post a **welcome** message in a designated channel (no spam on rejoin).
+
+## Moon timer pings (optional, no API)
+
+- Polls the **[Moon Timers – FALSE GODS](https://docs.google.com/spreadsheets/d/1cDtuFQivlumB_HNZGVXWmZaHcPomFZT6r_zAe_G6VhY/edit?usp=sharing)** Google Sheet tab **`moon_timers`** as CSV (via Google’s `gviz` export).
+- Set **`EVE_MOON_TIMERS_CHANNEL_ID`** to the Discord text channel for **`@here`** lead pings (default **30** minutes before the parsed “next” time; see **`EVE_MOON_TIMERS_LEAD_MINUTES`**).
+- Rows need a **parseable date/time in `Next Timer`** (or another time-like column); currency and renter columns are ignored. Until those cells are filled, the bot will fetch the sheet but will not send pings.
+- The sheet must allow **Anyone with the link can view** so the bot can fetch CSV without a Google login. Override the CSV URL with **`EVE_MOON_TIMERS_CSV_URL`** if you publish a copy elsewhere.
 
 ## API-backed features (when `EVEEMU_API_BASE_URL` + `MINING_BOT_DASHBOARD_TOKEN` are set)
 

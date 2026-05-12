@@ -2,13 +2,20 @@
 """
 Discord mining timer bot for EVE Online anomaly respawns.
 
+**Timer semantics:** ``eve_time`` is the clock time when the belt was **popped** (site cleared).
+Respawn time is **pop + duration**. Durations follow the alliance sheet: **1 h / 4 h 20 m / 10 h** bands are
+**inferred from the anomaly name** (e.g. ``Average …`` → middle band, ``Large …`` → longest, ``Type B … Belt`` → B crystal).
+Mercoxit deposits with fixed sheet times (8 h / 12 h) still use those values. Override inference by prefixing
+``T1``/``T2``/``T3`` on **text** ``!miner timer`` only if needed.
+Env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` still adjust the three band lengths (float hours or ``H:MM``, e.g. ``4:20``).
+
 Set ``EVE_DISCORD_BOT_TOKEN`` in the process environment, or put ``EVE_DISCORD_BOT_TOKEN=...`` in ``bot/.env`` (gitignored).
 Windows: in **cmd.exe** use ``set EVE_DISCORD_BOT_TOKEN=your_token`` (no spaces around ``=``); in **PowerShell** use
 ``$env:EVE_DISCORD_BOT_TOKEN = 'your_token'``. Do not paste a literal placeholder string.
 
 Commands:
-  /miner timer tier:T1|T2|T3 system_name anom_type eve_time
-  !miner timer T1|T2|T3 … — same as /miner timer (text; no slash perms needed)
+  /miner timer system_name anom_type eve_time  (eve_time = UTC/EVE when belt was popped)
+  !miner timer … — same as /miner timer (optional ``T1``/``T2``/``T3`` prefix to override inferred band)
   /miner respawns
   !miner respawns — same as /miner respawns (text; `!miner resawns` typo alias accepted)
   /website
@@ -35,6 +42,12 @@ Structure timer board: API env ``STRUCTURE_TIMER_SHEET_CSV_URL`` (Google Sheet p
 optional ``STRUCTURE_TIMER_HOME_CORPORATION_ID``. Bot: ``EVE_STRUCTURE_TIMER_CHANNEL_ID`` (fallback if not set via
 ``/structure admin_panel``), ``EVE_STRUCTURE_TIMER_POLL_SECONDS`` (default 300).
 
+Moon timers (Google Sheet, no API token): set ``EVE_MOON_TIMERS_CHANNEL_ID`` to a text channel. The bot polls the
+**[Moon Timers – FALSE GODS](https://docs.google.com/spreadsheets/d/1cDtuFQivlumB_HNZGVXWmZaHcPomFZT6r_zAe_G6VhY/edit)** sheet tab
+``moon_timers`` (CSV via Google ``gviz``). Override CSV with ``EVE_MOON_TIMERS_CSV_URL`` if needed. Use
+``EVE_MOON_TIMERS_LEAD_MINUTES`` (default **30**) and ``EVE_MOON_TIMERS_POLL_SECONDS`` (default **300**). Sheet must be
+shared so **Anyone with the link can view** for unauthenticated CSV fetch.
+
 WOMPSTAR market bot: API env ``MARKET_BOT_STOCKER_CHANNEL_ID`` (Discord channel for #stocker-pings-style alerts),
 ``MARKET_BOT_STOCKER_CONTENT_PREFIX`` (optional ``<@&role_id>`` to ping @Stocker_Pings), ``MARKET_BOT_STATION_MATCH``
 (default ``WOMPSTAR``), ``MARKET_BOT_CROSS_BUY_PREMIUM_PCT`` (default 10), ``MARKET_BOT_UNDERCUT_TOKEN_IDS`` (comma
@@ -59,7 +72,7 @@ from urllib.parse import urlsplit
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import aiohttp
 import discord
@@ -75,6 +88,21 @@ from discord.ext import commands, tasks
 
 DATE_TOKEN_RE = re.compile(r"^\d{4}[-/]\d{2}[-/]\d{2}$")
 TIME_TOKEN_RE = re.compile(r"^\d{1,2}:\d{2}$")
+
+# Official EvE-EMU community Discord (slash invite).
+EVE_EMU_DISCORD_INVITE_URL = "https://discord.gg/DHMTKsMNbp"
+
+# FALSE GODS moon timers (public sheet; tab ``moon_timers`` — see module docstring).
+MOON_TIMERS_SPREADSHEET_ID = "1cDtuFQivlumB_HNZGVXWmZaHcPomFZT6r_zAe_G6VhY"
+MOON_TIMERS_TAB_NAME = "moon_timers"
+
+
+def _default_moon_timers_csv_url() -> str:
+    return (
+        f"https://docs.google.com/spreadsheets/d/{MOON_TIMERS_SPREADSHEET_ID}"
+        f"/gviz/tq?tqx=out:csv&sheet={MOON_TIMERS_TAB_NAME}"
+    )
+
 
 # Lazy-loaded solar system names for slash autocomplete (Fuzzwork CSV by default).
 _SYSTEM_NAMES: list[str] | None = None
@@ -191,6 +219,33 @@ async def load_solar_system_names() -> list[str]:
     return _SYSTEM_NAMES or []
 
 
+# Default respawn after pop (hours), per ore-site upgrade band — alliance anomaly sheet.
+_DEFAULT_T1_RESPAWN_HOURS = 1.0
+_DEFAULT_T2_RESPAWN_HOURS = 4.0 + 20.0 / 60.0  # 4 h 20 m
+_DEFAULT_T3_RESPAWN_HOURS = 10.0
+
+# Fixed respawn (hours) for sites where the sheet gives one value regardless of T1–T3 band.
+_BELT_RESPAWN_OVERRIDE_HOURS_CF: dict[str, float] = {
+    "large mercoxit deposit": 8.0,
+    "enormous mercoxit deposit": 12.0,
+}
+
+_RESPAWN_ENV_HOURS_COLON = re.compile(r"^\s*(\d{1,4})\s*:\s*(\d{1,2})\s*$")
+
+
+def _parse_env_respawn_hours(env_name: str, default: float) -> float:
+    """Parse ``EVE_T*_RESPAWN_HOURS``: empty → default; ``4:20`` → 4h20m; else float hours."""
+    raw = os.getenv(env_name, "").strip()
+    if not raw:
+        return default
+    m = _RESPAWN_ENV_HOURS_COLON.match(raw)
+    if m:
+        hours = int(m.group(1)) + int(m.group(2)) / 60.0
+    else:
+        hours = float(raw.replace(",", "."))
+    return hours if hours > 0 else default
+
+
 def _normalize_discord_bot_token(raw: str | None) -> str:
     """Strip whitespace and outer quotes (common .env mistakes). Discord rejects stray quotes as 'Improper token'."""
     s = (raw or "").strip()
@@ -203,9 +258,9 @@ def _normalize_discord_bot_token(raw: str | None) -> str:
 class BotConfig:
     token: str
     slash_guild_id: int | None
-    t1_respawn_hours: int
-    t2_respawn_hours: int
-    t3_respawn_hours: int
+    t1_respawn_hours: float
+    t2_respawn_hours: float
+    t3_respawn_hours: float
     state_file: Path
     welcome_channel_id: int | None
     welcome_guild_id: int | None
@@ -228,6 +283,12 @@ class BotConfig:
     mumble_help_image_path: str | None
     belt_ping_images: BeltImageMap
     mining_ping_lead_minutes: int
+    moon_timers_csv_url: str | None
+    moon_timers_channel_id: int | None
+    moon_timers_poll_seconds: int
+    moon_timers_lead_minutes: int
+    moon_timers_ping_here: bool
+    moon_timers_ping_state_file: Path
 
     def resolved_api_base(self) -> str | None:
         if self.eveemu_api_base_url:
@@ -322,12 +383,28 @@ class BotConfig:
 
         mining_ping_lead_minutes = max(0, int(os.getenv("EVE_MINING_PING_LEAD_MINUTES", "30")))
 
+        moon_ch = os.getenv("EVE_MOON_TIMERS_CHANNEL_ID", "").strip()
+        moon_timers_channel_id = int(moon_ch) if moon_ch else None
+        moon_csv = os.getenv("EVE_MOON_TIMERS_CSV_URL", "").strip() or None
+        if moon_timers_channel_id is not None and not moon_csv:
+            moon_csv = _default_moon_timers_csv_url()
+        elif moon_timers_channel_id is None:
+            moon_csv = None
+        moon_timers_poll_seconds = max(120, int(os.getenv("EVE_MOON_TIMERS_POLL_SECONDS", "300")))
+        moon_timers_lead_minutes = max(0, int(os.getenv("EVE_MOON_TIMERS_LEAD_MINUTES", "30")))
+        moon_here_raw = os.getenv("EVE_MOON_TIMERS_PING_HERE", "1").strip().lower()
+        moon_timers_ping_here = moon_here_raw not in ("0", "false", "no", "off")
+        default_moon_ping_state = Path(__file__).resolve().parent / "data" / "moon_timer_pings.json"
+        moon_timers_ping_state_file = Path(
+            os.getenv("EVE_MOON_TIMERS_PING_STATE_FILE", str(default_moon_ping_state))
+        )
+
         return cls(
             token=token,
             slash_guild_id=slash_guild_id,
-            t1_respawn_hours=int(os.getenv("EVE_T1_RESPAWN_HOURS", "0")),
-            t2_respawn_hours=int(os.getenv("EVE_T2_RESPAWN_HOURS", "0")),
-            t3_respawn_hours=int(os.getenv("EVE_T3_RESPAWN_HOURS", "10")),
+            t1_respawn_hours=_parse_env_respawn_hours("EVE_T1_RESPAWN_HOURS", _DEFAULT_T1_RESPAWN_HOURS),
+            t2_respawn_hours=_parse_env_respawn_hours("EVE_T2_RESPAWN_HOURS", _DEFAULT_T2_RESPAWN_HOURS),
+            t3_respawn_hours=_parse_env_respawn_hours("EVE_T3_RESPAWN_HOURS", _DEFAULT_T3_RESPAWN_HOURS),
             state_file=state_file,
             welcome_channel_id=welcome_channel_id,
             welcome_guild_id=welcome_guild_id,
@@ -350,13 +427,19 @@ class BotConfig:
             mumble_help_image_path=mumble_help_image_path,
             belt_ping_images=belt_ping_images,
             mining_ping_lead_minutes=mining_ping_lead_minutes,
+            moon_timers_csv_url=moon_csv,
+            moon_timers_channel_id=moon_timers_channel_id,
+            moon_timers_poll_seconds=moon_timers_poll_seconds,
+            moon_timers_lead_minutes=moon_timers_lead_minutes,
+            moon_timers_ping_here=moon_timers_ping_here,
+            moon_timers_ping_state_file=moon_timers_ping_state_file,
         )
 
 
 @dataclass
 class TimerEntry:
     timer_id: str
-    tier: str
+    tier: str  # Display band: inferred T1/T2/T3, fixed 8h/12h for special mercoxit, or user override
     system_name: str
     belt_type: str
     pop_time_utc: str
@@ -500,6 +583,188 @@ class WelcomeStore:
             await asyncio.to_thread(lambda: self.path.write_text(content, encoding="utf-8"))
 
 
+class MoonTimerPingStore:
+    """Dedupe moon timer @here pings (one ping per moon + event instant)."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self._lock = asyncio.Lock()
+        self._keys: set[str] = set()
+
+    async def load(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.path.exists():
+            async with self._lock:
+                self._keys = set()
+            return
+        raw = (await asyncio.to_thread(lambda: self.path.read_text(encoding="utf-8"))).strip()
+        async with self._lock:
+            if not raw:
+                self._keys = set()
+                return
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                self._keys = set()
+                return
+            if isinstance(data, list):
+                self._keys = {str(x) for x in data if isinstance(x, str)}
+            elif isinstance(data, dict) and isinstance(data.get("keys"), list):
+                self._keys = {str(x) for x in data["keys"] if isinstance(x, str)}
+            else:
+                self._keys = set()
+
+    def _prune_locked(self, now_utc: datetime, *, max_age_hours: int = 72) -> None:
+        now = now_utc.astimezone(UTC) if now_utc.tzinfo else now_utc.replace(tzinfo=UTC)
+        cutoff = now - timedelta(hours=max_age_hours)
+        to_remove: list[str] = []
+        for k in self._keys:
+            if "\x1f" not in k:
+                to_remove.append(k)
+                continue
+            _, iso_part = k.split("\x1f", 1)
+            try:
+                dt_e = datetime.fromisoformat(iso_part.replace("Z", "+00:00"))
+                if dt_e.tzinfo is None:
+                    dt_e = dt_e.replace(tzinfo=UTC)
+                else:
+                    dt_e = dt_e.astimezone(UTC)
+                if dt_e < cutoff:
+                    to_remove.append(k)
+            except ValueError:
+                to_remove.append(k)
+        for k in to_remove:
+            self._keys.discard(k)
+
+    async def prune(self, now_utc: datetime) -> None:
+        async with self._lock:
+            self._prune_locked(now_utc)
+            await self._save_locked()
+
+    async def _save_locked(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"keys": sorted(self._keys)}
+        content = json.dumps(payload, indent=2)
+        await asyncio.to_thread(lambda: self.path.write_text(content, encoding="utf-8"))
+
+    async def should_send(self, key: str) -> bool:
+        async with self._lock:
+            return key not in self._keys
+
+    async def mark(self, key: str, now_utc: datetime) -> None:
+        async with self._lock:
+            self._keys.add(key)
+            self._prune_locked(now_utc)
+            await self._save_locked()
+
+
+_MOON_SHEET_DT_FORMATS = (
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%dT%H:%M:%SZ",
+    "%m/%d/%Y %H:%M:%S",
+    "%m/%d/%Y %H:%M",
+    "%d/%m/%Y %H:%M:%S",
+    "%d/%m/%Y %H:%M",
+    "%Y-%m-%d",
+    "%m/%d/%Y",
+    "%d/%m/%Y",
+)
+
+
+def _try_parse_sheet_datetime(cell: str, now_utc: datetime) -> datetime | None:
+    s = (cell or "").strip().strip('"').strip()
+    if not s or s.startswith("£") or s.startswith("$") or s.startswith("€"):
+        return None
+    if re.fullmatch(r"\d{1,2}:\d{2}(:\d{2})?", s):
+        return None
+    if re.fullmatch(r"\d+(\.\d+)?", s):
+        try:
+            n = float(s)
+            if 20000 < n < 80000:
+                base = datetime(1899, 12, 30, tzinfo=UTC) + timedelta(days=n)
+                return base
+        except (OverflowError, OSError, ValueError):
+            pass
+    s_iso = s.replace("Z", "+00:00")
+    if re.search(r"\d{4}-\d{2}-\d{2}", s_iso):
+        try:
+            dt = datetime.fromisoformat(s_iso)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=UTC)
+            return dt.astimezone(UTC)
+        except ValueError:
+            pass
+    for fmt in _MOON_SHEET_DT_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
+
+
+def _moon_sheet_time_column_order(header: list[str]) -> tuple[int, list[int]]:
+    hcf = [h.strip().casefold() for h in header]
+    moon_i = next((i for i, h in enumerate(hcf) if h == "moon"), 0)
+    front: list[int] = []
+    rest: list[int] = []
+    for i, h in enumerate(hcf):
+        if i == moon_i:
+            continue
+        if any(x in h for x in ("renter", "monthly rent", "monthly value")):
+            continue
+        if h in ("next timer", "next_timer", "timer", "when", "due", "event", "next"):
+            front.append(i)
+        elif "reset to" in h or h == "reset to":
+            continue
+        else:
+            rest.append(i)
+    seen: set[int] = set()
+    out: list[int] = []
+    for i in front + rest:
+        if i not in seen:
+            seen.add(i)
+            out.append(i)
+    return moon_i, out
+
+
+def _moon_event_key(moon: str, when_utc: datetime) -> str:
+    w = when_utc.astimezone(UTC).replace(microsecond=0)
+    iso = w.isoformat().replace("+00:00", "Z")
+    return f"{moon.strip().casefold()}\x1f{iso}"
+
+
+def _moon_rows_from_sheet_csv(csv_text: str, now_utc: datetime) -> list[tuple[str, datetime]]:
+    reader = csv.reader(io.StringIO(csv_text))
+    rows = [r for r in reader if any((c or "").strip() for c in r)]
+    if not rows:
+        return []
+    header = [h.strip() for h in rows[0]]
+    moon_i, col_order = _moon_sheet_time_column_order(header)
+    out: list[tuple[str, datetime]] = []
+    for parts in rows[1:]:
+        if len(parts) <= moon_i:
+            continue
+        moon = parts[moon_i].strip()
+        if not moon or moon.casefold() in ("moon", "total"):
+            continue
+        found: list[datetime] = []
+        for j in col_order:
+            if j >= len(parts):
+                continue
+            dt = _try_parse_sheet_datetime(parts[j], now_utc)
+            if dt is not None:
+                found.append(dt.astimezone(UTC))
+        if not found:
+            continue
+        when = min(found)
+        if when < now_utc - timedelta(hours=12):
+            continue
+        out.append((moon, when))
+    return out
+
+
 def _parse_time_input(raw: str, now_utc: datetime) -> datetime:
     raw = raw.strip().upper().replace("EVE", "").strip()
     formats = ("%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M", "%H:%M")
@@ -534,7 +799,7 @@ def _parse_time_input(raw: str, now_utc: datetime) -> datetime:
 
     if parsed is None:
         raise ValueError(
-            "Invalid EVE time. Use HH:MM or YYYY-MM-DD HH:MM (UTC/EVE)."
+            "Invalid time. Use HH:MM or YYYY-MM-DD HH:MM (UTC/EVE — when the belt was popped)."
         )
     return parsed
 
@@ -547,12 +812,12 @@ def _parse_command_payload(raw: str) -> tuple[str, str, str]:
     if "|" in candidate:
         parts = [p.strip() for p in candidate.split("|")]
         if len(parts) != 3 or not all(parts):
-            raise ValueError("With | separators use: SYSTEM | ANOM TYPE | EVE_TIME")
+            raise ValueError("With | separators use: SYSTEM | ANOM TYPE | POP_TIME_UTC")
         return parts[0], parts[1], parts[2]
 
     tokens = shlex.split(candidate)
     if len(tokens) < 3:
-        raise ValueError("Expected: SYSTEM ANOM_TYPE EVE_TIME")
+        raise ValueError("Expected: SYSTEM ANOM_TYPE POP_TIME_UTC")
 
     if len(tokens) >= 4 and DATE_TOKEN_RE.match(tokens[-2]) and TIME_TOKEN_RE.match(tokens[-1]):
         eve_time = f"{tokens[-2]} {tokens[-1]}"
@@ -562,7 +827,7 @@ def _parse_command_payload(raw: str) -> tuple[str, str, str]:
         core = tokens[:-1]
 
     if len(core) < 2:
-        raise ValueError("Expected: SYSTEM ANOM_TYPE EVE_TIME")
+        raise ValueError("Expected: SYSTEM ANOM_TYPE POP_TIME_UTC")
 
     system_name = core[0]
     belt_type = " ".join(core[1:])
@@ -577,9 +842,56 @@ def _format_local_time(dt_utc: datetime) -> str:
     return dt_utc.astimezone().strftime("%Y-%m-%d %I:%M %p %Z")
 
 
-def _respawn_hours_for_tier(cfg: BotConfig, tier: str) -> int:
+def _respawn_hours_for_tier(cfg: BotConfig, tier: str) -> float:
     table = {"T1": cfg.t1_respawn_hours, "T2": cfg.t2_respawn_hours, "T3": cfg.t3_respawn_hours}
-    return table[tier]
+    return float(table[tier.upper()])
+
+
+_TYPE_LETTER_TO_TIER = {"a": "T1", "b": "T2", "c": "T3"}
+
+
+def _infer_tier_from_anomaly(canonical: str) -> str:
+    """Map anomaly name to T1/T2/T3 duration band when the user does not pass a tier (alliance sheet bands)."""
+    s = canonical.strip()
+    cf = s.casefold()
+    m_type = re.match(r"^type\s+([abc])\s+", s, re.IGNORECASE)
+    if m_type:
+        return _TYPE_LETTER_TO_TIER[m_type.group(1).lower()]
+    for prefix, tier in (
+        ("small ", "T1"),
+        ("medium ", "T1"),
+        ("average ", "T2"),
+        ("large ", "T3"),
+        ("enormous ", "T3"),
+        ("colossal ", "T3"),
+    ):
+        if cf.startswith(prefix):
+            return tier
+    return "T2"
+
+
+def _respawn_hours_for_anomaly(cfg: BotConfig, belt_canonical: str, explicit_tier: str | None) -> float:
+    """Hours from pop until respawn: fixed sheet overrides, else explicit or inferred T1–T3 band."""
+    cf = belt_canonical.strip().casefold()
+    if cf in _BELT_RESPAWN_OVERRIDE_HOURS_CF:
+        return _BELT_RESPAWN_OVERRIDE_HOURS_CF[cf]
+    ex = (explicit_tier or "").strip().upper()
+    if ex in ("T1", "T2", "T3"):
+        return _respawn_hours_for_tier(cfg, ex)
+    return _respawn_hours_for_tier(cfg, _infer_tier_from_anomaly(belt_canonical))
+
+
+def _timer_display_band(belt_canonical: str, explicit_tier: str | None) -> str:
+    """Short label stored on the timer row (respawn list / saved confirmation)."""
+    cf = belt_canonical.strip().casefold()
+    if cf == "large mercoxit deposit":
+        return "8h"
+    if cf == "enormous mercoxit deposit":
+        return "12h"
+    ex = (explicit_tier or "").strip().upper()
+    if ex in ("T1", "T2", "T3"):
+        return ex
+    return _infer_tier_from_anomaly(belt_canonical)
 
 
 def _normalize_anomaly_label(s: str) -> str:
@@ -676,6 +988,8 @@ Veiled Asteroid Field
 Shattered Debris Field
 Veldspar Deposit
 Mordunium Deposit
+Kylixium Deposit
+Griemeer Deposit
 Nocxite Deposit
 Hezorime Deposit
 Ueganite Deposit
@@ -768,6 +1082,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     )
     store = TimerStore(cfg.state_file)
     welcome_store = WelcomeStore(cfg.welcome_state_file)
+    moon_ping_store = MoonTimerPingStore(cfg.moon_timers_ping_state_file)
     slash_synced = False
     bot_started_at: datetime | None = None
 
@@ -782,11 +1097,12 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             pass
 
     async def create_timer(
-        tier: str,
         raw: str,
         guild_id: int,
         channel_id: int,
         author_id: int,
+        *,
+        explicit_tier: str | None = None,
     ) -> tuple[TimerEntry, datetime, datetime]:
         system_name, belt_type, eve_input = _parse_command_payload(raw)
         canon_anom = _canonicalize_anomaly_type(belt_type)
@@ -797,12 +1113,13 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             )
         now_utc = datetime.now(UTC)
         pop_time = _parse_time_input(eve_input, now_utc)
-        respawn_hours = _respawn_hours_for_tier(cfg, tier)
-        respawn = pop_time + timedelta(hours=respawn_hours)
+        respawn_hours = _respawn_hours_for_anomaly(cfg, canon_anom, explicit_tier)
+        respawn = pop_time + timedelta(minutes=round(respawn_hours * 60.0))
+        display_band = _timer_display_band(canon_anom, explicit_tier)
 
         timer = TimerEntry(
             timer_id=uuid.uuid4().hex[:10],
-            tier=tier,
+            tier=display_band,
             system_name=system_name,
             belt_type=canon_anom,
             pop_time_utc=pop_time.isoformat(),
@@ -915,26 +1232,25 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
 
     async def _register_timer_core(
         *,
-        tier: str,
         system_name: str,
         belt_type: str,
         eve_time: str,
         guild_id: int,
         channel_id: int,
         author_id: int,
+        explicit_tier: str | None = None,
     ) -> tuple[TimerEntry, datetime, datetime]:
         raw = f"{system_name.strip()} | {belt_type.strip()} | {eve_time.strip()}"
         return await create_timer(
-            tier=tier,
-            raw=raw,
+            raw,
             guild_id=guild_id,
             channel_id=channel_id,
             author_id=author_id,
+            explicit_tier=explicit_tier,
         )
 
     async def register_timer_slash(
         interaction: discord.Interaction,
-        tier: str,
         system_name: str,
         belt_type: str,
         eve_time: str,
@@ -942,13 +1258,13 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         await interaction.response.defer(ephemeral=True)
         try:
             timer, pop_time, respawn = await _register_timer_core(
-                tier=tier,
                 system_name=system_name,
                 belt_type=belt_type,
                 eve_time=eve_time,
                 guild_id=interaction.guild.id if interaction.guild else 0,
                 channel_id=interaction.channel_id or 0,
                 author_id=interaction.user.id,
+                explicit_tier=None,
             )
         except ValueError as exc:
             await interaction.followup.send(
@@ -956,9 +1272,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                     [
                         str(exc),
                         "Slash format:",
-                        "`/miner timer tier:T1|T2|T3 system_name:<name> anom_type:<EVE anomaly> eve_time:<HH:MM>`",
-                        "Example: `/miner timer tier:T3 system_name:Jita anom_type:Type C Mercoxit Belt eve_time:19:30`",
-                        "Text format: `!miner timer T3 Jita | Type C Mercoxit Belt | 19:30` (same fields after tier).",
+                        "`/miner timer system_name:<name> anom_type:<EVE anomaly> eve_time:<pop time>`",
+                        "Example: `/miner timer system_name:Jita anom_type:Type C Mercoxit Belt eve_time:19:30`",
+                        "Text format: `!miner timer Jita | Type C Mercoxit Belt | 19:30` (pop time = when belt was cleared).",
+                        "Optional override: `!miner timer T3 Jita | Veldspar Deposit | 19:30`",
                     ]
                 ),
                 ephemeral=True,
@@ -974,7 +1291,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         await interaction.followup.send(
             "\n".join(
                 [
-                    f"Saved {tier} timer `{timer.timer_id}`.",
+                    f"Saved ({timer.tier}) timer `{timer.timer_id}`.",
                     f"Pop (EVE): {_format_eve_time(pop_time)}",
                     ping_note,
                 ]
@@ -991,6 +1308,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             await ensure_online_presence()
             await store.load()
             await welcome_store.load()
+            await moon_ping_store.load()
             if not timer_loop.is_running():
                 timer_loop.start()
             if not presence_refresh_loop.is_running():
@@ -1025,6 +1343,12 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                 )
             ):
                 corp_projects_loop.start()
+            if (
+                cfg.moon_timers_channel_id is not None
+                and cfg.moon_timers_csv_url
+                and not moon_timers_loop.is_running()
+            ):
+                moon_timers_loop.start()
             if not slash_synced:
                 try:
                     if cfg.slash_guild_id:
@@ -1534,6 +1858,72 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     async def before_buyback_admin_alert_loop() -> None:
         await bot.wait_until_ready()
 
+    _MOON_PING_ALLOWED = discord.AllowedMentions(everyone=True)
+
+    @tasks.loop(seconds=max(120, cfg.moon_timers_poll_seconds))
+    async def moon_timers_loop() -> None:
+        if cfg.moon_timers_channel_id is None or not cfg.moon_timers_csv_url:
+            return
+        ch = bot.get_channel(int(cfg.moon_timers_channel_id))
+        if not isinstance(ch, (discord.TextChannel, discord.Thread)):
+            return
+        now = datetime.now(UTC)
+        await moon_ping_store.prune(now)
+        try:
+            timeout = aiohttp.ClientTimeout(total=45)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(cfg.moon_timers_csv_url) as resp:
+                    if resp.status != 200:
+                        print(f"Moon timers CSV HTTP {resp.status}")
+                        return
+                    raw = await resp.text(encoding="utf-8", errors="ignore")
+        except Exception as exc:
+            print(f"Moon timers CSV fetch failed: {exc}")
+            return
+        head = raw[:800].lstrip().lower()
+        if head.startswith("<!doctype") or head.startswith("<html"):
+            print("Moon timers: response looks like HTML (publish sheet or fix EVE_MOON_TIMERS_CSV_URL).")
+            return
+        try:
+            events = _moon_rows_from_sheet_csv(raw, now)
+        except Exception as exc:
+            print(f"Moon timers CSV parse failed: {exc}")
+            return
+        lead = timedelta(minutes=cfg.moon_timers_lead_minutes)
+        slack = timedelta(minutes=25)
+        mentions = _MOON_PING_ALLOWED if cfg.moon_timers_ping_here else discord.AllowedMentions(everyone=False)
+        sheet_link = f"https://docs.google.com/spreadsheets/d/{MOON_TIMERS_SPREADSHEET_ID}/edit"
+        for moon, when in events:
+            if when.tzinfo is None:
+                when = when.replace(tzinfo=UTC)
+            else:
+                when = when.astimezone(UTC)
+            if when < now - timedelta(minutes=10):
+                continue
+            if not ((when - lead) <= now < when + slack):
+                continue
+            key = _moon_event_key(moon, when)
+            if not await moon_ping_store.should_send(key):
+                continue
+            prefix = "@here\n" if cfg.moon_timers_ping_here else ""
+            msg = (
+                f"{prefix}**Moon timer** — {moon}\n"
+                f"Next: {_format_eve_time(when)} | {_format_local_time(when)}\n"
+                f"_([Moon Timers sheet]({sheet_link}))_"
+            )
+            try:
+                await ch.send(msg, allowed_mentions=mentions)
+                await moon_ping_store.mark(key, now)
+            except discord.Forbidden:
+                print("Moon timers: bot cannot post in configured channel (or missing @here permission).")
+                return
+            except Exception as exc:
+                print(f"Moon timers channel post failed: {exc}")
+
+    @moon_timers_loop.before_loop
+    async def before_moon_timers_loop() -> None:
+        await bot.wait_until_ready()
+
     @bot.event
     async def on_member_join(member: discord.Member) -> None:
         if member.bot:
@@ -1632,7 +2022,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             code = content[len("!eve-link") :].strip()
             if not code:
                 try:
-                    await message.channel.send("Usage: `!eve-link 123456` (generate code on the EvE-EMU Discord page).")
+                    await message.channel.send(
+                        f"Usage: `!eve-link 123456` — generate the code in EvE-EMU (Social → Discord). "
+                        f"EvE-EMU Discord: {EVE_EMU_DISCORD_INVITE_URL}"
+                    )
                 except Exception as exc:
                     print(f"!eve-link usage: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
             else:
@@ -1646,63 +2039,63 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                 rest = content[mt_miner.end() :].strip()
                 if not rest:
                     await message.channel.send(
-                        "**Usage:** `!miner timer T1|T2|T3 <same fields as /miner timer after tier>`\n"
+                        "**Usage:** `!miner timer <system> | <anomaly> | <pop time>`\n"
                         "Examples:\n"
-                        "`!miner timer T3 Jita | Type C Mercoxit Belt | 19:30`\n"
-                        "`!miner timer T2 MySystem \"Large Mercoxit Deposit\" 2026-05-03 19:30`"
+                        "`!miner timer Jita | Type C Mercoxit Belt | 19:30`\n"
+                        "`!miner timer MySystem \"Large Mercoxit Deposit\" 2026-05-03 19:30`\n"
+                        "Optional: prefix **`T1`/`T2`/`T3`** to override inferred upgrade band, e.g.\n"
+                        "`!miner timer T3 Jita | Veldspar Deposit | 19:30`"
                     )
                 else:
-                    m_tier = re.match(r"^(T[123])\s+(.+)$", rest, re.IGNORECASE | re.DOTALL)
-                    if not m_tier:
-                        await message.channel.send(
-                            "First argument after `!miner timer` must be **T1**, **T2**, or **T3**, then system, anomaly, and EVE time. "
-                            "Example: `!miner timer T3 Jita | Type C Mercoxit Belt | 19:30`"
-                        )
-                    else:
-                        tier = m_tier.group(1).upper()
+                    payload = rest.strip()
+                    explicit_tier: str | None = None
+                    m_tier = re.match(r"^(T[123])\s+(.+)$", payload, re.IGNORECASE | re.DOTALL)
+                    if m_tier:
+                        explicit_tier = m_tier.group(1).upper()
                         payload = m_tier.group(2).strip()
+                    try:
+                        system_name, belt_type, eve_time = _parse_command_payload(payload)
+                    except ValueError as exc:
+                        await message.channel.send(str(exc))
+                    else:
                         try:
-                            system_name, belt_type, eve_time = _parse_command_payload(payload)
+                            timer, pop_time, respawn = await _register_timer_core(
+                                system_name=system_name,
+                                belt_type=belt_type,
+                                eve_time=eve_time,
+                                guild_id=message.guild.id if message.guild else 0,
+                                channel_id=message.channel.id,
+                                author_id=message.author.id,
+                                explicit_tier=explicit_tier,
+                            )
                         except ValueError as exc:
-                            await message.channel.send(str(exc))
+                            await message.channel.send(
+                                "\n".join(
+                                    [
+                                        str(exc),
+                                        "Try: `!miner timer Jita | Type C Mercoxit Belt | 19:30` "
+                                        '(pipe separators) or quoted anomaly name — same as `/miner timer`). '
+                                        "Use `T1`/`T2`/`T3` prefix only if you need to override the inferred band.",
+                                    ]
+                                )
+                            )
                         else:
-                            try:
-                                timer, pop_time, respawn = await _register_timer_core(
-                                    tier=tier,
-                                    system_name=system_name,
-                                    belt_type=belt_type,
-                                    eve_time=eve_time,
-                                    guild_id=message.guild.id if message.guild else 0,
-                                    channel_id=message.channel.id,
-                                    author_id=message.author.id,
-                                )
-                            except ValueError as exc:
-                                await message.channel.send(
-                                    "\n".join(
-                                        [
-                                            str(exc),
-                                            "Try: `!miner timer T3 Jita | Type C Mercoxit Belt | 19:30` "
-                                            '(pipe separators) or quoted anomaly name — same rules as `/miner timer`).',
-                                        ]
-                                    )
-                                )
-                            else:
-                                ping_note = (
-                                    f"Channel @here ping: ~{cfg.mining_ping_lead_minutes} min before respawn "
-                                    f"({_format_eve_time(respawn)} | {_format_local_time(respawn)})"
-                                    if cfg.mining_ping_lead_minutes > 0
-                                    else f"Channel @here ping at respawn: {_format_eve_time(respawn)} | {_format_local_time(respawn)}"
-                                )
-                                await message.reply(
-                                    "\n".join(
-                                        [
-                                            f"Saved {tier} timer `{timer.timer_id}`.",
-                                            f"Pop (EVE): {_format_eve_time(pop_time)}",
-                                            ping_note,
-                                        ]
-                                    ),
-                                    mention_author=False,
-                                )
+                            ping_note = (
+                                f"Channel @here ping: ~{cfg.mining_ping_lead_minutes} min before respawn "
+                                f"({_format_eve_time(respawn)} | {_format_local_time(respawn)})"
+                                if cfg.mining_ping_lead_minutes > 0
+                                else f"Channel @here ping at respawn: {_format_eve_time(respawn)} | {_format_local_time(respawn)}"
+                            )
+                            await message.reply(
+                                "\n".join(
+                                    [
+                                        f"Saved ({timer.tier}) timer `{timer.timer_id}`.",
+                                        f"Pop (EVE): {_format_eve_time(pop_time)}",
+                                        ping_note,
+                                    ]
+                                ),
+                                mention_author=False,
+                            )
             except Exception as exc:
                 print(f"!miner timer: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
         elif _MINER_RESPAWNS_STRICT_RE.match(content):
@@ -1718,9 +2111,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         elif raw == "!help":
             try:
                 await message.channel.send(
+                    f"**EvE-EMU Discord:** {EVE_EMU_DISCORD_INVITE_URL}\n\n"
                     "**Available text commands**\n"
                     "`!help` — show this list\n"
-                    "`!miner timer` — same as `/miner timer` (T1|T2|T3 + system, anomaly, EVE/UTC time)\n"
+                    "`!miner timer` — same as `/miner timer` (system, anomaly, **pop** time UTC; band inferred from name)\n"
                     "`!miner respawns` — same as `/miner respawns` (also `!miner resawns`, typo)\n"
                     "`!srp` — SRP link\n"
                     "`!auth` — alliance auth + SEAT links\n"
@@ -1767,11 +2161,11 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         plus1h = (now + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M")
         plus2h = (now + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M")
         pairs = [
-            (f"EVE now — {full} UTC", full),
-            (f"EVE today — {hm} (calendar day UTC)", hm),
-            (f"EVE +15m — {soon} UTC", soon),
-            (f"EVE +1h — {plus1h} UTC", plus1h),
-            (f"EVE +2h — {plus2h} UTC", plus2h),
+            (f"Belt popped ~now — {full} UTC", full),
+            (f"Belt popped today — {hm} UTC (same calendar day)", hm),
+            (f"Belt popped ~15m ago — {soon} UTC", soon),
+            (f"Belt popped ~1h ago — {plus1h} UTC", plus1h),
+            (f"Belt popped ~2h ago — {plus2h} UTC", plus2h),
         ]
         cur = current.strip().casefold()
         out: list[app_commands.Choice[str]] = []
@@ -1850,21 +2244,22 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         # Keep this broad so autocomplete and command exceptions always land in logs.
         print(f"app command error: type={type(error).__name__} detail={error}")
 
-    @miner_group.command(name="timer", description="Create an ore anomaly respawn timer (T1, T2, or T3)")
+    @miner_group.command(
+        name="timer",
+        description="Ore anomaly respawn from pop time (duration inferred from anomaly name).",
+    )
     @app_commands.describe(
-        tier="Anomaly tier: T1, T2, or T3",
         system_name="System name, e.g. Jita",
         belt_type='EVE cosmic anomaly name, e.g. "Type C Mercoxit Belt" or "Large Mercoxit Deposit"',
-        eve_time="EVE time (UTC): HH:MM or YYYY-MM-DD HH:MM",
+        eve_time="UTC/EVE when the belt was popped (cleared): HH:MM or YYYY-MM-DD HH:MM",
     )
     async def miner_timer(
         interaction: discord.Interaction,
-        tier: Literal["T1", "T2", "T3"],
         system_name: str,
         belt_type: str,
         eve_time: str,
     ) -> None:
-        await register_timer_slash(interaction, tier, system_name, belt_type, eve_time)
+        await register_timer_slash(interaction, system_name, belt_type, eve_time)
 
     @miner_group.command(
         name="respawns",
@@ -1896,8 +2291,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     @bot.tree.command(name="help", description="Show available bot commands and links.")
     async def help_slash(interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
+            f"**EvE-EMU Discord:** {EVE_EMU_DISCORD_INVITE_URL}\n\n"
             "**Available commands**\n"
             "`/website` — show alliance website URL\n"
+            "`/miner timer`, `/miner respawns` — ore timers (`eve_time` = when belt was **popped**, UTC)\n"
             "`/eve-link <code>` — link your EvE-EMU account for DM notifications\n"
             "\n"
             "**Text commands**\n"
