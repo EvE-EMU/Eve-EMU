@@ -1,45 +1,45 @@
-# EvE-EMU Discord bot (standalone)
+# EvE-EMU Discord bot
 
-This folder was split from the main EvE-EMU monorepo so the **mining / structure timer / linking** bot can live and ship on its own.
+Python bot for **INDEX / WOMP**–style EVE communities: mining timers, comms shortcuts, and optional hooks into the EvE-EMU API.
 
-## What lives here
+## Slash commands
 
-- **`bot/eve_mining_timer_bot.py`** — the Discord application (slash commands, `/eve-link`, structure timers, optional heartbeats to your API, etc.). Run it with Python 3.11+.
+- **`/miner timer`** — Register a **T1 / T2 / T3** ore anomaly respawn timer (system name, anomaly type, EVE/UTC time). Uses autocomplete for systems and anomaly names where configured.
+- **`/miner respawns`** — List timers whose respawn falls in a **±10 hour** window (EVE/UTC).
+- **`/website`** — Reply with the configured alliance **EvE-EMU** site URL.
+- **`/help`** — Short list of slash and text commands.
+- **`/eve-link`** — Link the caller’s Discord account to EvE-EMU using a **one-time code** (API must expose the link endpoint).
 
-## Python dependencies
+> **`/structure`** (new timer + admin panel for vulnerability reminders) is implemented in code but **not** registered on the command tree at the moment; structure **feed** posts still work when the API is configured.
 
-```bash
-cd bot
-python -m venv .venv
-.\.venv\Scripts\activate   # Windows
-pip install -r ../requirements.txt
-python eve_mining_timer_bot.py
-```
+## Text commands (no slash permissions)
 
-Configure with environment variables as documented in the script header (Discord token, optional `MINING_BOT_DASHBOARD_PUSH_URL` + `MINING_BOT_DASHBOARD_TOKEN`, `EVEEMU_API_BASE_URL`, etc.). You can put secrets in `bot/.env` (see `python-dotenv` — `EVE_DISCORD_BOT_TOKEN=...`); that file is gitignored. In **cmd.exe**, set `set EVE_DISCORD_BOT_TOKEN=...` before `python`; `$env:...` only works in **PowerShell**.
+- **`!miner timer`** — Same behavior as **`/miner timer`** after the tier token (`T1` / `T2` / `T3`).
+- **`!miner respawns`** — Same as **`/miner respawns`** (also accepts **`!miner resawns`** as a typo alias).
+- **`!help`** — Lists the main text commands.
+- **`!srp`**, **`!auth`**, **`!mumble`**, **`!intel`**, **`!buyback`** — Static alliance links and guides (mumble can attach a push-to-talk GIF when the file is present).
+- **`!eve-link`** — Same linking flow as **`/eve-link`**, in-channel; put the six-digit code after the command.
+- **`!popejoy`** — Channel joke line (hard-coded).
+- **`!testping`** — Preview a mining ping layout; pass the belt / anomaly label after the command.
 
-## API integration
+## Mining pings and timers
 
-The bot can POST heartbeats and call operator endpoints on your **EvE-EMU FastAPI** instance. Those routes remain in the main repo under:
+- Persists timers to disk; on respawn (or **N minutes before**, default 30) posts **`@here`** pings in the channel where the timer was created.
+- Optional **belt-type images** and extra lines for specific anomalies (e.g. Griemeer) when image paths are configured.
+- **Buyback tip** line on certain ping types when enabled in code.
 
-`backend/app/routes/discord_bot_dashboard.py`  
-(prefix **`/integrations/mining-discord-bot`**)
+## Member welcome (optional)
 
-Deploy the API with `MINING_BOT_DASHBOARD_TOKEN` set, and point the bot at the same origin.
+- On **first join** in a configured guild, can post a **welcome** message in a designated channel (no spam on rejoin).
 
-## Operator dashboard UI
+## API-backed features (when `EVEEMU_API_BASE_URL` + `MINING_BOT_DASHBOARD_TOKEN` are set)
 
-The browser dashboard that used to live at **`/ops/discord-bot`** was removed from the main Next.js app during the auth reset. To run it again:
+- **Dashboard heartbeat** — POSTs bot status to your EvE-EMU integration URL if configured.
+- **Industry watch DMs** — Polls the API and sends **direct messages** from queued industry notifications.
+- **Structure timer board** — Polls the API and posts **embeds** to the configured Discord channel (sheet-driven timers + standings from corp ESI on the API side).
+- **Market / stocker alerts** — Posts **embeds** (and optional role ping) from market-watch payloads (WOMPSTAR-style undercut/stock alerts when the API is set up).
+- **Account notifications** — Delivers **DMs** from the API tick endpoint.
+- **Buyback admin alerts** — Posts **channel updates** for buyback admin events when a channel id is set.
+- **Corporation projects** — Posts **corp project** updates from ESI (via API token + channel routing on bot and server).
 
-1. Restore the last revision of `web/src/app/ops/discord-bot/page.tsx` from git history.
-2. Drop it into a small standalone Next.js (or Vite) app.
-3. Set `NEXT_PUBLIC_API_BASE_URL` (or your existing `clientApiBase` equivalent) to the API origin that serves `/integrations/mining-discord-bot/*`.
-
-Alternatively, use **Bearer `MINING_BOT_DASHBOARD_TOKEN`** against `GET /integrations/mining-discord-bot/status` from any HTTP client or Grafana.
-
-## Discord linking (`/eve-link`)
-
-That flow previously depended on **`/auth/discord/*`** routes in the main API and cookies on the website. Those routes were removed with the auth strip. If you still need link codes, either:
-
-- Re-introduce a minimal Discord-link API in this project, or  
-- Restore the specific routers from git history on the main API.
+Configuration details and env var names live in the docstring at the top of **`bot/eve_mining_timer_bot.py`**.

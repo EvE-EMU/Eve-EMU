@@ -10,7 +10,7 @@ Commands:
   /miner timer tier:T1|T2|T3 system_name anom_type eve_time
   !miner timer T1|T2|T3 … — same as /miner timer (text; no slash perms needed)
   /miner respawns
-  !miner respawns — same as /miner respawns (text; `!miner resawns` accepted as alias)
+  !miner respawns — same as /miner respawns (text; `!miner resawns` typo alias accepted)
   /website
   /structure new_timer … — add structure vulnerability timer (UTC)
   /structure admin_panel … — alert buckets + Discord channel id
@@ -293,7 +293,7 @@ class BotConfig:
         buyback_admin_alert_poll_seconds = max(120, int(os.getenv("EVE_BUYBACK_ADMIN_ALERT_POLL_SECONDS", "300")))
         baa_ch = os.getenv("EVE_BUYBACK_ADMIN_ALERT_CHANNEL_ID", "").strip()
         buyback_admin_alert_channel_id = int(baa_ch) if baa_ch else None
-        default_mumble_img = Path(__file__).resolve().parent / "mumble_shout_wispher.gif"
+        default_mumble_img = Path(__file__).resolve().parent / "mumble_shout_whisper.gif"
         mumble_help_image_path = (
             os.getenv("EVE_MUMBLE_HELP_IMAGE", "").strip()
             or (str(default_mumble_img) if default_mumble_img.exists() else "")
@@ -1440,7 +1440,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                     raw = await resp.text()
                     if resp.status >= 400:
                         return False, f"Link failed (HTTP {resp.status}): {raw[:180]}"
-            return True, "Discord account linked to Eve-EMU."
+            return True, "Discord account linked to EvE-EMU."
         except Exception as exc:
             return False, f"Link request failed: {exc}"
 
@@ -1551,9 +1551,9 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         if not isinstance(channel, discord.TextChannel):
             return
         msg = (
-            f"Welcome {member.mention} to Index Alliance's discord server, please take a look at the the "
-            "rules, and familirize yourself with the services we have to offer. Should you need assistance "
-            "feel free to ask in the public channels, or open a support ticket."
+            f"Welcome {member.mention} to the INDEX Alliance Discord server. Please read the rules and "
+            "familiarize yourself with the services we have to offer. If you need assistance, feel free to ask "
+            "in the public channels or open a support ticket."
         )
         try:
             await channel.send(msg)
@@ -1583,7 +1583,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         elif raw == "!auth":
             try:
                 await message.channel.send(
-                    "WOMP Alliance Auth  https://auth.wompa.space/ False Gods SEAT https://seat.false-gods.space/home"
+                    "WOMP Alliance Auth: https://auth.wompa.space/ — False Gods SEAT: https://seat.false-gods.space/home"
                 )
             except Exception as exc:
                 print(f"!auth: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
@@ -1624,7 +1624,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         elif raw == "!buyback":
             try:
                 await message.channel.send(
-                    "Flase Gods Buy Back https://discord.com/channels/1446458381945667586/1494398530239074486"
+                    "False Gods buyback: https://discord.com/channels/1446458381945667586/1494398530239074486"
                 )
             except Exception as exc:
                 print(f"!buyback: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
@@ -1632,7 +1632,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             code = content[len("!eve-link") :].strip()
             if not code:
                 try:
-                    await message.channel.send("Usage: `!eve-link 123456` (generate code in Eve-EMU Discord page).")
+                    await message.channel.send("Usage: `!eve-link 123456` (generate code on the EvE-EMU Discord page).")
                 except Exception as exc:
                     print(f"!eve-link usage: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
             else:
@@ -1721,13 +1721,13 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                     "**Available text commands**\n"
                     "`!help` — show this list\n"
                     "`!miner timer` — same as `/miner timer` (T1|T2|T3 + system, anomaly, EVE/UTC time)\n"
-                    "`!miner respawns` — same as `/miner respawns` (also `!miner resawns`)\n"
+                    "`!miner respawns` — same as `/miner respawns` (also `!miner resawns`, typo)\n"
                     "`!srp` — SRP link\n"
                     "`!auth` — alliance auth + SEAT links\n"
                     "`!mumble` — comms setup guide + hotkey GIF\n"
                     "`!intel` — intel/fleet reporting guide post\n"
                     "`!buyback` — buyback channel link\n"
-                    "`!eve-link 123456` — link your Eve-EMU account to Discord bot"
+                    "`!eve-link 123456` — link your EvE-EMU account to this Discord bot"
                 )
             except Exception as exc:
                 print(f"!help: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
@@ -1898,15 +1898,15 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         await interaction.response.send_message(
             "**Available commands**\n"
             "`/website` — show alliance website URL\n"
-            "`/eve-link <code>` — link your Eve-EMU account for DM notifications\n"
+            "`/eve-link <code>` — link your EvE-EMU account for DM notifications\n"
             "\n"
             "**Text commands**\n"
             "`!help`, `!miner timer`, `!miner respawns`, `!srp`, `!auth`, `!mumble`, `!intel`, `!buyback`, `!eve-link 123456`",
             ephemeral=True,
         )
 
-    @bot.tree.command(name="eve-link", description="Link this Discord account to your Eve-EMU profile.")
-    @app_commands.describe(code="6-digit one-time code from Eve-EMU -> Social -> Discord.")
+    @bot.tree.command(name="eve-link", description="Link this Discord account to your EvE-EMU profile.")
+    @app_commands.describe(code="6-digit one-time code from EvE-EMU → Social → Discord.")
     async def eve_link_slash(interaction: discord.Interaction, code: str) -> None:
         await interaction.response.defer(ephemeral=True)
         ok, msg = await _link_code_via_api(interaction.user.id, getattr(interaction.user, "name", None), code)
