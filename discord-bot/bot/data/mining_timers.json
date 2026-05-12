@@ -1,0 +1,98 @@
+[
+  {
+    "timer_id": "ca5c3aa54e",
+    "tier": "T3",
+    "system_name": "3-FKCZ",
+    "belt_type": "Large Mercoxit Deposit",
+    "pop_time_utc": "2026-05-04T01:24:00+00:00",
+    "respawn_time_utc": "2026-05-04T11:24:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500507329404080238,
+    "author_id": 1351993733297737939,
+    "fired": true
+  },
+  {
+    "timer_id": "fbb3f5d1cc",
+    "tier": "T1",
+    "system_name": "JITA",
+    "belt_type": "Average Griemeer Deposit",
+    "pop_time_utc": "2026-05-03T20:28:00+00:00",
+    "respawn_time_utc": "2026-05-03T20:28:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500507329404080238,
+    "author_id": 836098226809602058,
+    "fired": true
+  },
+  {
+    "timer_id": "99b6ed22f4",
+    "tier": "T3",
+    "system_name": "Jita",
+    "belt_type": "Enormous Mercoxit Deposit",
+    "pop_time_utc": "2026-05-03T20:30:00+00:00",
+    "respawn_time_utc": "2026-05-04T06:30:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500502296461705477,
+    "author_id": 836098226809602058,
+    "fired": true
+  },
+  {
+    "timer_id": "7d67337256",
+    "tier": "T1",
+    "system_name": "Jita",
+    "belt_type": "Average Arkonor and Bistot Deposit",
+    "pop_time_utc": "2026-05-03T20:30:00+00:00",
+    "respawn_time_utc": "2026-05-03T20:30:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500502296461705477,
+    "author_id": 836098226809602058,
+    "fired": true
+  },
+  {
+    "timer_id": "62f60aa9ce",
+    "tier": "T2",
+    "system_name": "9SBB-9",
+    "belt_type": "Average Gneiss Deposit",
+    "pop_time_utc": "2026-05-04T22:04:00+00:00",
+    "respawn_time_utc": "2026-05-04T22:04:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500502296461705477,
+    "author_id": 836098226809602058,
+    "fired": true
+  },
+  {
+    "timer_id": "e36b69199d",
+    "tier": "T3",
+    "system_name": "U-HYMT",
+    "belt_type": "Large Griemeer Deposit",
+    "pop_time_utc": "2026-05-08T10:00:00+00:00",
+    "respawn_time_utc": "2026-05-08T20:00:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500502296461705477,
+    "author_id": 836098226809602058,
+    "fired": true
+  },
+  {
+    "timer_id": "1a1b23cca1",
+    "tier": "T2",
+    "system_name": "Jita",
+    "belt_type": "Large Griemeer Deposit",
+    "pop_time_utc": "2026-05-07T19:01:00+00:00",
+    "respawn_time_utc": "2026-05-07T19:01:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500502296461705477,
+    "author_id": 836098226809602058,
+    "fired": true
+  },
+  {
+    "timer_id": "f5e7aa0ace",
+    "tier": "T3",
+    "system_name": "9SBB-9",
+    "belt_type": "Type B Kylixium Belt",
+    "pop_time_utc": "2026-05-08T04:59:00+00:00",
+    "respawn_time_utc": "2026-05-08T14:59:00+00:00",
+    "guild_id": 1446458381945667586,
+    "channel_id": 1500502296461705477,
+    "author_id": 836098226809602058,
+    "fired": true
+  }
+]
