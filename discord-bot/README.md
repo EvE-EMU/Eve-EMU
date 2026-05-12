@@ -1,6 +1,6 @@
 # EVE-EMU Discord bot
 
-Python bot for **EVE-EMU**: **mining anomaly timers** (`/miner`), **moon timer alerts** from a public Google Sheet CSV, and **slash shortcuts** (`/help`, `/about`, `/admin …`, `/srp`, `/auth`, `/mumble`, `/intel`, `/buyback`). Slash command replies are **ephemeral** (only the person who ran the command sees them in that channel). There is **no** API or dashboard integration in this build.
+Python bot for **EVE-EMU**: **mining anomaly timers** (`/miner`), **moon timer alerts** from a public Google Sheet CSV, **slash shortcuts** (`/help`, `/about`, `/admin …`, `/settings …`, `/srp`, `/auth`, `/mumble`, `/intel`, `/buyback`), and optional **eve-emu core** linking for **False Gods** rank roles. Slash command replies are **ephemeral** (only the person who ran the command sees them in that channel).
 
 **Community Discord:** [discord.gg/DHMTKsMNbp](https://discord.gg/DHMTKsMNbp)
 
@@ -33,13 +33,15 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 | **Use Slash Commands** | Run `/help`, `/miner`, etc. |
 | **Send Messages** | Ephemeral slash followups; mining/moon alert channels if configured. |
 | **Attach Files** | `/mumble` GIF, belt images in ephemeral followups, DMs, and mining alert channel. |
-| **Manage Roles** | Optional **reaction roles** (see **`EVE_ROLE_REACTION_*`** keys in `example.env`): map emojis on one message to roles; message can be explicit id or **pinned** in the channel if id omitted. |
+| **Manage Roles** | Optional **reaction roles** (see **`EVE_ROLE_REACTION_*`**); optional **`/settings sync`** (False Gods rank roles via eve-emu core). Put the bot’s role **above** every role it may grant. |
 
 **Reaction role setup:** set **`EVE_ROLE_REACTION_CHANNEL_ID`**. Set **`EVE_ROLE_REACTION_MESSAGE_ID`** to a specific post, or **leave it unset** to use a **pinned** message in that channel (pick which pin with **`EVE_ROLE_REACTION_PINNED_INDEX`**, default **`0`**). Use **`EVE_ROLE_REACTION_MAPPINGS`** with semicolon-separated **`Role=emoji`** pairs (e.g. **`EUTZ=🌍;USTZ=🌎;AUTZ=🌏`** for Discord’s globe emojis). If **`EVE_ROLE_REACTION_MAPPINGS`** is empty, the legacy defaults (**`🍌`** → **Secure Testing Group**) apply. Put the bot’s role **above** every role it may grant. **Manage Roles** permission bit: **`268435456`** (e.g. **`2415954944`** = **`2147519488`** + **`268435456`**).
 
 **Mining belt is due:** the author still gets a **DM** (no interaction available for ephemeral). If **`EVE_MINING_PING_CHANNEL_ID`** is set, the bot also posts in that channel, with optional **`@here`** when **`EVE_MINING_PING_HERE=1`**. Grant **Mention @here** in that channel if you use **`@here`**.
 
 **Moon:** set **`EVE_MOON_TIMERS_CHANNEL_ID`** to post in a text channel; **`EVE_MOON_TIMERS_PING_HERE=1`** adds **`@here`** to that channel message. You can set **`EVE_MOON_TIMERS_NOTIFY_USER_ID`** at the same time for a plain-text **DM** copy (no **`@here`** in DMs).
+
+**`/settings` + core:** set **`EVE_CORE_BASE_URL`**, **`EVE_CORE_BOT_SECRET`** (same string as **`CORE_DISCORD_BOT_SECRET`** on core), **`EVE_FG_RANK_DISCORD_ROLES`** (`slug=role_id` pairs, e.g. `fg_ceo=123;fg_member=456`), and configure core with **`CORE_FALSE_GODS_CORPORATION_ID`**, **`CORE_FG_RANK_ROLES_JSON`**, SSO, DB, and **`CORE_TOKEN_ENCRYPTION_KEY`**. The bot needs **Manage Roles** and its role must sit **above** every rank role it assigns.
 
 ---
 
@@ -54,6 +56,7 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 | **`/admin rebuild`** | `docker compose build --no-cache` then `up -d` for the service (ephemeral). |
 | **`/miner timer`** | Ore respawn from **pop time** (system, anomaly name, UTC). Durations are **inferred from the anomaly name**; **Large / Enormous Mercoxit** use fixed **8h / 12h**. |
 | **`/miner respawns`** | Timers in **±10 hours** (EVE/UTC) (ephemeral). |
+| **`/settings link`**, **`/settings sync`** | Optional **eve-emu core**: browser SSO to link this Discord user, then sync **False Gods** rank roles from core (needs env on bot + core). |
 | **`/srp`**, **`/auth`**, **`/mumble`**, **`/intel`**, **`/buyback`** | Static links / guides (`/mumble` can attach a PTT GIF if configured). |
 
 **`/admin restart`** and **`/admin rebuild`** run **`docker compose`** on the host where the bot process runs (`docker` must be on `PATH`, with access to the compose project in **`EVE_DOCKER_COMPOSE_DIR`**). If the bot is **inside** the container it restarts, the ephemeral reply may not show; check **`docker compose logs`**. See **`example.env`** (`EVE_DOCKER_ADMIN_ENABLED`, `EVE_DOCKER_COMPOSE_SERVICE`, etc.).

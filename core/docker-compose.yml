@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eve
+      POSTGRES_PASSWORD: eve
+      POSTGRES_DB: eve_emu_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - eve_emu_core_pg:/var/lib/postgresql/data
+
+  core:
+    build: .
+    image: eve-emu/core:local
+    ports:
+      - "8000:8000"
+    environment:
+      CORE_DATABASE_URL: postgresql+asyncpg://eve:eve@db:5432/eve_emu_core
+      CORE_PUBLIC_BASE_URL: http://localhost:8000
+      CORE_SSO_CALLBACK_URL: http://localhost:8000/v1/auth/eve/callback
+    depends_on:
+      - db
+
+# Named volume eve_emu_core_pg persists Postgres across core container restarts (do not use `docker compose down -v` in prod).
+volumes:
+  eve_emu_core_pg: {}

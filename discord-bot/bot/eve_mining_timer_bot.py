@@ -5,7 +5,7 @@ Discord mining timer bot for EVE Online anomaly respawns.
 **Timer semantics:** ``eve_time`` is when the belt was **popped** (cleared). Respawn = pop + duration; band lengths
 follow env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` (float or ``H:MM``).
 
-**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/srp``, ``/auth``, ``/mumble``,
+**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/settings link``, ``/settings sync``, ``/srp``, ``/auth``, ``/mumble``,
 ``/intel``, ``/buyback``. Command output uses **ephemeral** replies (visible only to you in the channel where you ran the command).
 
 **Moon timers:** optional Google Sheet CSV (``EVE_MOON_TIMERS_*``). Use ``EVE_MOON_TIMERS_CHANNEL_ID`` for **@here**
@@ -555,6 +555,9 @@ class BotConfig:
     role_reaction_message_id: int | None
     role_reaction_pinned_index: int
     role_reaction_rules: tuple[RoleReactionPair, ...]
+    core_base_url: str | None
+    core_bot_secret: str | None
+    fg_rank_discord_roles: dict[str, int]
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -706,7 +709,56 @@ class BotConfig:
             role_reaction_message_id=role_reaction_message_id,
             role_reaction_pinned_index=role_reaction_pinned_index,
             role_reaction_rules=role_reaction_rules,
+            core_base_url=(os.getenv("EVE_CORE_BASE_URL", "").strip() or None),
+            core_bot_secret=(os.getenv("EVE_CORE_BOT_SECRET", "").strip() or None),
+            fg_rank_discord_roles=_parse_fg_rank_discord_roles(os.getenv("EVE_FG_RANK_DISCORD_ROLES", "")),
         )
+
+
+def _parse_fg_rank_discord_roles(raw: str) -> dict[str, int]:
+    """``slug=role_id`` pairs separated by ``;`` (slug matched case-insensitively to core ``rank_key``)."""
+    out: dict[str, int] = {}
+    for chunk in (raw or "").split(";"):
+        chunk = chunk.strip()
+        if not chunk or "=" not in chunk:
+            continue
+        k, v = chunk.split("=", 1)
+        k = k.strip().casefold()
+        v = v.strip()
+        if k and v.isdigit():
+            out[k] = int(v)
+    return out
+
+
+async def _core_post_json(
+    cfg: BotConfig,
+    path: str,
+    payload: dict[str, object],
+) -> tuple[int, dict[str, object] | None, str]:
+    if not cfg.core_base_url or not cfg.core_bot_secret:
+        return -1, None, "core integration not configured"
+    url = cfg.core_base_url.rstrip("/") + path
+    try:
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                url,
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {cfg.core_bot_secret}",
+                    "Accept": "application/json",
+                },
+            ) as resp:
+                text = await resp.text()
+                try:
+                    data = await resp.json()
+                except Exception:
+                    data = None
+                if isinstance(data, dict):
+                    return resp.status, data, text
+                return resp.status, None, text
+    except Exception as exc:
+        return -2, None, repr(exc)
 
 
 @dataclass
@@ -1914,6 +1966,8 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             "`/admin notes` — operator manual; `/admin restart` & `/admin rebuild` if Docker is configured\n"
             "`/miner timer` — ore anomaly timer (**pop** time, UTC)\n"
             "`/miner respawns` — timers in ±10h window\n"
+            "`/settings link` — browser link to connect this Discord account to **eve-emu core** (EVE SSO)\n"
+            "`/settings sync` — False Gods rank roles from core (needs env mapping)\n"
             "`/srp` `/auth` `/mumble` `/intel` `/buyback` — quick links / guides\n\n"
             "_Slash replies are **ephemeral** (only you see them in this channel)._"
         )
@@ -2208,6 +2262,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         )
 
     miner_group = app_commands.Group(name="miner", description=cfg.miner_slash_group_description)
+    settings_group = app_commands.Group(
+        name="settings",
+        description="Link Discord to eve-emu core and sync False Gods roles.",
+    )
 
     async def autocomplete_eve_time(
         interaction: discord.Interaction, current: str
@@ -2329,12 +2387,127 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             parts = parts[:10] + [f"_…and {len(parts) - 10} more chunk(s) omitted._"]
         await _defer_ephemeral_followups(interaction, parts)
 
+    @settings_group.command(
+        name="link",
+        description="Get a browser link to connect an EVE character to this Discord account (eve-emu core).",
+    )
+    @app_commands.guild_only()
+    async def settings_link(interaction: discord.Interaction) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET** "
+                "(same value as **CORE_DISCORD_BOT_SECRET** on core). See **example.env**.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        status, data, raw = await _core_post_json(
+            cfg,
+            "/v1/integrations/discord/prepare-link",
+            {"discord_user_id": interaction.user.id},
+        )
+        if status != 200 or not data:
+            msg = f"Core returned HTTP {status}. Try again later or ask an operator."
+            if raw and len(raw) < 400:
+                msg += f"\n```{raw}```"
+            await interaction.followup.send(msg, ephemeral=True)
+            return
+        link_url = str(data.get("link_url") or "").strip()
+        if not link_url:
+            await interaction.followup.send("Core did not return a link URL.", ephemeral=True)
+            return
+        await interaction.followup.send(
+            "Open this link in a browser, sign in with EVE SSO for the character you want on this Discord account:\n"
+            f"{link_url}\n\n"
+            "When the page says you are linked, run **`/settings sync`** here to apply **False Gods** rank roles.",
+            ephemeral=True,
+        )
+
+    @settings_group.command(
+        name="sync",
+        description="Ask eve-emu core for your False Gods rank and update mapped Discord roles.",
+    )
+    @app_commands.guild_only()
+    async def settings_sync(interaction: discord.Interaction) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET**.",
+                ephemeral=True,
+            )
+            return
+        if not cfg.fg_rank_discord_roles:
+            await interaction.response.send_message(
+                "No rank → role mapping configured. Set **EVE_FG_RANK_DISCORD_ROLES** (see **example.env**).",
+                ephemeral=True,
+            )
+            return
+        if interaction.guild is None:
+            await interaction.response.send_message("Use this command inside a server.", ephemeral=True)
+            return
+        m = interaction.user
+        if not isinstance(m, discord.Member):
+            await interaction.response.send_message("Could not resolve your membership in this server.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        status, data, raw = await _core_post_json(
+            cfg,
+            "/v1/integrations/discord/sync-roles",
+            {"discord_user_id": m.id},
+        )
+        if status != 200 or not data:
+            await interaction.followup.send(
+                f"Core sync failed (HTTP {status}). Complete **`/settings link`** in the browser first if you have not.\n"
+                f"```{raw[:450]}```",
+                ephemeral=True,
+            )
+            return
+        linked = bool(data.get("linked"))
+        rank_key = str(data.get("rank_key") or "none").casefold()
+        detail = str(data.get("detail") or "")
+        if not linked:
+            await interaction.followup.send(
+                "You are not linked in core yet. Run **`/settings link`**, finish EVE SSO in the browser, then run **`/settings sync`** again.",
+                ephemeral=True,
+            )
+            return
+        mapped = cfg.fg_rank_discord_roles
+        guild = interaction.guild
+        remove_roles: list[discord.Role] = []
+        for rid in {*mapped.values()}:
+            role = guild.get_role(rid)
+            if role is not None and role in m.roles:
+                remove_roles.append(role)
+        target_rid = mapped.get(rank_key) if rank_key != "none" else None
+        add_role = guild.get_role(target_rid) if target_rid is not None else None
+        try:
+            if remove_roles:
+                await m.remove_roles(*remove_roles, reason="eve-emu FG rank sync (clear mapped ranks)")
+            if add_role is not None:
+                await m.add_roles(add_role, reason="eve-emu FG rank sync")
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "Missing **Manage Roles** or the bot’s role is below a rank role. Move the bot role up under **Server Settings → Roles**.",
+                ephemeral=True,
+            )
+            return
+        except discord.HTTPException as exc:
+            await interaction.followup.send(f"Discord rejected a role change: `{exc!r}`", ephemeral=True)
+            return
+        ak = f"`{rank_key}`" if rank_key != "none" else "*(none — stripped FG rank roles)*"
+        await interaction.followup.send(
+            f"Linked in core: **yes**. Rank key: {ak}\n"
+            f"Detail: `{detail}`\n"
+            "If the wrong role applied, update **CORE_FG_RANK_ROLES_JSON** on core and **EVE_FG_RANK_DISCORD_ROLES** on the bot.",
+            ephemeral=True,
+        )
+
     miner_timer.autocomplete("eve_time")(autocomplete_eve_time)
     miner_timer.autocomplete("system_name")(autocomplete_system_name)
     miner_timer.autocomplete("belt_type")(autocomplete_anom_type)
 
     bot.tree.add_command(admin_group)
     bot.tree.add_command(miner_group)
+    bot.tree.add_command(settings_group)
 
     return bot
 
