@@ -2,57 +2,19 @@
 """
 Discord mining timer bot for EVE Online anomaly respawns.
 
-**Timer semantics:** ``eve_time`` is the clock time when the belt was **popped** (site cleared).
-Respawn time is **pop + duration**. Durations follow the alliance sheet: **1 h / 4 h 20 m / 10 h** bands are
-**inferred from the anomaly name** (e.g. ``Average …`` → middle band, ``Large …`` → longest, ``Type B … Belt`` → B crystal).
-Mercoxit deposits with fixed sheet times (8 h / 12 h) still use those values. Override inference by prefixing
-``T1``/``T2``/``T3`` on **text** ``!miner timer`` only if needed.
-Env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` still adjust the three band lengths (float hours or ``H:MM``, e.g. ``4:20``).
+**Timer semantics:** ``eve_time`` is when the belt was **popped** (cleared). Respawn = pop + duration; band lengths
+follow env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` (float or ``H:MM``).
 
-Set ``EVE_DISCORD_BOT_TOKEN`` in the process environment, or put ``EVE_DISCORD_BOT_TOKEN=...`` in ``bot/.env`` (gitignored).
-Windows: in **cmd.exe** use ``set EVE_DISCORD_BOT_TOKEN=your_token`` (no spaces around ``=``); in **PowerShell** use
-``$env:EVE_DISCORD_BOT_TOKEN = 'your_token'``. Do not paste a literal placeholder string.
+**Slash only:** ``/help``, ``/about``, ``/miner timer``, ``/miner respawns``, ``/srp``, ``/auth``, ``/mumble``,
+``/intel``, ``/buyback``. Command output uses **ephemeral** replies (visible only to you in the channel where you ran the command).
 
-Commands:
-  /miner timer system_name anom_type eve_time  (eve_time = UTC/EVE when belt was popped)
-  !miner timer … — same as /miner timer (optional ``T1``/``T2``/``T3`` prefix to override inferred band)
-  /miner respawns
-  !miner respawns — same as /miner respawns (text; `!miner resawns` typo alias accepted)
-  /website
-  /structure new_timer … — add structure vulnerability timer (UTC)
-  /structure admin_panel … — alert buckets + Discord channel id
-  !popejoy (message) — joke reply in channel
+**Moon timers:** optional Google Sheet CSV (``EVE_MOON_TIMERS_*``). Use ``EVE_MOON_TIMERS_CHANNEL_ID`` for **@here**
+(optional) in that channel; set ``EVE_MOON_TIMERS_NOTIFY_USER_ID`` to also DM that user the same alert (plain text in DM).
 
-Optional remote dashboard (EvE-EMU API + Redis): set MINING_BOT_DASHBOARD_PUSH_URL and
-MINING_BOT_DASHBOARD_TOKEN (see ../README.md — browser UI was removed from the main Next app).
+**Mining reminders:** DM the timer author (``EVE_MINING_PING_LEAD_MINUTES``). Optionally set ``EVE_MINING_PING_CHANNEL_ID``
+and ``EVE_MINING_PING_HERE`` to also post an **@here** belt alert in a shared channel.
 
-Channel @here mining pings: ``EVE_MINING_PING_LEAD_MINUTES`` (default **30**) — the bot posts when this
-many minutes remain until respawn, not at respawn (set to **0** for legacy “at respawn time” behavior).
-
-Set EVEEMU_API_BASE_URL to your API origin (e.g. https://eve-emu.com), or omit it and derive the base URL
-from the heartbeat URL.
-
-Corporation Projects (ESI) channel feed: set API env ``CORP_PROJECTS_ESI_TOKEN_ID`` (``esi_tokens.id`` with
-``esi-corporations.read_corporation_projects.v1``), optional ``CORP_PROJECTS_CORPORATION_ID``, and on the bot
-``EVE_CORP_PROJECTS_CHANNEL_ID`` **or** ``EVE_CORP_PROJECTS_GUILD_ID`` + ``EVE_CORP_PROJECTS_CHANNEL_NAME`` (substring
-match, default ``corp projects``). Poll interval defaults to 10 hours: ``EVE_CORP_PROJECTS_POLL_SECONDS`` (minimum 300).
-
-Structure timer board: API env ``STRUCTURE_TIMER_SHEET_CSV_URL`` (Google Sheet published CSV),
-``STRUCTURE_TIMER_STANDINGS_TOKEN_ID`` (``esi_tokens.id`` with ``esi-corporations.read_standings.v1``),
-optional ``STRUCTURE_TIMER_HOME_CORPORATION_ID``. Bot: ``EVE_STRUCTURE_TIMER_CHANNEL_ID`` (fallback if not set via
-``/structure admin_panel``), ``EVE_STRUCTURE_TIMER_POLL_SECONDS`` (default 300).
-
-Moon timers (Google Sheet, no API token): set ``EVE_MOON_TIMERS_CHANNEL_ID`` to a text channel. The bot polls the
-**[Moon Timers – FALSE GODS](https://docs.google.com/spreadsheets/d/1cDtuFQivlumB_HNZGVXWmZaHcPomFZT6r_zAe_G6VhY/edit)** sheet tab
-``moon_timers`` (CSV via Google ``gviz``). Override CSV with ``EVE_MOON_TIMERS_CSV_URL`` if needed. Use
-``EVE_MOON_TIMERS_LEAD_MINUTES`` (default **30**) and ``EVE_MOON_TIMERS_POLL_SECONDS`` (default **300**). Sheet must be
-shared so **Anyone with the link can view** for unauthenticated CSV fetch.
-
-WOMPSTAR market bot: API env ``MARKET_BOT_STOCKER_CHANNEL_ID`` (Discord channel for #stocker-pings-style alerts),
-``MARKET_BOT_STOCKER_CONTENT_PREFIX`` (optional ``<@&role_id>`` to ping @Stocker_Pings), ``MARKET_BOT_STATION_MATCH``
-(default ``WOMPSTAR``), ``MARKET_BOT_CROSS_BUY_PREMIUM_PCT`` (default 10), ``MARKET_BOT_UNDERCUT_TOKEN_IDS`` (comma
-``esi_tokens.id`` with Discord link + ``esi-markets.read_character_orders.v1``). Bot:
-``EVE_MARKET_WATCH_CHANNEL_ID`` (fallback channel), ``EVE_MARKET_WATCH_POLL_SECONDS`` (default 600).
+Set ``EVE_DISCORD_BOT_TOKEN`` in the environment or ``bot/.env`` (see ``example.env``).
 """
 
 from __future__ import annotations
@@ -64,11 +26,9 @@ import json
 import os
 import re
 import shlex
-import sys
 import time
 import threading
 import uuid
-from urllib.parse import urlsplit
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -88,9 +48,6 @@ from discord.ext import commands, tasks
 
 DATE_TOKEN_RE = re.compile(r"^\d{4}[-/]\d{2}[-/]\d{2}$")
 TIME_TOKEN_RE = re.compile(r"^\d{1,2}:\d{2}$")
-
-# Official EvE-EMU community Discord (slash invite).
-EVE_EMU_DISCORD_INVITE_URL = "https://discord.gg/DHMTKsMNbp"
 
 # FALSE GODS moon timers (public sheet; tab ``moon_timers`` — see module docstring).
 MOON_TIMERS_SPREADSHEET_ID = "1cDtuFQivlumB_HNZGVXWmZaHcPomFZT6r_zAe_G6VhY"
@@ -262,46 +219,22 @@ class BotConfig:
     t2_respawn_hours: float
     t3_respawn_hours: float
     state_file: Path
-    welcome_channel_id: int | None
-    welcome_guild_id: int | None
-    welcome_state_file: Path
-    website_url: str
-    dashboard_push_url: str | None
-    dashboard_token: str | None
-    eveemu_api_base_url: str | None
-    corp_projects_channel_id: int | None
-    corp_projects_guild_id: int | None
-    corp_projects_channel_name_needle: str
-    corp_projects_poll_seconds: int
-    structure_timer_poll_seconds: int
-    structure_timer_channel_id: int | None
-    market_watch_poll_seconds: int
-    market_watch_channel_id: int | None
-    account_notify_poll_seconds: int
-    buyback_admin_alert_poll_seconds: int
-    buyback_admin_alert_channel_id: int | None
     mumble_help_image_path: str | None
     belt_ping_images: BeltImageMap
     mining_ping_lead_minutes: int
+    mining_ping_channel_id: int | None
+    mining_ping_here: bool
     moon_timers_csv_url: str | None
+    moon_timers_notify_user_id: int | None
     moon_timers_channel_id: int | None
     moon_timers_poll_seconds: int
     moon_timers_lead_minutes: int
     moon_timers_ping_here: bool
     moon_timers_ping_state_file: Path
-
-    def resolved_api_base(self) -> str | None:
-        if self.eveemu_api_base_url:
-            return self.eveemu_api_base_url.rstrip("/")
-        u = self.dashboard_push_url
-        if u:
-            try:
-                parts = urlsplit(u)
-                if parts.scheme and parts.netloc:
-                    return f"{parts.scheme}://{parts.netloc}".rstrip("/")
-            except Exception:
-                pass
-        return None
+    discord_invite_url: str
+    presence_activity: str
+    product_display_name: str
+    miner_slash_group_description: str
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -324,36 +257,6 @@ class BotConfig:
         guild_id_raw = os.getenv("EVE_DISCORD_GUILD_ID", "").strip()
         slash_guild_id = int(guild_id_raw) if guild_id_raw else None
 
-        wc_raw = os.getenv("EVE_WELCOME_CHANNEL_ID", "").strip()
-        welcome_channel_id = int(wc_raw) if wc_raw else None
-        wg_raw = os.getenv("EVE_WELCOME_GUILD_ID", "").strip()
-        welcome_guild_id = int(wg_raw) if wg_raw else slash_guild_id
-        default_welcome = Path(__file__).resolve().parent / "data" / "welcome_seen.json"
-        welcome_state_file = Path(os.getenv("EVE_WELCOME_STATE_FILE", str(default_welcome)))
-        wu = os.getenv("EVE_WEBSITE_URL", "https://eve-emu.com/").strip() or "https://eve-emu.com/"
-        website_url = wu if wu.endswith("/") else wu + "/"
-        dash_url = os.getenv("MINING_BOT_DASHBOARD_PUSH_URL", "").strip() or None
-        dash_tok = os.getenv("MINING_BOT_DASHBOARD_TOKEN", "").strip() or None
-        api_base = os.getenv("EVEEMU_API_BASE_URL", "").strip() or None
-
-        cp_ch = os.getenv("EVE_CORP_PROJECTS_CHANNEL_ID", "").strip()
-        corp_projects_channel_id = int(cp_ch) if cp_ch else None
-        cp_g = os.getenv("EVE_CORP_PROJECTS_GUILD_ID", "").strip()
-        corp_projects_guild_id = int(cp_g) if cp_g else None
-        corp_projects_channel_name_needle = (
-            os.getenv("EVE_CORP_PROJECTS_CHANNEL_NAME", "corp projects").strip() or "corp projects"
-        )
-        corp_projects_poll_seconds = max(300, int(os.getenv("EVE_CORP_PROJECTS_POLL_SECONDS", "36000")))
-        st_poll = max(60, int(os.getenv("EVE_STRUCTURE_TIMER_POLL_SECONDS", "300")))
-        st_ch = os.getenv("EVE_STRUCTURE_TIMER_CHANNEL_ID", "").strip()
-        structure_timer_channel_id = int(st_ch) if st_ch else None
-        mw_poll = max(300, int(os.getenv("EVE_MARKET_WATCH_POLL_SECONDS", "600")))
-        mw_ch = os.getenv("EVE_MARKET_WATCH_CHANNEL_ID", "").strip()
-        market_watch_channel_id = int(mw_ch) if mw_ch else None
-        account_notify_poll_seconds = max(1800, int(os.getenv("EVE_ACCOUNT_NOTIFY_POLL_SECONDS", "3600")))
-        buyback_admin_alert_poll_seconds = max(120, int(os.getenv("EVE_BUYBACK_ADMIN_ALERT_POLL_SECONDS", "300")))
-        baa_ch = os.getenv("EVE_BUYBACK_ADMIN_ALERT_CHANNEL_ID", "").strip()
-        buyback_admin_alert_channel_id = int(baa_ch) if baa_ch else None
         default_mumble_img = Path(__file__).resolve().parent / "mumble_shout_whisper.gif"
         mumble_help_image_path = (
             os.getenv("EVE_MUMBLE_HELP_IMAGE", "").strip()
@@ -383,12 +286,20 @@ class BotConfig:
 
         mining_ping_lead_minutes = max(0, int(os.getenv("EVE_MINING_PING_LEAD_MINUTES", "30")))
 
+        mining_ping_ch = os.getenv("EVE_MINING_PING_CHANNEL_ID", "").strip()
+        mining_ping_channel_id = int(mining_ping_ch) if mining_ping_ch else None
+        mining_here_raw = os.getenv("EVE_MINING_PING_HERE", "1").strip().lower()
+        mining_ping_here = mining_here_raw not in ("0", "false", "no", "off")
+
+        moon_notify_raw = os.getenv("EVE_MOON_TIMERS_NOTIFY_USER_ID", "").strip()
+        moon_timers_notify_user_id = int(moon_notify_raw) if moon_notify_raw else None
         moon_ch = os.getenv("EVE_MOON_TIMERS_CHANNEL_ID", "").strip()
         moon_timers_channel_id = int(moon_ch) if moon_ch else None
         moon_csv = os.getenv("EVE_MOON_TIMERS_CSV_URL", "").strip() or None
-        if moon_timers_channel_id is not None and not moon_csv:
+        moon_dest = moon_timers_notify_user_id is not None or moon_timers_channel_id is not None
+        if moon_dest and not moon_csv:
             moon_csv = _default_moon_timers_csv_url()
-        elif moon_timers_channel_id is None:
+        elif not moon_dest:
             moon_csv = None
         moon_timers_poll_seconds = max(120, int(os.getenv("EVE_MOON_TIMERS_POLL_SECONDS", "300")))
         moon_timers_lead_minutes = max(0, int(os.getenv("EVE_MOON_TIMERS_LEAD_MINUTES", "30")))
@@ -399,6 +310,22 @@ class BotConfig:
             os.getenv("EVE_MOON_TIMERS_PING_STATE_FILE", str(default_moon_ping_state))
         )
 
+        _def_discord_invite = "https://discord.gg/DHMTKsMNbp"
+        discord_invite_url = os.getenv("EVE_BOT_DISCORD_INVITE_URL", "").strip() or _def_discord_invite
+        product_display_name = os.getenv("EVE_BOT_PRODUCT_DISPLAY_NAME", "EVE-EMU").strip() or "EVE-EMU"
+        _def_activity = "Never Forget Nov 2, 1932 – Dec 10, 1932 GMW."
+        presence_activity = os.getenv("EVE_DISCORD_BOT_ACTIVITY", "").strip() or _def_activity
+        if len(presence_activity) > 128:
+            presence_activity = presence_activity[:128]
+
+        def _slash_cmd_desc(env_key: str, default: str) -> str:
+            return (os.getenv(env_key, "").strip() or default)[:100]
+
+        miner_slash_group_description = _slash_cmd_desc(
+            "EVE_BOT_MINER_SLASH_GROUP_DESCRIPTION",
+            "Mining timer tools",
+        )
+
         return cls(
             token=token,
             slash_guild_id=slash_guild_id,
@@ -406,33 +333,22 @@ class BotConfig:
             t2_respawn_hours=_parse_env_respawn_hours("EVE_T2_RESPAWN_HOURS", _DEFAULT_T2_RESPAWN_HOURS),
             t3_respawn_hours=_parse_env_respawn_hours("EVE_T3_RESPAWN_HOURS", _DEFAULT_T3_RESPAWN_HOURS),
             state_file=state_file,
-            welcome_channel_id=welcome_channel_id,
-            welcome_guild_id=welcome_guild_id,
-            welcome_state_file=welcome_state_file,
-            website_url=website_url,
-            dashboard_push_url=dash_url,
-            dashboard_token=dash_tok,
-            eveemu_api_base_url=api_base,
-            corp_projects_channel_id=corp_projects_channel_id,
-            corp_projects_guild_id=corp_projects_guild_id,
-            corp_projects_channel_name_needle=corp_projects_channel_name_needle,
-            corp_projects_poll_seconds=corp_projects_poll_seconds,
-            structure_timer_poll_seconds=st_poll,
-            structure_timer_channel_id=structure_timer_channel_id,
-            market_watch_poll_seconds=mw_poll,
-            market_watch_channel_id=market_watch_channel_id,
-            account_notify_poll_seconds=account_notify_poll_seconds,
-            buyback_admin_alert_poll_seconds=buyback_admin_alert_poll_seconds,
-            buyback_admin_alert_channel_id=buyback_admin_alert_channel_id,
             mumble_help_image_path=mumble_help_image_path,
             belt_ping_images=belt_ping_images,
             mining_ping_lead_minutes=mining_ping_lead_minutes,
+            mining_ping_channel_id=mining_ping_channel_id,
+            mining_ping_here=mining_ping_here,
             moon_timers_csv_url=moon_csv,
+            moon_timers_notify_user_id=moon_timers_notify_user_id,
             moon_timers_channel_id=moon_timers_channel_id,
             moon_timers_poll_seconds=moon_timers_poll_seconds,
             moon_timers_lead_minutes=moon_timers_lead_minutes,
             moon_timers_ping_here=moon_timers_ping_here,
             moon_timers_ping_state_file=moon_timers_ping_state_file,
+            discord_invite_url=discord_invite_url,
+            presence_activity=presence_activity,
+            product_display_name=product_display_name,
+            miner_slash_group_description=miner_slash_group_description,
         )
 
 
@@ -494,11 +410,11 @@ class TimerStore:
             return pending, total
 
     async def due(self, now_utc: datetime, *, ping_lead: timedelta) -> list[TimerEntry]:
-        """Return timers that should fire a channel ping now.
+        """Return timers that should fire a reminder DM to the author now.
 
-        With ``ping_lead`` > 0, a ping is due when ``now_utc`` has reached
+        With ``ping_lead`` > 0, a reminder is due when ``now_utc`` has reached
         ``respawn - ping_lead`` (e.g. 30 minutes before respawn), not at respawn itself.
-        ``ping_lead`` of zero restores the legacy behavior (ping at/after respawn time).
+        ``ping_lead`` of zero restores the legacy behavior (remind at/after respawn time).
         """
         async with self._lock:
             due_items = [
@@ -538,49 +454,6 @@ class TimerStore:
             out = [t for t in self._timers if start <= t.respawn_dt <= end]
             out.sort(key=lambda x: x.respawn_dt)
             return out
-
-
-class WelcomeStore:
-    """Tracks users who already received a join welcome (per guild)."""
-
-    def __init__(self, path: Path):
-        self.path = path
-        self._lock = asyncio.Lock()
-        self._by_guild: dict[str, set[int]] = {}
-
-    async def load(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        if not self.path.exists():
-            async with self._lock:
-                self._by_guild = {}
-            return
-        raw = (await asyncio.to_thread(lambda: self.path.read_text(encoding="utf-8"))).strip()
-        async with self._lock:
-            if not raw:
-                self._by_guild = {}
-                return
-            try:
-                data = json.loads(raw)
-            except json.JSONDecodeError:
-                self._by_guild = {}
-                return
-            self._by_guild = {}
-            for k, v in data.items():
-                if not isinstance(v, list):
-                    continue
-                self._by_guild[str(k)] = {int(x) for x in v}
-
-    async def has_seen(self, guild_id: int, user_id: int) -> bool:
-        async with self._lock:
-            return user_id in self._by_guild.get(str(guild_id), set())
-
-    async def mark_seen(self, guild_id: int, user_id: int) -> None:
-        async with self._lock:
-            self._by_guild.setdefault(str(guild_id), set()).add(user_id)
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            payload = {k: sorted(v) for k, v in sorted(self._by_guild.items(), key=lambda x: int(x[0]))}
-            content = json.dumps(payload, indent=2)
-            await asyncio.to_thread(lambda: self.path.write_text(content, encoding="utf-8"))
 
 
 class MoonTimerPingStore:
@@ -1036,52 +909,21 @@ def _canonicalize_anomaly_type(raw: str) -> str | None:
     return _ORE_ANOMALY_CF_TO_CANONICAL.get(s.casefold())
 
 
-def _chunk_discord_message(text: str, limit: int = 1950) -> list[str]:
-    t = (text or "").strip()
-    if not t:
-        return []
-    if len(t) <= limit:
-        return [t]
-    return [t[i : i + limit] for i in range(0, len(t), limit)]
-
-
-def _resolve_corp_projects_channel(
-    bot: discord.Client, cfg: BotConfig
-) -> discord.TextChannel | discord.Thread | None:
-    if cfg.corp_projects_channel_id:
-        ch = bot.get_channel(cfg.corp_projects_channel_id)
-        if isinstance(ch, (discord.TextChannel, discord.Thread)):
-            return ch
-        return None
-    needle = (cfg.corp_projects_channel_name_needle or "").strip().casefold()
-    gid = cfg.corp_projects_guild_id
-    if not needle or gid is None:
-        return None
-    guild = bot.get_guild(int(gid))
-    if not guild:
-        return None
-    for tc in guild.text_channels:
-        if needle in tc.name.casefold():
-            return tc
-    return None
-
-
 def build_bot(cfg: BotConfig) -> commands.Bot:
     intents = discord.Intents.default()
     intents.guilds = True
-    intents.members = True
-    intents.messages = True
-    intents.message_content = True
+    intents.members = False
+    intents.messages = False
+    intents.message_content = False
 
     bot = commands.Bot(
-        command_prefix=commands.when_mentioned,
+        command_prefix=lambda _bot, _message: [],
         intents=intents,
         help_command=None,
         status=discord.Status.online,
-        activity=discord.Game(name="Never Forget Nov 2, 1932 – Dec 10, 1932 GMW."),
+        activity=discord.Game(name=cfg.presence_activity),
     )
     store = TimerStore(cfg.state_file)
-    welcome_store = WelcomeStore(cfg.welcome_state_file)
     moon_ping_store = MoonTimerPingStore(cfg.moon_timers_ping_state_file)
     slash_synced = False
     bot_started_at: datetime | None = None
@@ -1091,7 +933,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         try:
             await bot.change_presence(
                 status=discord.Status.online,
-                activity=discord.Game(name="Never Forget Nov 2, 1932 – Dec 10, 1932 GMW."),
+                activity=discord.Game(name=cfg.presence_activity),
             )
         except Exception:
             pass
@@ -1132,9 +974,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         await store.add(timer)
         return timer, pop_time, respawn
 
-    _MINING_PING_ALLOWED = discord.AllowedMentions(everyone=True)
-
-    def _build_mining_ping_message(
+    def _build_mining_reminder_dm_text(
         *,
         belt_type: str,
         system_name: str,
@@ -1145,19 +985,18 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         approx = f"~{minutes_until_respawn} min" if minutes_until_respawn >= 2 else "imminently"
         if belt_cf == "large griemeer deposit":
             return (
-                "@here\n\n"
-                "🚨 A Large Griemeer Deposit (ISOGEN) is coming up 🚨\n\n"
-                f"SYSTEM:{system_name}\n\n"
-                f"TIME: {_format_eve_time(when_utc)} | {_format_local_time(when_utc)} ({approx})\n\n"
-                "Ore Breakdown:\n\n"
+                "🚨 **Mining timer** — Large Griemeer Deposit (ISOGEN) is coming up 🚨\n\n"
+                f"**System:** {system_name}\n\n"
+                f"**Time:** {_format_eve_time(when_utc)} | {_format_local_time(when_utc)} ({approx})\n\n"
+                "Ore breakdown (in-game) follows your overview — undock prepared.\n"
             )
         return (
-            f'Hey @here The "{belt_type}" anomaly in "{system_name}" is due to respawn in {approx} '
+            f'**Mining timer:** your "{belt_type}" anomaly in **{system_name}** is due to respawn in {approx} '
             f"(at {_format_eve_time(when_utc)} | {_format_local_time(when_utc)})"
         )
 
-    async def _send_mining_ping(
-        channel: discord.abc.Messageable,
+    async def _send_mining_reminder_dm(
+        user: discord.abc.User,
         *,
         belt_type: str,
         system_name: str,
@@ -1165,28 +1004,99 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     ) -> None:
         now = datetime.now(UTC)
         minutes_until = max(0, int((when_utc - now).total_seconds() // 60))
-        msg = _build_mining_ping_message(
+        msg = _build_mining_reminder_dm_text(
             belt_type=belt_type,
             system_name=system_name,
             when_utc=when_utc,
             minutes_until_respawn=minutes_until,
         )
         belt_cf = belt_type.strip().casefold()
-        await channel.send(msg, allowed_mentions=_MINING_PING_ALLOWED)
+        await user.send(msg[:2000])
+        img_path = cfg.belt_ping_images.get(belt_cf)
+        if img_path and Path(img_path).exists():
+            await user.send(file=discord.File(img_path))
+        elif img_path:
+            print(f"belt ping image path not found for '{belt_type}': {img_path}")
+        if belt_cf == "large griemeer deposit":
+            await user.send(
+                "💡 Tip: Sell your ore back to the corp today — use **`/buyback`** in this server for the link."
+            )
+
+    _MINING_HERE_ALLOWED = discord.AllowedMentions(everyone=True)
+
+    def _build_mining_channel_here_text(
+        *,
+        belt_type: str,
+        system_name: str,
+        when_utc: datetime,
+        minutes_until_respawn: int,
+        ping_here: bool,
+    ) -> str:
+        belt_cf = belt_type.strip().casefold()
+        approx = f"~{minutes_until_respawn} min" if minutes_until_respawn >= 2 else "imminently"
+        prefix = "@here\n\n" if ping_here else ""
+        if belt_cf == "large griemeer deposit":
+            return (
+                f"{prefix}"
+                "🚨 A Large Griemeer Deposit (ISOGEN) is coming up 🚨\n\n"
+                f"SYSTEM:{system_name}\n\n"
+                f"TIME: {_format_eve_time(when_utc)} | {_format_local_time(when_utc)} ({approx})\n\n"
+                "Ore Breakdown:\n\n"
+            )
+        here_bit = 'Hey @here ' if ping_here else ""
+        return (
+            f'{here_bit}The "{belt_type}" anomaly in "{system_name}" is due to respawn in {approx} '
+            f"(at {_format_eve_time(when_utc)} | {_format_local_time(when_utc)})"
+        )
+
+    async def _send_mining_channel_here_ping(
+        channel: discord.abc.Messageable,
+        *,
+        belt_type: str,
+        system_name: str,
+        when_utc: datetime,
+        ping_here: bool,
+    ) -> None:
+        now = datetime.now(UTC)
+        minutes_until = max(0, int((when_utc - now).total_seconds() // 60))
+        msg = _build_mining_channel_here_text(
+            belt_type=belt_type,
+            system_name=system_name,
+            when_utc=when_utc,
+            minutes_until_respawn=minutes_until,
+            ping_here=ping_here,
+        )
+        belt_cf = belt_type.strip().casefold()
+        mentions = _MINING_HERE_ALLOWED if ping_here else discord.AllowedMentions(everyone=False)
+        await channel.send(msg[:2000], allowed_mentions=mentions)
         img_path = cfg.belt_ping_images.get(belt_cf)
         if img_path and Path(img_path).exists():
             await channel.send(file=discord.File(img_path))
-        else:
-            if img_path:
-                print(f"belt ping image path not found for '{belt_type}': {img_path}")
+        elif img_path:
+            print(f"belt ping image path not found for '{belt_type}': {img_path}")
         if belt_cf == "large griemeer deposit":
-            await channel.send("💡 Tip: Sell your ore back to the corp today! Use the !Buyback command to learn how.")
+            await channel.send(
+                "💡 Tip: Sell your ore back to the corp today! Use **`/buyback`** for the link.",
+                allowed_mentions=discord.AllowedMentions(everyone=False),
+            )
 
-    _MINER_TIMER_PREFIX_RE = re.compile(r"^\s*!miner\s+timer(?:\s+|$)", re.IGNORECASE)
-    _MINER_RESPAWNS_STRICT_RE = re.compile(r"^\s*!miner\s+(?:respawns|resawns)\s*$", re.IGNORECASE)
+    async def _defer_ephemeral_followups(
+        interaction: discord.Interaction,
+        parts: list[str],
+        *,
+        first_message_file: discord.File | None = None,
+    ) -> None:
+        """Defer ephemerally, then send each chunk as an ephemeral followup (only you see it)."""
+        await interaction.response.defer(ephemeral=True)
+        for i, part in enumerate(parts):
+            chunk = part[:2000]
+            if i == 0 and first_message_file is not None:
+                await interaction.followup.send(chunk, file=first_message_file, ephemeral=True)
+            else:
+                await interaction.followup.send(chunk, ephemeral=True)
 
     async def _miner_respawns_message_parts() -> list[str]:
-        """Same output chunks as /miner respawns (for slash followups or channel messages)."""
+        """Output chunks for ``/miner respawns`` (ephemeral followups)."""
         now = datetime.now(UTC)
         win_start = now - timedelta(hours=10)
         win_end = now + timedelta(hours=10)
@@ -1255,7 +1165,6 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         belt_type: str,
         eve_time: str,
     ) -> None:
-        await interaction.response.defer(ephemeral=True)
         try:
             timer, pop_time, respawn = await _register_timer_core(
                 system_name=system_name,
@@ -1267,37 +1176,38 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                 explicit_tier=None,
             )
         except ValueError as exc:
-            await interaction.followup.send(
+            err_parts = [
                 "\n".join(
                     [
                         str(exc),
                         "Slash format:",
-                        "`/miner timer system_name:<name> anom_type:<EVE anomaly> eve_time:<pop time>`",
-                        "Example: `/miner timer system_name:Jita anom_type:Type C Mercoxit Belt eve_time:19:30`",
-                        "Text format: `!miner timer Jita | Type C Mercoxit Belt | 19:30` (pop time = when belt was cleared).",
-                        "Optional override: `!miner timer T3 Jita | Veldspar Deposit | 19:30`",
+                        "`/miner timer` with **system**, **belt_type** (anomaly name), and **eve_time** (pop / clear time, UTC).",
+                        "Example: `/miner timer` → Jita, Type C Mercoxit Belt, `19:30`",
                     ]
-                ),
-                ephemeral=True,
-            )
+                )
+            ]
+            await _defer_ephemeral_followups(interaction, err_parts)
             return
 
-        ping_note = (
-            f"Channel @here ping: ~{cfg.mining_ping_lead_minutes} min before respawn "
+        dm_line = (
+            f"You will get a **DM** ~{cfg.mining_ping_lead_minutes} min before respawn "
             f"({_format_eve_time(respawn)} | {_format_local_time(respawn)})"
             if cfg.mining_ping_lead_minutes > 0
-            else f"Channel @here ping at respawn: {_format_eve_time(respawn)} | {_format_local_time(respawn)}"
+            else f"You will get a **DM** at respawn: {_format_eve_time(respawn)} | {_format_local_time(respawn)}"
         )
-        await interaction.followup.send(
-            "\n".join(
-                [
-                    f"Saved ({timer.tier}) timer `{timer.timer_id}`.",
-                    f"Pop (EVE): {_format_eve_time(pop_time)}",
-                    ping_note,
-                ]
-            ),
-            ephemeral=True,
-        )
+        lines = [
+            f"Saved ({timer.tier}) timer `{timer.timer_id}`.",
+            f"Pop (EVE): {_format_eve_time(pop_time)}",
+            dm_line,
+        ]
+        if cfg.mining_ping_channel_id is not None:
+            cref = f"<#{cfg.mining_ping_channel_id}>"
+            if cfg.mining_ping_here:
+                lines.append(f"An **@here** mining alert will also be posted in {cref}.")
+            else:
+                lines.append(f"A mining alert (no @here) will also be posted in {cref}.")
+        body = "\n".join(lines)
+        await _defer_ephemeral_followups(interaction, [body])
 
     @bot.event
     async def on_ready() -> None:
@@ -1307,45 +1217,16 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
                 bot_started_at = datetime.now(UTC)
             await ensure_online_presence()
             await store.load()
-            await welcome_store.load()
             await moon_ping_store.load()
             if not timer_loop.is_running():
                 timer_loop.start()
             if not presence_refresh_loop.is_running():
                 presence_refresh_loop.start()
-            if cfg.dashboard_push_url and cfg.dashboard_token and not dashboard_push_loop.is_running():
-                dashboard_push_loop.start()
-            if cfg.resolved_api_base() and cfg.dashboard_token and not industry_dm_loop.is_running():
-                industry_dm_loop.start()
-            if cfg.resolved_api_base() and cfg.dashboard_token and not structure_timers_loop.is_running():
-                structure_timers_loop.start()
-            if cfg.resolved_api_base() and cfg.dashboard_token and not market_watch_loop.is_running():
-                market_watch_loop.start()
-            if cfg.resolved_api_base() and cfg.dashboard_token and not account_notifications_loop.is_running():
-                account_notifications_loop.start()
             if (
-                cfg.resolved_api_base()
-                and cfg.dashboard_token
-                and cfg.buyback_admin_alert_channel_id is not None
-                and not buyback_admin_alert_loop.is_running()
-            ):
-                buyback_admin_alert_loop.start()
-            if (
-                cfg.resolved_api_base()
-                and cfg.dashboard_token
-                and not corp_projects_loop.is_running()
+                cfg.moon_timers_csv_url
                 and (
-                    cfg.corp_projects_channel_id is not None
-                    or (
-                        cfg.corp_projects_guild_id is not None
-                        and bool((cfg.corp_projects_channel_name_needle or "").strip())
-                    )
+                    cfg.moon_timers_notify_user_id is not None or cfg.moon_timers_channel_id is not None
                 )
-            ):
-                corp_projects_loop.start()
-            if (
-                cfg.moon_timers_channel_id is not None
-                and cfg.moon_timers_csv_url
                 and not moon_timers_loop.is_running()
             ):
                 moon_timers_loop.start()
@@ -1394,478 +1275,70 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         lead = timedelta(minutes=cfg.mining_ping_lead_minutes)
         due = await store.due(datetime.now(UTC), ping_lead=lead)
         for timer in due:
-            channel = bot.get_channel(timer.channel_id)
-            if channel is None:
+            user = bot.get_user(timer.author_id)
+            if user is None:
                 try:
-                    channel = await bot.fetch_channel(timer.channel_id)
+                    user = await bot.fetch_user(timer.author_id)
                 except Exception:
                     continue
-
             try:
-                await _send_mining_ping(
-                    channel,
+                await _send_mining_reminder_dm(
+                    user,
                     belt_type=timer.belt_type,
                     system_name=timer.system_name,
                     when_utc=timer.respawn_dt,
                 )
             except Exception:
                 pass
+            if cfg.mining_ping_channel_id is not None:
+                alert_ch = bot.get_channel(cfg.mining_ping_channel_id)
+                if alert_ch is None:
+                    try:
+                        fetched = await bot.fetch_channel(cfg.mining_ping_channel_id)
+                        if isinstance(fetched, (discord.TextChannel, discord.Thread)):
+                            alert_ch = fetched
+                    except Exception:
+                        alert_ch = None
+                if alert_ch is not None:
+                    try:
+                        await _send_mining_channel_here_ping(
+                            alert_ch,
+                            belt_type=timer.belt_type,
+                            system_name=timer.system_name,
+                            when_utc=timer.respawn_dt,
+                            ping_here=cfg.mining_ping_here,
+                        )
+                    except Exception:
+                        pass
 
     @timer_loop.before_loop
     async def before_timer_loop() -> None:
-        await bot.wait_until_ready()
-
-    @tasks.loop(seconds=30)
-    async def dashboard_push_loop() -> None:
-        if not cfg.dashboard_push_url or not cfg.dashboard_token:
-            return
-        if bot.user is None:
-            return
-        pending, total = await store.timer_counts()
-        guild_payload = [{"id": str(g.id), "name": g.name} for g in list(bot.guilds)[:40]]
-        payload = {
-            "bot": {
-                "username": bot.user.name,
-                "id": bot.user.id,
-                "discriminator": getattr(bot.user, "discriminator", "0"),
-            },
-            "guild_count": len(bot.guilds),
-            "guilds": guild_payload,
-            "latency_ms": round(bot.latency * 1000, 1),
-            "pending_timers": pending,
-            "total_timers": total,
-            "uptime_seconds": int((datetime.now(UTC) - bot_started_at).total_seconds())
-            if bot_started_at
-            else None,
-            "python": sys.version.split()[0],
-            "discord_py": getattr(discord, "__version__", "unknown"),
-        }
-        try:
-            timeout = aiohttp.ClientTimeout(total=15)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    cfg.dashboard_push_url,
-                    json=payload,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    if resp.status >= 400:
-                        body = await resp.text()
-                        print(f"Mining dashboard push HTTP {resp.status}: {body[:300]}")
-        except Exception as exc:
-            print(f"Mining dashboard push failed: {exc}")
-
-    @dashboard_push_loop.before_loop
-    async def before_dashboard_push() -> None:
-        await bot.wait_until_ready()
-
-    @tasks.loop(seconds=90)
-    async def industry_dm_loop() -> None:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            return
-        url = f"{base}/integrations/mining-discord-bot/industry-watches/run"
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        print(f"Industry watch HTTP {resp.status}: {raw[:400]}")
-                        return
-                    try:
-                        payload = json.loads(raw)
-                    except json.JSONDecodeError:
-                        print(f"Industry watch: non-JSON response: {raw[:200]}")
-                        return
-        except Exception as exc:
-            print(f"Industry watch request failed: {exc}")
-            return
-
-        dms = payload.get("dms") if isinstance(payload, dict) else None
-        if not isinstance(dms, list) or not dms:
-            return
-        for item in dms:
-            if not isinstance(item, dict):
-                continue
-            try:
-                uid = int(item["discord_user_id"])
-                msg = str(item.get("message") or "")
-            except (KeyError, TypeError, ValueError):
-                continue
-            if not msg:
-                continue
-            try:
-                user = await bot.fetch_user(uid)
-                await user.send(msg)
-            except discord.Forbidden:
-                print(f"Industry DM: cannot DM user {uid} (closed DMs or blocked bot).")
-            except Exception as exc:
-                print(f"Industry DM failed for user {uid}: {exc}")
-
-    @industry_dm_loop.before_loop
-    async def before_industry_dm_loop() -> None:
-        await bot.wait_until_ready()
-
-    @tasks.loop(seconds=cfg.corp_projects_poll_seconds)
-    async def corp_projects_loop() -> None:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            return
-        url = f"{base}/integrations/mining-discord-bot/corp-projects/run"
-        try:
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        print(f"Corp projects watch HTTP {resp.status}: {raw[:400]}")
-                        return
-                    try:
-                        payload = json.loads(raw)
-                    except json.JSONDecodeError:
-                        print(f"Corp projects watch: non-JSON response: {raw[:200]}")
-                        return
-        except Exception as exc:
-            print(f"Corp projects watch request failed: {exc}")
-            return
-
-        ch = _resolve_corp_projects_channel(bot, cfg)
-        if ch is None:
-            return
-
-        posts = payload.get("posts") if isinstance(payload, dict) else None
-        if not isinstance(posts, list) or not posts:
-            return
-        for raw in posts:
-            if not isinstance(raw, str) or not raw.strip():
-                continue
-            for part in _chunk_discord_message(raw):
-                try:
-                    await ch.send(part)
-                except discord.Forbidden:
-                    print(
-                        "Corp projects: bot cannot post in the configured channel "
-                        "(missing Send Messages / View Channel)."
-                    )
-                    return
-                except Exception as exc:
-                    print(f"Corp projects channel post failed: {exc}")
-
-    @corp_projects_loop.before_loop
-    async def before_corp_projects_loop() -> None:
-        await bot.wait_until_ready()
-
-    @tasks.loop(seconds=max(60, cfg.structure_timer_poll_seconds))
-    async def structure_timers_loop() -> None:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            return
-        url = f"{base}/integrations/mining-discord-bot/structure-timers/tick"
-        try:
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                    params={"sync_sheet": "true", "force_sheet": "false"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        print(f"Structure timers tick HTTP {resp.status}: {raw[:400]}")
-                        return
-                    try:
-                        payload = json.loads(raw)
-                    except json.JSONDecodeError:
-                        print(f"Structure timers tick: non-JSON response: {raw[:200]}")
-                        return
-        except Exception as exc:
-            print(f"Structure timers tick failed: {exc}")
-            return
-
-        embed_dicts = payload.get("embeds") if isinstance(payload, dict) else None
-        if not isinstance(embed_dicts, list) or not embed_dicts:
-            return
-        conf = payload.get("config") if isinstance(payload, dict) else {}
-        ch_id = None
-        if isinstance(conf, dict) and conf.get("discord_channel_id") is not None:
-            try:
-                ch_id = int(conf["discord_channel_id"])
-            except (TypeError, ValueError):
-                ch_id = None
-        if ch_id is None:
-            ch_id = cfg.structure_timer_channel_id
-        if ch_id is None:
-            return
-        ch = bot.get_channel(int(ch_id))
-        if not isinstance(ch, (discord.TextChannel, discord.Thread)):
-            return
-        batch: list[discord.Embed] = []
-        for ed in embed_dicts:
-            if not isinstance(ed, dict):
-                continue
-            try:
-                batch.append(discord.Embed.from_dict(ed))
-            except Exception:
-                batch.append(
-                    discord.Embed(
-                        title=str(ed.get("title") or "Structure timer"),
-                        description=str(ed.get("description") or "")[:4000],
-                        color=ed.get("color"),
-                    )
-                )
-            if len(batch) >= 10:
-                try:
-                    await ch.send(embeds=batch)
-                except discord.Forbidden:
-                    print("Structure timers: missing permission to post embeds in alert channel.")
-                    return
-                except Exception as exc:
-                    print(f"Structure timers channel post failed: {exc}")
-                batch = []
-        if batch:
-            try:
-                await ch.send(embeds=batch)
-            except Exception as exc:
-                print(f"Structure timers channel post failed: {exc}")
-
-    @structure_timers_loop.before_loop
-    async def before_structure_timers_loop() -> None:
-        await bot.wait_until_ready()
-
-    @tasks.loop(seconds=max(300, cfg.market_watch_poll_seconds))
-    async def market_watch_loop() -> None:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            return
-        url = f"{base}/integrations/mining-discord-bot/market-watch/tick"
-        try:
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        print(f"Market watch tick HTTP {resp.status}: {raw[:400]}")
-                        return
-                    try:
-                        payload = json.loads(raw)
-                    except json.JSONDecodeError:
-                        print(f"Market watch tick: non-JSON response: {raw[:200]}")
-                        return
-        except Exception as exc:
-            print(f"Market watch tick failed: {exc}")
-            return
-
-        ch_id = None
-        if isinstance(payload, dict):
-            raw_ch = payload.get("market_watch_channel_id")
-            if raw_ch is not None:
-                try:
-                    ch_id = int(raw_ch)
-                except (TypeError, ValueError):
-                    ch_id = None
-        if not ch_id:
-            ch_id = cfg.market_watch_channel_id
-        if ch_id is None:
-            return
-        ch = bot.get_channel(int(ch_id))
-        if not isinstance(ch, (discord.TextChannel, discord.Thread)):
-            return
-
-        embed_dicts = payload.get("market_watch_embeds") if isinstance(payload, dict) else None
-        content_raw = payload.get("market_watch_content") if isinstance(payload, dict) else None
-        content = str(content_raw).strip() if isinstance(content_raw, str) else None
-        if content == "":
-            content = None
-
-        if isinstance(embed_dicts, list) and embed_dicts:
-            batch: list[discord.Embed] = []
-            for ed in embed_dicts:
-                if not isinstance(ed, dict):
-                    continue
-                try:
-                    batch.append(discord.Embed.from_dict(ed))
-                except Exception:
-                    batch.append(
-                        discord.Embed(
-                            title=str(ed.get("title") or "Market watch"),
-                            description=str(ed.get("description") or "")[:4000],
-                            color=ed.get("color"),
-                        )
-                    )
-                if len(batch) >= 10:
-                    try:
-                        await ch.send(content=content, embeds=batch)
-                    except discord.Forbidden:
-                        print("Market watch: missing permission to post in stocker channel.")
-                        return
-                    except Exception as exc:
-                        print(f"Market watch channel post failed: {exc}")
-                    batch = []
-                    content = None
-            if batch:
-                try:
-                    await ch.send(content=content, embeds=batch)
-                except discord.Forbidden:
-                    print("Market watch: missing permission to post in stocker channel.")
-                except Exception as exc:
-                    print(f"Market watch channel post failed: {exc}")
-
-        dms = payload.get("market_watch_dms") if isinstance(payload, dict) else None
-        if isinstance(dms, list):
-            for item in dms:
-                if not isinstance(item, dict):
-                    continue
-                try:
-                    uid = int(item["discord_user_id"])
-                    msg = str(item.get("message") or "")
-                except (KeyError, TypeError, ValueError):
-                    continue
-                if not msg:
-                    continue
-                try:
-                    user = await bot.fetch_user(uid)
-                    await user.send(msg)
-                except discord.Forbidden:
-                    print(f"Market watch DM: cannot DM user {uid}.")
-                except Exception as exc:
-                    print(f"Market watch DM failed for user {uid}: {exc}")
-
-    @market_watch_loop.before_loop
-    async def before_market_watch_loop() -> None:
-        await bot.wait_until_ready()
-
-    async def _link_code_via_api(discord_user_id: int, discord_username: str | None, code: str) -> tuple[bool, str]:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            return False, "Bot API bridge is not configured by admins."
-        url = f"{base}/api/integrations/mining-discord-bot/link"
-        payload = {
-            "discord_user_id": str(discord_user_id),
-            "discord_username": discord_username or "",
-            "code": code.strip(),
-        }
-        try:
-            timeout = aiohttp.ClientTimeout(total=20)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    json=payload,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        return False, f"Link failed (HTTP {resp.status}): {raw[:180]}"
-            return True, "Discord account linked to EvE-EMU."
-        except Exception as exc:
-            return False, f"Link request failed: {exc}"
-
-    @tasks.loop(seconds=max(1800, cfg.account_notify_poll_seconds))
-    async def account_notifications_loop() -> None:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            return
-        url = f"{base}/api/integrations/mining-discord-bot/account-notifications/tick"
-        try:
-            timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        print(f"Account notifications tick HTTP {resp.status}: {raw[:400]}")
-                        return
-                    payload = json.loads(raw)
-        except Exception as exc:
-            print(f"Account notifications tick failed: {exc}")
-            return
-
-        dms = payload.get("dms") if isinstance(payload, dict) else None
-        if not isinstance(dms, list) or not dms:
-            return
-        for item in dms:
-            if not isinstance(item, dict):
-                continue
-            try:
-                uid = int(item["discord_user_id"])
-                msg = str(item.get("message") or "")
-            except (KeyError, TypeError, ValueError):
-                continue
-            if not msg:
-                continue
-            try:
-                user = await bot.fetch_user(uid)
-                await user.send(msg)
-            except discord.Forbidden:
-                print(f"Account notify DM: cannot DM user {uid}.")
-            except Exception as exc:
-                print(f"Account notify DM failed for user {uid}: {exc}")
-
-    @account_notifications_loop.before_loop
-    async def before_account_notifications_loop() -> None:
-        await bot.wait_until_ready()
-
-    @tasks.loop(seconds=max(120, cfg.buyback_admin_alert_poll_seconds))
-    async def buyback_admin_alert_loop() -> None:
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token or cfg.buyback_admin_alert_channel_id is None:
-            return
-        ch = bot.get_channel(int(cfg.buyback_admin_alert_channel_id))
-        if not isinstance(ch, (discord.TextChannel, discord.Thread)):
-            return
-        url = f"{base}/api/integrations/mining-discord-bot/buyback-admin-alerts/tick"
-        try:
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        print(f"Buyback admin alerts tick HTTP {resp.status}: {raw[:300]}")
-                        return
-                    payload = json.loads(raw)
-        except Exception as exc:
-            print(f"Buyback admin alerts tick failed: {exc}")
-            return
-
-        alerts = payload.get("admin_alerts") if isinstance(payload, dict) else None
-        if not isinstance(alerts, list) or not alerts:
-            return
-        for msg in alerts:
-            if not isinstance(msg, str) or not msg.strip():
-                continue
-            try:
-                await ch.send(f"**Buyback admin update**\n{msg[:1800]}")
-            except discord.Forbidden:
-                print("Buyback admin alerts: bot cannot post in configured channel.")
-                return
-            except Exception as exc:
-                print(f"Buyback admin alerts channel post failed: {exc}")
-
-    @buyback_admin_alert_loop.before_loop
-    async def before_buyback_admin_alert_loop() -> None:
         await bot.wait_until_ready()
 
     _MOON_PING_ALLOWED = discord.AllowedMentions(everyone=True)
 
     @tasks.loop(seconds=max(120, cfg.moon_timers_poll_seconds))
     async def moon_timers_loop() -> None:
-        if cfg.moon_timers_channel_id is None or not cfg.moon_timers_csv_url:
+        if not cfg.moon_timers_csv_url:
             return
-        ch = bot.get_channel(int(cfg.moon_timers_channel_id))
-        if not isinstance(ch, (discord.TextChannel, discord.Thread)):
+        notify_user: discord.User | None = None
+        uid = cfg.moon_timers_notify_user_id
+        if uid is not None:
+            notify_user = bot.get_user(uid)
+            if notify_user is None:
+                try:
+                    notify_user = await bot.fetch_user(uid)
+                except Exception:
+                    print(f"Moon timers: could not fetch notify user id {uid}")
+                    notify_user = None
+
+        ch: discord.TextChannel | discord.Thread | None = None
+        if cfg.moon_timers_channel_id is not None:
+            raw_ch = bot.get_channel(int(cfg.moon_timers_channel_id))
+            if isinstance(raw_ch, (discord.TextChannel, discord.Thread)):
+                ch = raw_ch
+
+        if notify_user is None and ch is None:
             return
         now = datetime.now(UTC)
         await moon_ping_store.prune(now)
@@ -1891,7 +1364,9 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             return
         lead = timedelta(minutes=cfg.moon_timers_lead_minutes)
         slack = timedelta(minutes=25)
-        mentions = _MOON_PING_ALLOWED if cfg.moon_timers_ping_here else discord.AllowedMentions(everyone=False)
+        channel_mentions = (
+            _MOON_PING_ALLOWED if cfg.moon_timers_ping_here else discord.AllowedMentions(everyone=False)
+        )
         sheet_link = f"https://docs.google.com/spreadsheets/d/{MOON_TIMERS_SPREADSHEET_ID}/edit"
         for moon, when in events:
             if when.tzinfo is None:
@@ -1905,251 +1380,119 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             key = _moon_event_key(moon, when)
             if not await moon_ping_store.should_send(key):
                 continue
-            prefix = "@here\n" if cfg.moon_timers_ping_here else ""
-            msg = (
-                f"{prefix}**Moon timer** — {moon}\n"
+            body = (
+                f"**Moon timer** — {moon}\n"
                 f"Next: {_format_eve_time(when)} | {_format_local_time(when)}\n"
                 f"_([Moon Timers sheet]({sheet_link}))_"
             )
-            try:
-                await ch.send(msg, allowed_mentions=mentions)
+            prefix_ch = "@here\n" if (ch is not None and cfg.moon_timers_ping_here) else ""
+            msg_ch = f"{prefix_ch}{body}"
+            msg_dm = body
+            any_ok = False
+            if notify_user is not None:
+                try:
+                    await notify_user.send(msg_dm)
+                    any_ok = True
+                except Exception as exc:
+                    print(f"Moon timers DM failed: {exc}")
+            if ch is not None:
+                try:
+                    await ch.send(msg_ch, allowed_mentions=channel_mentions)
+                    any_ok = True
+                except discord.Forbidden:
+                    print("Moon timers: bot cannot post in configured channel (or missing @here permission).")
+                except Exception as exc:
+                    print(f"Moon timers channel post failed: {exc}")
+            if any_ok:
                 await moon_ping_store.mark(key, now)
-            except discord.Forbidden:
-                print("Moon timers: bot cannot post in configured channel (or missing @here permission).")
-                return
-            except Exception as exc:
-                print(f"Moon timers channel post failed: {exc}")
 
     @moon_timers_loop.before_loop
     async def before_moon_timers_loop() -> None:
         await bot.wait_until_ready()
 
-    @bot.event
-    async def on_member_join(member: discord.Member) -> None:
-        if member.bot:
-            return
-        if cfg.welcome_channel_id is None:
-            return
-        guild = member.guild
-        if cfg.welcome_guild_id is not None and guild.id != cfg.welcome_guild_id:
-            return
-        if len(member.roles) > 1:
-            return
-        if await welcome_store.has_seen(guild.id, member.id):
-            return
-        channel = guild.get_channel(cfg.welcome_channel_id)
-        if not isinstance(channel, discord.TextChannel):
-            return
-        msg = (
-            f"Welcome {member.mention} to the INDEX Alliance Discord server. Please read the rules and "
-            "familiarize yourself with the services we have to offer. If you need assistance, feel free to ask "
-            "in the public channels or open a support ticket."
+    @bot.tree.command(name="help", description="Command list and Discord invite (ephemeral).")
+    async def slash_help(interaction: discord.Interaction) -> None:
+        text = (
+            f"**{cfg.product_display_name} Discord:** {cfg.discord_invite_url}\n\n"
+            "**Slash commands**\n"
+            "`/help` — this list\n"
+            "`/about` — credits + invite\n"
+            "`/miner timer` — ore anomaly timer (**pop** time, UTC)\n"
+            "`/miner respawns` — timers in ±10h window\n"
+            "`/srp` `/auth` `/mumble` `/intel` `/buyback` — quick links / guides\n\n"
+            "_Slash replies are **ephemeral** (only you see them in this channel)._"
         )
-        try:
-            await channel.send(msg)
-        except Exception as exc:
-            print(f"Welcome DM/channel post failed for user {member.id}: {exc}")
-            return
-        await welcome_store.mark_seen(guild.id, member.id)
+        await _defer_ephemeral_followups(interaction, [text])
 
-    @bot.event
-    async def on_message(message: discord.Message) -> None:
-        if message.author.bot:
-            return
-        # Guild threads, forum posts, voice/stage text, and DMs are not discord.TextChannel;
-        # only checking TextChannel caused !popejoy to no-op in those places.
-        content = (message.content or "").strip()
-        raw = content.casefold()
-        if raw == "!popejoy":
-            try:
-                await message.channel.send("Popejoy is a bitch.")
-            except Exception as exc:
-                print(f"!popejoy: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw == "!srp":
-            try:
-                await message.channel.send("WOMP SRP Link https://auth.wompa.space/ship-replacement/")
-            except Exception as exc:
-                print(f"!srp: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw == "!auth":
-            try:
-                await message.channel.send(
-                    "WOMP Alliance Auth: https://auth.wompa.space/ — False Gods SEAT: https://seat.false-gods.space/home"
-                )
-            except Exception as exc:
-                print(f"!auth: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw == "!mumble":
-            msg = (
-                "🚀 Alliance Setup Guide (Follow Carefully!)\n\n"
-                "🔐 1. Authenticate Services\n"
-                "Head to: https://auth.wompa.space/services/\n"
-                "- Navigate: Left Menu → Services → Discord → ✅ Enable\n\n"
-                "🎤 2. Install Mumble\n"
-                "Download here: https://www.mumble.info/\n\n"
-                "🔊 3. Connect Mumble to Alliance Auth\n"
-                "- Navigate: Left Menu → Services → Mumble → ✅ Enable\n\n"
-                "⚠️ 4. Set Your Push-to-Talk (REQUIRED)\n"
-                "- Follow the GIF instructions below to configure your talk hotkeys\n"
-                "- ❗ If you skip this, you’ll broadcast to all channels and get kicked from comms\n\n"
-                "---\n"
-                "💡 Take a minute to double-check everything before joining comms!"
-            )
-            img_path = cfg.mumble_help_image_path
-            try:
-                if img_path and Path(img_path).exists():
-                    await message.channel.send(msg, file=discord.File(img_path))
-                else:
-                    await message.channel.send(msg)
-                    if img_path:
-                        print(f"!mumble: image path not found: {img_path}")
-            except Exception as exc:
-                print(f"!mumble: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw == "!intel":
-            try:
-                await message.channel.send(
-                    "See this post for the intel channel & fleet reporting guide "
-                    "https://discord.com/channels/1446458381945667586/1492283337186738286"
-                )
-            except Exception as exc:
-                print(f"!intel: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw == "!buyback":
-            try:
-                await message.channel.send(
-                    "False Gods buyback: https://discord.com/channels/1446458381945667586/1494398530239074486"
-                )
-            except Exception as exc:
-                print(f"!buyback: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw.startswith("!eve-link"):
-            code = content[len("!eve-link") :].strip()
-            if not code:
-                try:
-                    await message.channel.send(
-                        f"Usage: `!eve-link 123456` — generate the code in EvE-EMU (Social → Discord). "
-                        f"EvE-EMU Discord: {EVE_EMU_DISCORD_INVITE_URL}"
-                    )
-                except Exception as exc:
-                    print(f"!eve-link usage: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
-            else:
-                ok, msg = await _link_code_via_api(message.author.id, getattr(message.author, "name", None), code)
-                try:
-                    await message.channel.send(msg)
-                except Exception as exc:
-                    print(f"!eve-link: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif (mt_miner := _MINER_TIMER_PREFIX_RE.match(content)):
-            try:
-                rest = content[mt_miner.end() :].strip()
-                if not rest:
-                    await message.channel.send(
-                        "**Usage:** `!miner timer <system> | <anomaly> | <pop time>`\n"
-                        "Examples:\n"
-                        "`!miner timer Jita | Type C Mercoxit Belt | 19:30`\n"
-                        "`!miner timer MySystem \"Large Mercoxit Deposit\" 2026-05-03 19:30`\n"
-                        "Optional: prefix **`T1`/`T2`/`T3`** to override inferred upgrade band, e.g.\n"
-                        "`!miner timer T3 Jita | Veldspar Deposit | 19:30`"
-                    )
-                else:
-                    payload = rest.strip()
-                    explicit_tier: str | None = None
-                    m_tier = re.match(r"^(T[123])\s+(.+)$", payload, re.IGNORECASE | re.DOTALL)
-                    if m_tier:
-                        explicit_tier = m_tier.group(1).upper()
-                        payload = m_tier.group(2).strip()
-                    try:
-                        system_name, belt_type, eve_time = _parse_command_payload(payload)
-                    except ValueError as exc:
-                        await message.channel.send(str(exc))
-                    else:
-                        try:
-                            timer, pop_time, respawn = await _register_timer_core(
-                                system_name=system_name,
-                                belt_type=belt_type,
-                                eve_time=eve_time,
-                                guild_id=message.guild.id if message.guild else 0,
-                                channel_id=message.channel.id,
-                                author_id=message.author.id,
-                                explicit_tier=explicit_tier,
-                            )
-                        except ValueError as exc:
-                            await message.channel.send(
-                                "\n".join(
-                                    [
-                                        str(exc),
-                                        "Try: `!miner timer Jita | Type C Mercoxit Belt | 19:30` "
-                                        '(pipe separators) or quoted anomaly name — same as `/miner timer`). '
-                                        "Use `T1`/`T2`/`T3` prefix only if you need to override the inferred band.",
-                                    ]
-                                )
-                            )
-                        else:
-                            ping_note = (
-                                f"Channel @here ping: ~{cfg.mining_ping_lead_minutes} min before respawn "
-                                f"({_format_eve_time(respawn)} | {_format_local_time(respawn)})"
-                                if cfg.mining_ping_lead_minutes > 0
-                                else f"Channel @here ping at respawn: {_format_eve_time(respawn)} | {_format_local_time(respawn)}"
-                            )
-                            await message.reply(
-                                "\n".join(
-                                    [
-                                        f"Saved ({timer.tier}) timer `{timer.timer_id}`.",
-                                        f"Pop (EVE): {_format_eve_time(pop_time)}",
-                                        ping_note,
-                                    ]
-                                ),
-                                mention_author=False,
-                            )
-            except Exception as exc:
-                print(f"!miner timer: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif _MINER_RESPAWNS_STRICT_RE.match(content):
-            try:
-                parts = await _miner_respawns_message_parts()
-                await message.reply(parts[0], mention_author=False)
-                for extra in parts[1:10]:
-                    await message.channel.send(extra)
-                if len(parts) > 10:
-                    await message.channel.send(f"_…and {len(parts) - 10} more chunk(s) omitted._")
-            except Exception as exc:
-                print(f"!miner respawns: failed in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw == "!help":
-            try:
-                await message.channel.send(
-                    f"**EvE-EMU Discord:** {EVE_EMU_DISCORD_INVITE_URL}\n\n"
-                    "**Available text commands**\n"
-                    "`!help` — show this list\n"
-                    "`!miner timer` — same as `/miner timer` (system, anomaly, **pop** time UTC; band inferred from name)\n"
-                    "`!miner respawns` — same as `/miner respawns` (also `!miner resawns`, typo)\n"
-                    "`!srp` — SRP link\n"
-                    "`!auth` — alliance auth + SEAT links\n"
-                    "`!mumble` — comms setup guide + hotkey GIF\n"
-                    "`!intel` — intel/fleet reporting guide post\n"
-                    "`!buyback` — buyback channel link\n"
-                    "`!eve-link 123456` — link your EvE-EMU account to this Discord bot"
-                )
-            except Exception as exc:
-                print(f"!help: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        elif raw.startswith("!testping"):
-            try:
-                belt_input = content[len("!testping") :].strip()
-                if not belt_input:
-                    await message.channel.send(
-                        "Usage: `!testping <belt type>` (example: `!testping Large Griemeer Deposit`)."
-                    )
-                    await bot.process_commands(message)
-                    return
-                canonical = _canonicalize_anomaly_type(belt_input) or _normalize_anomaly_label(belt_input)
-                now = datetime.now(UTC)
-                test_dt = now.replace(hour=4, minute=20, second=0, microsecond=0)
-                if test_dt <= now:
-                    test_dt += timedelta(days=1)
-                await _send_mining_ping(
-                    message.channel,
-                    belt_type=canonical,
-                    system_name="TESTING",
-                    when_utc=test_dt,
-                )
-            except Exception as exc:
-                print(f"!testping: failed to send in channel {getattr(message.channel, 'id', '?')}: {exc}")
-        await bot.process_commands(message)
+    @bot.tree.command(name="about", description="Credits and Discord invite (ephemeral).")
+    async def slash_about(interaction: discord.Interaction) -> None:
+        text = (
+            "Created by **Sevey**.\n"
+            f"**{cfg.product_display_name} Discord:** {cfg.discord_invite_url}"
+        )
+        await _defer_ephemeral_followups(interaction, [text])
 
-    miner_group = app_commands.Group(name="miner", description="Mining timer tools")
+    @bot.tree.command(name="srp", description="WOMP SRP link (ephemeral).")
+    async def slash_srp(interaction: discord.Interaction) -> None:
+        await _defer_ephemeral_followups(
+            interaction,
+            ["WOMP SRP Link https://auth.wompa.space/ship-replacement/"],
+        )
+
+    @bot.tree.command(name="auth", description="Alliance auth links (ephemeral).")
+    async def slash_auth(interaction: discord.Interaction) -> None:
+        await _defer_ephemeral_followups(
+            interaction,
+            [
+                "WOMP Alliance Auth: https://auth.wompa.space/ — False Gods SEAT: https://seat.false-gods.space/home"
+            ],
+        )
+
+    @bot.tree.command(name="mumble", description="Mumble + auth setup guide (ephemeral; optional GIF).")
+    async def slash_mumble(interaction: discord.Interaction) -> None:
+        msg = (
+            "🚀 Alliance Setup Guide (Follow Carefully!)\n\n"
+            "🔐 1. Authenticate Services\n"
+            "Head to: https://auth.wompa.space/services/\n"
+            "- Navigate: Left Menu → Services → Discord → ✅ Enable\n\n"
+            "🎤 2. Install Mumble\n"
+            "Download here: https://www.mumble.info/\n\n"
+            "🔊 3. Connect Mumble to Alliance Auth\n"
+            "- Navigate: Left Menu → Services → Mumble → ✅ Enable\n\n"
+            "⚠️ 4. Set Your Push-to-Talk (REQUIRED)\n"
+            "- Follow the GIF instructions below to configure your talk hotkeys\n"
+            "- ❗ If you skip this, you’ll broadcast to all channels and get kicked from comms\n\n"
+            "---\n"
+            "💡 Take a minute to double-check everything before joining comms!"
+        )
+        img_path = cfg.mumble_help_image_path
+        fobj: discord.File | None = None
+        if img_path and Path(img_path).exists():
+            fobj = discord.File(img_path)
+        elif img_path:
+            print(f"/mumble: image path not found: {img_path}")
+        await _defer_ephemeral_followups(interaction, [msg], first_message_file=fobj)
+
+    @bot.tree.command(name="intel", description="Intel channel guide link (ephemeral).")
+    async def slash_intel(interaction: discord.Interaction) -> None:
+        await _defer_ephemeral_followups(
+            interaction,
+            [
+                "See this post for the intel channel & fleet reporting guide "
+                "https://discord.com/channels/1446458381945667586/1492283337186738286"
+            ],
+        )
+
+    @bot.tree.command(name="buyback", description="False Gods buyback link (ephemeral).")
+    async def slash_buyback(interaction: discord.Interaction) -> None:
+        await _defer_ephemeral_followups(
+            interaction,
+            [
+                "False Gods buyback: https://discord.com/channels/1446458381945667586/1494398530239074486"
+            ],
+        )
+
+    miner_group = app_commands.Group(name="miner", description=cfg.miner_slash_group_description)
 
     async def autocomplete_eve_time(
         interaction: discord.Interaction, current: str
@@ -2266,237 +1609,15 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         description="List anomaly timers that respawned in the last 10h or will respawn in the next 10h (EVE/UTC).",
     )
     async def miner_respawns(interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True)
         parts = await _miner_respawns_message_parts()
-        await interaction.followup.send(parts[0], ephemeral=True)
-        for extra in parts[1:10]:
-            await interaction.followup.send(extra, ephemeral=True)
         if len(parts) > 10:
-            await interaction.followup.send(
-                f"_…and {len(parts) - 10} more chunk(s) omitted._",
-                ephemeral=True,
-            )
+            parts = parts[:10] + [f"_…and {len(parts) - 10} more chunk(s) omitted._"]
+        await _defer_ephemeral_followups(interaction, parts)
 
     miner_timer.autocomplete("eve_time")(autocomplete_eve_time)
     miner_timer.autocomplete("system_name")(autocomplete_system_name)
     miner_timer.autocomplete("belt_type")(autocomplete_anom_type)
 
-    @bot.tree.command(name="website", description="INDEX Alliance EvE-EMU main website URL.")
-    async def website_slash(interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(
-            f"**INDEX Alliance (EvE-EMU)**\n{cfg.website_url}",
-            ephemeral=False,
-        )
-
-    @bot.tree.command(name="help", description="Show available bot commands and links.")
-    async def help_slash(interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(
-            f"**EvE-EMU Discord:** {EVE_EMU_DISCORD_INVITE_URL}\n\n"
-            "**Available commands**\n"
-            "`/website` — show alliance website URL\n"
-            "`/miner timer`, `/miner respawns` — ore timers (`eve_time` = when belt was **popped**, UTC)\n"
-            "`/eve-link <code>` — link your EvE-EMU account for DM notifications\n"
-            "\n"
-            "**Text commands**\n"
-            "`!help`, `!miner timer`, `!miner respawns`, `!srp`, `!auth`, `!mumble`, `!intel`, `!buyback`, `!eve-link 123456`",
-            ephemeral=True,
-        )
-
-    @bot.tree.command(name="eve-link", description="Link this Discord account to your EvE-EMU profile.")
-    @app_commands.describe(code="6-digit one-time code from EvE-EMU → Social → Discord.")
-    async def eve_link_slash(interaction: discord.Interaction, code: str) -> None:
-        await interaction.response.defer(ephemeral=True)
-        ok, msg = await _link_code_via_api(interaction.user.id, getattr(interaction.user, "name", None), code)
-        await interaction.followup.send(msg, ephemeral=True)
-
-    structure_group = app_commands.Group(
-        name="structure",
-        description="Upwell structure vulnerability timers (sheet + Discord, standings via corp ESI).",
-    )
-
-    _STRUCTURE_REF_TYPES: tuple[str, ...] = (
-        "Shield vulnerability",
-        "Armor vulnerability",
-        "Hull / final timer",
-        "Structure deployment / anchoring",
-        "Other",
-    )
-
-    async def structure_ref_autocomplete(
-        interaction: discord.Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:
-        cur = current.strip().casefold()
-        out: list[app_commands.Choice[str]] = []
-        for label in _STRUCTURE_REF_TYPES:
-            if not cur or cur in label.casefold():
-                out.append(app_commands.Choice(name=label[:100], value=label[:100]))
-            if len(out) >= 25:
-                break
-        return out
-
-    @structure_group.command(
-        name="new_timer",
-        description="Add a structure vulnerability timer (UTC). Standings use alliance id, then owner corp id.",
-    )
-    @app_commands.describe(
-        solar_system="Solar system name",
-        alliance_id="EVE alliance id of the structure owner (for standings lookup)",
-        alliance_name="Alliance display name (optional)",
-        owner_corporation_id="Owner corporation id if known (improves corp-level standings match)",
-        structure_name="Structure name as you want it shown",
-        ref_type="Timer type (autocomplete)",
-        event_utc="Event time in UTC, e.g. 2026-04-23 19:30 or 2026-04-23T19:30:00Z",
-        notes="Optional notes",
-    )
-    async def structure_new_timer(
-        interaction: discord.Interaction,
-        solar_system: str,
-        alliance_id: int,
-        alliance_name: str | None,
-        owner_corporation_id: int | None,
-        structure_name: str,
-        ref_type: str,
-        event_utc: str,
-        notes: str | None,
-    ) -> None:
-        await interaction.response.defer(ephemeral=True)
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            await interaction.followup.send(
-                "EvE-EMU API is not configured (set **EVEEMU_API_BASE_URL** and **MINING_BOT_DASHBOARD_TOKEN**).",
-                ephemeral=True,
-            )
-            return
-        s = event_utc.strip()
-        if s.endswith("Z"):
-            s = s[:-1] + "+00:00"
-        if " " in s and "T" not in s:
-            s = s.replace(" ", "T", 1)
-        try:
-            dt = datetime.fromisoformat(s)
-        except ValueError:
-            await interaction.followup.send(
-                "Could not parse **event_utc**. Use ISO UTC like `2026-04-23T19:30:00Z` or `2026-04-23 19:30`.",
-                ephemeral=True,
-            )
-            return
-        if dt.tzinfo is not None:
-            dt = dt.astimezone(UTC).replace(tzinfo=None)
-        url = f"{base}/integrations/mining-discord-bot/structure-timers/create"
-        body = {
-            "solar_system_name": solar_system.strip(),
-            "alliance_id": int(alliance_id),
-            "alliance_name": (alliance_name or "").strip() or None,
-            "corporation_id": int(owner_corporation_id) if owner_corporation_id is not None else None,
-            "structure_name": structure_name.strip(),
-            "ref_type": ref_type.strip(),
-            "event_at_iso": dt.isoformat() + "Z",
-            "notes": (notes or "").strip() or None,
-        }
-        try:
-            timeout = aiohttp.ClientTimeout(total=25)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(
-                    url,
-                    json=body,
-                    headers={"Authorization": f"Bearer {cfg.dashboard_token}"},
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        await interaction.followup.send(f"Create failed: HTTP {resp.status} — {raw[:500]}", ephemeral=True)
-                        return
-        except Exception as exc:
-            await interaction.followup.send(f"API error: `{exc}`", ephemeral=True)
-            return
-        await interaction.followup.send("Timer saved on EvE-EMU. Alerts use `/structure admin_panel`.", ephemeral=True)
-
-    structure_new_timer.autocomplete("ref_type")(structure_ref_autocomplete)
-
-    @structure_group.command(
-        name="admin_panel",
-        description="Configure Discord alert channel and reminder buckets (minutes before UTC event).",
-    )
-    @app_commands.describe(
-        alert_minutes_csv="Comma-separated minutes, e.g. 720,360,180,60 (12h,6h,3h,1h). Leave empty to only view.",
-        discord_channel_id="Numeric channel id for alert embeds. Leave empty to keep current.",
-    )
-    async def structure_admin_panel(
-        interaction: discord.Interaction,
-        alert_minutes_csv: str | None = None,
-        discord_channel_id: str | None = None,
-    ) -> None:
-        await interaction.response.defer(ephemeral=True)
-        base = cfg.resolved_api_base()
-        if not base or not cfg.dashboard_token:
-            await interaction.followup.send(
-                "EvE-EMU API is not configured (set **EVEEMU_API_BASE_URL** and **MINING_BOT_DASHBOARD_TOKEN**).",
-                ephemeral=True,
-            )
-            return
-        headers = {"Authorization": f"Bearer {cfg.dashboard_token}"}
-        if not (alert_minutes_csv or "").strip() and not (discord_channel_id or "").strip():
-            try:
-                timeout = aiohttp.ClientTimeout(total=20)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(
-                        f"{base}/integrations/mining-discord-bot/structure-timers/config",
-                        headers=headers,
-                    ) as resp:
-                        raw = await resp.text()
-                        if resp.status >= 400:
-                            await interaction.followup.send(f"Could not read config: HTTP {resp.status}", ephemeral=True)
-                            return
-                        payload = json.loads(raw)
-            except Exception as exc:
-                await interaction.followup.send(f"Config read failed: `{exc}`", ephemeral=True)
-                return
-            conf = payload.get("config") if isinstance(payload, dict) else {}
-            await interaction.followup.send(
-                "**Current structure timer board config**\n```json\n"
-                + json.dumps(conf, indent=2)[:1800]
-                + "\n```\n"
-                "Set **alert_minutes_csv** and/or **discord_channel_id** on this command to update.",
-                ephemeral=True,
-            )
-            return
-        patch: dict[str, Any] = {}
-        csv = (alert_minutes_csv or "").strip()
-        if csv:
-            mins: list[int] = []
-            for part in csv.split(","):
-                p = part.strip()
-                if p.isdigit():
-                    mins.append(int(p))
-            if mins:
-                patch["alert_minutes_before"] = mins
-        ch = (discord_channel_id or "").strip()
-        if ch.isdigit():
-            patch["discord_channel_id"] = int(ch)
-        if not patch:
-            await interaction.followup.send("Nothing to update — provide at least one field.", ephemeral=True)
-            return
-        try:
-            timeout = aiohttp.ClientTimeout(total=20)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.patch(
-                    f"{base}/integrations/mining-discord-bot/structure-timers/config",
-                    json=patch,
-                    headers=headers,
-                ) as resp:
-                    raw = await resp.text()
-                    if resp.status >= 400:
-                        await interaction.followup.send(f"Update failed: HTTP {resp.status} — {raw[:500]}", ephemeral=True)
-                        return
-                    payload = json.loads(raw)
-        except Exception as exc:
-            await interaction.followup.send(f"API error: `{exc}`", ephemeral=True)
-            return
-        conf = payload.get("config") if isinstance(payload, dict) else {}
-        await interaction.followup.send(
-            "**Updated.**\n```json\n" + json.dumps(conf, indent=2)[:1800] + "\n```", ephemeral=True
-        )
-
-    # /structure commands temporarily disabled.
     bot.tree.add_command(miner_group)
 
     return bot
@@ -2533,11 +1654,11 @@ def main() -> None:
                 "Waiting before retry to avoid connection abuse..."
             )
             time.sleep(_login_backoff_seconds(attempt))
-        except PrivilegedIntentsRequired as exc:
+        except discord.PrivilegedIntentsRequired as exc:
             print(
                 f"Discord PrivilegedIntentsRequired (attempt {attempt}): {exc}\n"
-                "Enable required intents in the Developer Portal (Bot → Privileged Gateway Intents), "
-                "then restart. Waiting before retry..."
+                "This build does not require Message Content intent. If you still see this, "
+                "check the Developer Portal (Bot → Privileged Gateway Intents) and restart. Waiting before retry..."
             )
             time.sleep(_login_backoff_seconds(attempt))
         except KeyboardInterrupt:
