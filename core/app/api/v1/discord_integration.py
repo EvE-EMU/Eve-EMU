@@ -8,23 +8,13 @@ from typing import Annotated
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
+from app.api.v1.bot_secret import require_discord_bot_secret
 from app.config import settings
 from app.db.models import DiscordPendingSsoLink
 from app.db.session import session_scope
 from app.services.fg_rank import compute_fg_rank_for_discord
 
 router = APIRouter(prefix="/integrations/discord", tags=["Discord integration"])
-
-
-def _require_bot_secret(authorization: str | None) -> None:
-    secret = (settings.discord_bot_secret or "").strip()
-    if not secret:
-        raise HTTPException(status_code=503, detail="CORE_DISCORD_BOT_SECRET is not set.")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Expected Authorization: Bearer <secret>.")
-    got = authorization.removeprefix("Bearer ").strip()
-    if got != secret:
-        raise HTTPException(status_code=403, detail="Invalid bearer token.")
 
 
 class PrepareLinkIn(BaseModel):
@@ -51,7 +41,7 @@ async def prepare_discord_link(
     authorization: Annotated[str | None, Header()] = None,
 ) -> PrepareLinkOut:
     """Create a short-lived SSO session; open ``link_url`` in a browser to complete EVE login."""
-    _require_bot_secret(authorization)
+    require_discord_bot_secret(authorization)
     if not settings.database_url:
         raise HTTPException(status_code=503, detail="CORE_DATABASE_URL is not set.")
     if not (settings.sso_client_id and settings.sso_client_secret):
@@ -73,7 +63,7 @@ async def sync_roles_payload(
     authorization: Annotated[str | None, Header()] = None,
 ) -> SyncRolesOut:
     """Return rank slug for the Discord user; the bot maps slugs to guild roles."""
-    _require_bot_secret(authorization)
+    require_discord_bot_secret(authorization)
     if not settings.database_url:
         raise HTTPException(status_code=503, detail="CORE_DATABASE_URL is not set.")
 

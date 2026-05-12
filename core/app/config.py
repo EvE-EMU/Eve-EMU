@@ -15,7 +15,11 @@ class Settings(BaseSettings):
     sso_authorize_url: str = "https://login.eveonline.com/v2/oauth/authorize"
     sso_token_url: str = "https://login.eveonline.com/v2/oauth/token"
     sso_callback_url: str = "http://localhost:8000/v1/auth/eve/callback"
-    sso_scopes: str = "publicData esi-characters.read_corporation_membership.v1"
+    sso_scopes: str = (
+        "publicData esi-characters.read_corporation_membership.v1 "
+        "esi-industry.read_character_mining.v1 esi-contracts.read_character_contracts.v1 "
+        "esi-assets.read_assets.v1"
+    )
 
     # Shared secret: Discord bot calls ``POST /v1/integrations/discord/*`` with ``Authorization: Bearer …``.
     discord_bot_secret: str = ""
@@ -25,6 +29,13 @@ class Settings(BaseSettings):
     fg_rank_roles_json: str = "[]"
     # Optional redirect after successful Discord-linked SSO (browser).
     discord_link_success_url: str = ""
+
+    # Moon tax plugin: contracts must be issued to this assignee id (character or corporation id in ESI).
+    moon_tax_assignee_id: int = 0
+    # Optional percent of ``owed_total_isk`` (after contract offset) to show as suggested tax (0 = omit).
+    moon_tax_percent_of_owed_value: float = 0.0
+    # Free text shown in API / Discord (where to contract, how to pay ISK, etc.).
+    moon_tax_payment_instructions: str = ""
 
     openapi_docs_enabled: bool = True
     # Fernet key (url-safe base64 32-byte). Required to encrypt refresh/access tokens in Postgres.
@@ -40,6 +51,13 @@ class Settings(BaseSettings):
     @field_validator("false_gods_corporation_id", mode="before")
     @classmethod
     def empty_corp_id(cls, v: object) -> object:
+        if v == "" or v is None:
+            return 0
+        return v
+
+    @field_validator("moon_tax_assignee_id", mode="before")
+    @classmethod
+    def empty_assignee_id(cls, v: object) -> object:
         if v == "" or v is None:
             return 0
         return v

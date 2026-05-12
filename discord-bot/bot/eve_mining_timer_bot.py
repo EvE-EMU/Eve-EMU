@@ -734,12 +734,14 @@ async def _core_post_json(
     cfg: BotConfig,
     path: str,
     payload: dict[str, object],
+    *,
+    timeout_sec: float = 30,
 ) -> tuple[int, dict[str, object] | None, str]:
     if not cfg.core_base_url or not cfg.core_bot_secret:
         return -1, None, "core integration not configured"
     url = cfg.core_base_url.rstrip("/") + path
     try:
-        timeout = aiohttp.ClientTimeout(total=30)
+        timeout = aiohttp.ClientTimeout(total=timeout_sec)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 url,
@@ -759,6 +761,92 @@ async def _core_post_json(
                 return resp.status, None, text
     except Exception as exc:
         return -2, None, repr(exc)
+
+
+def _moon_tax_summary_message_parts(data: dict[str, object]) -> list[str]:
+    """Split moon tax summary into Discord-sized chunks (ephemeral followups)."""
+    if not data.get("ok"):
+        err = str(data.get("error") or "unknown_error")
+        hints = {
+            "discord_not_linked": "Run **`/settings link`** first, then re-run **`/moontaxes summary`**.",
+            "no_refresh_token_for_character": "That character has no stored SSO token on core — link again with the right scopes.",
+            "moon_tax_assignee_id_unset": "Ask an admin to set **CORE_MOON_TAX_ASSIGNEE_ID** on core (contract recipient id).",
+        }
+        tail = hints.get(err, "")
+        return [f"**Moon taxes** — core error: `{err}`" + (f"\n{tail}" if tail else "")]
+
+    name = str(data.get("character_name") or "character")
+    cid = data.get("character_id")
+    days = data.get("period_days", 30)
+    tax_to = data.get("tax_assignee_id")
+    lines: list[str] = []
+    head = (
+        f"**Moon taxes** — **{name}** (id `{cid}`), last **{days}** days\n"
+        f"Tax contracts should be **item_exchange** to assignee id **`{tax_to}`** (you = issuer)."
+    )
+    lines.append(head)
+
+    def _isk(v: object) -> str:
+        if v is None:
+            return "n/a"
+        try:
+            return f"{float(v):,.0f}"
+        except (TypeError, ValueError):
+            return "n/a"
+
+    lines.append(
+        f"• Mined (ledger) ≈ **{_isk(data.get('mined_total_isk'))}** ISK (adjusted prices)\n"
+        f"• Contracted to tax assignee ≈ **{_isk(data.get('contracted_total_isk'))}** ISK\n"
+        f"• **Still on ledger vs contracts** ≈ **{_isk(data.get('owed_total_isk'))}** ISK (by type, quantities not yet in those contracts)"
+    )
+    st = data.get("suggested_tax_isk")
+    if st is not None:
+        lines.append(f"• Suggested tax (core % config) ≈ **{_isk(st)}** ISK")
+
+    owed_rows = data.get("owed_by_type") or []
+    if isinstance(owed_rows, list) and owed_rows:
+        lines.append("\n**Top amounts still to contract (by type)**")
+        for row in owed_rows[:8]:
+            if not isinstance(row, dict):
+                continue
+            tn = str(row.get("type_name") or row.get("type_id"))
+            q = row.get("quantity")
+            vi = row.get("value_isk")
+            lines.append(f"  — {tn}: **{q}** units (~ **{_isk(vi)}** ISK)")
+
+    cm = data.get("contracts_matched") or []
+    if isinstance(cm, list):
+        lines.append(f"\n**Matching contracts** in window: **{len(cm)}** (item_exchange → tax assignee)")
+
+    instr = str(data.get("payment_instructions") or "").strip()
+    if instr:
+        lines.append("\n**How to pay / where to contract**\n" + instr[:1500])
+
+    warns = data.get("warnings") or []
+    if isinstance(warns, list) and warns:
+        lines.append("\n**Warnings**")
+        for w in warns[:6]:
+            lines.append(f"  — {w}")
+
+    lines.append(
+        "\n_Values use ESI **adjusted** prices; actual contract appraisal may differ. "
+        "Re-link SSO on core if you add new ESI scopes._"
+    )
+
+    # Pack into ≤1900 char chunks for followups
+    chunks: list[str] = []
+    buf = ""
+    for line in lines:
+        piece = line if line.endswith("\n") else line + "\n"
+        if len(buf) + len(piece) > 1850:
+            if buf.strip():
+                chunks.append(buf.strip())
+            buf = piece
+        else:
+            buf += piece
+    if buf.strip():
+        chunks.append(buf.strip())
+    return chunks if chunks else ["(empty summary)"]
 
 
 @dataclass
@@ -2265,6 +2353,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     settings_group = app_commands.Group(
         name="settings",
         description="Link Discord to eve-emu core and sync False Gods roles.",
+    )
+    moontaxes_group = app_commands.Group(
+        name="moontaxes",
+        description="Moon mining ledger vs tax contracts (eve-emu core + ESI).",
     )
 
     async def autocomplete_eve_time(
