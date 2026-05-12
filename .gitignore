@@ -1,6 +1,2 @@
-# Environment variables
-.env
-bot.env
-*.env
-.env.*
-!.env.example
+# Ignore the bot environment file
+bot/.env
