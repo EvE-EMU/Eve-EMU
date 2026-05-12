@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.display_name }}{% endblock %}
+{% block content %}
+<p class="muted"><a href="/tools/doctrine">← All doctrines</a></p>
+<h1>{{ doc.display_name }}</h1>
+<p>{{ doc.summary }}</p>
+{% if doc.tags %}
+<div>{% for t in doc.tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+{% endif %}
+{% if doc.comms_note %}
+<h2>Comms</h2>
+<p>{{ doc.comms_note }}</p>
+{% endif %}
+<h2>Fleet composition</h2>
+{% for role in doc.fleet_roles %}
+<div class="role-block">
+  <strong>{{ role.role }}</strong>
+  {% if role.description %}<span class="muted"> — {{ role.description }}</span>{% endif %}
+  {% for h in role.hulls %}
+  <div class="hull-line">
+    {% if h.count %}<strong>{{ h.count }}×</strong>{% endif %} {{ h.name }}
+    {% if h.note %}<span class="muted"> — {{ h.note }}</span>{% endif %}
+    {% if h.fitting_link %}<a href="{{ h.fitting_link }}">fitting</a>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% if doc.pitfalls %}
+<h2>Pitfalls / SRP reminders</h2>
+<ul class="pitfalls">
+  {% for line in doc.pitfalls %}<li>{{ line }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% if doc.links %}
+<h2>Links</h2>
+<p>
+  {% for link in doc.links %}
+  <a href="{{ link.href }}">{{ link.label }}</a>{% if not loop.last %} · {% endif %}
+  {% endfor %}
+</p>
+{% endif %}
+{% endblock %}

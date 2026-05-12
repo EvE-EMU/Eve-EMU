@@ -1,0 +1,2 @@
+# Real credentials live here — never git add this file (root .gitignore also ignores .env)
+.env

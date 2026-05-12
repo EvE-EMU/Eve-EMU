@@ -9,3 +9,6 @@ services:
       FLEET_TRACKER_SSO_CALLBACK_URL: https://fleet.eve-emu.com/auth/callback
       # FLEET_TRACKER_SSO_CLIENT_ID: ...
       # FLEET_TRACKER_SSO_CLIENT_SECRET: ...
+      # Optional: mount JSON and point to absolute paths inside the container.
+      # FLEET_TRACKER_SRP_MATRIX_PATH=/data/srp_matrix.json
+      # FLEET_TRACKER_DOCTRINES_PATH=/data/doctrines.json

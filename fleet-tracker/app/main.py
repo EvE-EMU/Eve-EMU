@@ -3,12 +3,14 @@
 from fastapi import FastAPI
 
 from app.config import settings
+from app.tools_routes import router as tools_router
 
 app = FastAPI(
     title="EVE-EMU Fleet Tracker",
     description="ESI-backed fleet participation and killmail tracking (scaffold).",
     version="0.0.1",
 )
+app.include_router(tools_router)
 
 
 @app.get("/healthz")

@@ -1,0 +1,47 @@
+{
+  "title": "Ship Replacement Program (SRP)",
+  "last_updated": "2026-05-11",
+  "intro": "Replace hull names, percentages, and caps with your alliance policy. Edit fleet-tracker/data/srp_matrix.json or mount a file and set FLEET_TRACKER_SRP_MATRIX_PATH.",
+  "rows": [
+    {
+      "category": "T1 frigate / destroyer",
+      "reimbursement": "100%",
+      "cap_isk": 5000000,
+      "notes": "Meta hulls only if listed on doctrine page."
+    },
+    {
+      "category": "T1 cruiser",
+      "reimbursement": "90%",
+      "cap_isk": 25000000,
+      "notes": "Requires doctrine ping or FC-listed hull."
+    },
+    {
+      "category": "T2 / faction cruiser",
+      "reimbursement": "75%",
+      "cap_isk": 150000000,
+      "notes": "Screenshot + zKill link within 24h of loss."
+    },
+    {
+      "category": "Battleship (doctrine)",
+      "reimbursement": "50%",
+      "cap_isk": 400000000,
+      "notes": "On fleet on time; comms in official fleet channel."
+    },
+    {
+      "category": "Logistics (T1/T2)",
+      "reimbursement": "100%",
+      "cap_isk": 300000000,
+      "notes": "SRP cap applies to hull only unless FC authorizes implants."
+    }
+  ],
+  "links": [
+    {
+      "label": "Example SRP submission portal",
+      "href": "https://example.com/srp"
+    },
+    {
+      "label": "ZKillboard",
+      "href": "https://zkillboard.com/"
+    }
+  ]
+}

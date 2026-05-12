@@ -1,0 +1,89 @@
+{
+  "intro": "Fleet doctrines: who flies what, rough counts, and quick links. Edit fleet-tracker/data/doctrines.json or set FLEET_TRACKER_DOCTRINES_PATH.",
+  "doctrines": [
+    {
+      "slug": "shield-cruiser-brawl",
+      "display_name": "Shield cruiser brawl",
+      "summary": "Close-range shield cruisers with light logi; default standing fleet comp.",
+      "tags": ["shield", "brawl", "standing"],
+      "comms_note": "Fleet voice + ping tag per your alliance SOP.",
+      "fleet_roles": [
+        {
+          "role": "DPS",
+          "description": "Primary damage; anchor on FC.",
+          "hulls": [
+            {
+              "name": "Caracal (RLML)",
+              "count": 15,
+              "note": "Bring navy ammo; reship available in staging.",
+              "fitting_link": ""
+            },
+            {
+              "name": "Osprey Navy Issue",
+              "count": 8,
+              "note": "Optional upgrade hull — confirm SRP tier.",
+              "fitting_link": ""
+            }
+          ]
+        },
+        {
+          "role": "Logistics",
+          "description": "Two T1 logi minimum for ≤25 in fleet.",
+          "hulls": [
+            {
+              "name": "Osprey",
+              "count": 2,
+              "note": "Cap chain not required; stay with anchor.",
+              "fitting_link": ""
+            }
+          ]
+        },
+        {
+          "role": "EWAR / tackle",
+          "description": "Griffins + Maulus as called by FC.",
+          "hulls": [
+            {
+              "name": "Griffin",
+              "count": 2,
+              "note": "",
+              "fitting_link": ""
+            }
+          ]
+        }
+      ],
+      "pitfalls": [
+        "Do not wardecc cyno alts — keep doctrine in fleet window only.",
+        "If you are late to tidi, post arrival time in fleet notes."
+      ],
+      "links": [
+        {
+          "label": "Example doctrine wiki",
+          "href": "https://example.com/wiki/doctrine"
+        }
+      ]
+    },
+    {
+      "slug": "fast-tackle-roam",
+      "display_name": "Fast tackle roam",
+      "summary": "Interdictors + T1 tackle for null roaming; disposable.",
+      "tags": ["roam", "tackle"],
+      "comms_note": "Separate standing from home-defense doctrine.",
+      "fleet_roles": [
+        {
+          "role": "Tackle",
+          "description": "First on grid, call points early.",
+          "hulls": [
+            {
+              "name": "Stiletto / Malediction",
+              "count": 4,
+              "note": "One dictor if FC requests.",
+              "fitting_link": ""
+            }
+          ]
+        }
+      ],
+      "pitfalls": ["No SRP for solo yolos off fleet beacon."],
+      "links": []
+    }
+  ]
+}

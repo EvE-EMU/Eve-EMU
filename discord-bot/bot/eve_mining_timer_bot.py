@@ -5,7 +5,7 @@ Discord mining timer bot for EVE Online anomaly respawns.
 **Timer semantics:** ``eve_time`` is when the belt was **popped** (cleared). Respawn = pop + duration; band lengths
 follow env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` (float or ``H:MM``).
 
-**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/settings link``, ``/settings sync``, ``/srp``, ``/auth``, ``/mumble``,
+**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/hr`` (``guide`` / ``checklist`` / ``member``), ``/settings link``, ``/settings sync``, ``/moontaxes summary``, ``/finance`` (``lookup`` / ``sells`` / ``contribute`` / ``structures``), ``/srp``, ``/auth``, ``/mumble``,
 ``/intel``, ``/buyback``. Command output uses **ephemeral** replies (visible only to you in the channel where you ran the command).
 
 **Moon timers:** optional Google Sheet CSV (``EVE_MOON_TIMERS_*``). Use ``EVE_MOON_TIMERS_CHANNEL_ID`` for **@here**
@@ -39,6 +39,7 @@ import subprocess
 import time
 import threading
 import uuid
+from urllib.parse import quote
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -62,6 +63,26 @@ TIME_TOKEN_RE = re.compile(r"^\d{1,2}:\d{2}$")
 # FALSE GODS moon timers (public sheet; tab ``moon_timers`` — see module docstring).
 MOON_TIMERS_SPREADSHEET_ID = "1cDtuFQivlumB_HNZGVXWmZaHcPomFZT6r_zAe_G6VhY"
 MOON_TIMERS_TAB_NAME = "moon_timers"
+
+_DEFAULT_HR_AUDIT_GUIDE = (
+    "**Member audits (eve-emu HR)**\n\n"
+    "Use **`/hr checklist`** as your repeatable steps, and **`/hr member @someone`** for a **timestamped snapshot** "
+    "(join dates, roles) you can paste into tickets or officer notes.\n\n"
+    "**Typical checks**\n"
+    "• **Identity:** Discord name / nick vs alliance auth (SEAT, WOMP, corp roster).\n"
+    "• **Access:** Reaction roles (TZ, groups) match what the member declared.\n"
+    "• **EVE link:** If your corp uses bot roles from core, confirm **`/settings link`** was completed.\n"
+    "• **Risk:** Red-flag orgs or mains are **manual** checks in auth tools — this command does not query ESI by itself.\n\n"
+    "_Restrict who can run `/hr` with **Manage Server**, **`EVE_HR_AUDITOR_USER_IDS`**, or **`EVE_HR_AUDITOR_ROLE_IDS`**._"
+)
+
+_DEFAULT_HR_CHECKLIST_RAW = (
+    "Discord display + nick match policy vs auth/SEAT; "
+    "TZ / ping roles match declared timezone; "
+    "Core link (`/settings link`) done if required for roles; "
+    "Scan for obvious alt / hostile patterns (manual auth); "
+    "Log outcome in your HR / officer channel."
+)
 
 
 def _default_moon_timers_csv_url() -> str:
@@ -453,6 +474,35 @@ def _parse_discord_admin_user_ids(raw: str | None) -> frozenset[int]:
     return frozenset(out)
 
 
+def _hr_checklist_lines_from_env(raw: str | None) -> list[str]:
+    """Semicolon-separated checklist items (default built-in if unset)."""
+    src = (raw or "").strip()
+    if not src:
+        src = _DEFAULT_HR_CHECKLIST_RAW
+    return [p.strip() for p in src.split(";") if p.strip()]
+
+
+def _hr_auditor_allowed(member: discord.Member, cfg: BotConfig) -> bool:
+    """HR commands: Manage Server / Administrator, or explicit user/role allowlists."""
+    if member.guild_permissions.manage_guild or member.guild_permissions.administrator:
+        return True
+    if member.id in cfg.hr_auditor_user_ids:
+        return True
+    for role in member.roles:
+        if role.id in cfg.hr_auditor_role_ids:
+            return True
+    return False
+
+
+def _fmt_discord_dt(dt: datetime | None) -> str:
+    if dt is None:
+        return "unknown"
+    try:
+        return discord.utils.format_dt(dt, style="R")
+    except Exception:
+        return dt.strftime("%Y-%m-%d %H:%M UTC")
+
+
 _ROLE_REACTION_CUSTOM_RE = re.compile(r"^<a?:\w{2,32}:(\d{5,25})>$")
 
 
@@ -558,6 +608,11 @@ class BotConfig:
     core_base_url: str | None
     core_bot_secret: str | None
     fg_rank_discord_roles: dict[str, int]
+    hr_auditor_user_ids: frozenset[int]
+    hr_auditor_role_ids: frozenset[int]
+    hr_audit_guide: str
+    hr_audit_guide_url: str | None
+    hr_checklist_env: str
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -650,6 +705,11 @@ class BotConfig:
         )
 
         discord_admin_user_ids = _parse_discord_admin_user_ids(os.getenv("EVE_DISCORD_ADMIN_USER_IDS"))
+        hr_auditor_user_ids = _parse_discord_admin_user_ids(os.getenv("EVE_HR_AUDITOR_USER_IDS"))
+        hr_auditor_role_ids = _parse_discord_admin_user_ids(os.getenv("EVE_HR_AUDITOR_ROLE_IDS"))
+        hr_audit_guide = os.getenv("EVE_HR_AUDIT_GUIDE", "").strip() or _DEFAULT_HR_AUDIT_GUIDE
+        hr_audit_guide_url = os.getenv("EVE_HR_AUDIT_GUIDE_URL", "").strip() or None
+        hr_checklist_env = os.getenv("EVE_HR_CHECKLIST", "").strip()
 
         docker_en = os.getenv("EVE_DOCKER_ADMIN_ENABLED", "").strip().lower()
         docker_admin_enabled = docker_en in ("1", "true", "yes", "on")
@@ -712,6 +772,11 @@ class BotConfig:
             core_base_url=(os.getenv("EVE_CORE_BASE_URL", "").strip() or None),
             core_bot_secret=(os.getenv("EVE_CORE_BOT_SECRET", "").strip() or None),
             fg_rank_discord_roles=_parse_fg_rank_discord_roles(os.getenv("EVE_FG_RANK_DISCORD_ROLES", "")),
+            hr_auditor_user_ids=hr_auditor_user_ids,
+            hr_auditor_role_ids=hr_auditor_role_ids,
+            hr_audit_guide=hr_audit_guide,
+            hr_audit_guide_url=hr_audit_guide_url,
+            hr_checklist_env=hr_checklist_env,
         )
 
 
@@ -757,6 +822,37 @@ async def _core_post_json(
                 except Exception:
                     data = None
                 if isinstance(data, dict):
+                    return resp.status, data, text
+                return resp.status, None, text
+    except Exception as exc:
+        return -2, None, repr(exc)
+
+
+async def _core_get_json(
+    cfg: BotConfig,
+    path: str,
+    *,
+    timeout_sec: float = 60,
+) -> tuple[int, dict[str, object] | list[object] | None, str]:
+    if not cfg.core_base_url or not cfg.core_bot_secret:
+        return -1, None, "core integration not configured"
+    url = cfg.core_base_url.rstrip("/") + path
+    try:
+        timeout = aiohttp.ClientTimeout(total=timeout_sec)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {cfg.core_bot_secret}",
+                    "Accept": "application/json",
+                },
+            ) as resp:
+                text = await resp.text()
+                try:
+                    data = await resp.json()
+                except Exception:
+                    data = None
+                if isinstance(data, dict) or isinstance(data, list):
                     return resp.status, data, text
                 return resp.status, None, text
     except Exception as exc:
@@ -847,6 +943,117 @@ def _moon_tax_summary_message_parts(data: dict[str, object]) -> list[str]:
     if buf.strip():
         chunks.append(buf.strip())
     return chunks if chunks else ["(empty summary)"]
+
+
+def _finance_lookup_message(data: dict[str, object] | list[object] | None) -> list[str]:
+    if not isinstance(data, list) or not data:
+        return [
+            "**Finance** — no SDE matches (try a longer name fragment, or confirm core has imported SDE into Postgres)."
+        ]
+    lines: list[str] = [
+        "**Finance — type lookup** (pick a `type_id` for **`/finance sells`**):" + "\n"
+        "_SDE names can differ slightly from in-game market display._"
+    ]
+    for row in data[:15]:
+        if not isinstance(row, dict):
+            continue
+        tid = row.get("type_id")
+        name = row.get("name")
+        lines.append(f"• **`{tid}`** — {name}")
+    if len(data) > 15:
+        lines.append(f"_…and {len(data) - 15} more (narrow your search)._")
+    return ["\n".join(lines)]
+
+
+def _finance_sells_message(data: dict[str, object]) -> list[str]:
+    if not data.get("ok"):
+        return [f"**Finance** — error: `{data.get('error') or 'unknown'}`"]
+    tname = str(data.get("type_name") or "")
+    tid = data.get("type_id")
+    rid = data.get("region_id")
+    drid = data.get("default_region_id")
+    trunc = bool(data.get("truncated"))
+    orders = data.get("orders") or []
+    notes = data.get("structure_notes") or []
+    head = (
+        f"**Finance — cheapest sell orders**\n"
+        f"**{tname}** (`type_id` **{tid}**), region **`{rid}`**"
+        + (f" _(core default `default_region_id` = {drid})_" if rid == drid else "")
+        + "\n"
+    )
+    if not isinstance(orders, list) or not orders:
+        parts = [head + "_No sell orders in merged sources (NPC + known citadels for this region)._"]
+    else:
+        lines = [head, "**Top sells** (ISK, volume, source):"]
+        for row in orders[:20]:
+            if not isinstance(row, dict):
+                continue
+            try:
+                p = float(row["price"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            vol = row.get("volume_remain")
+            src = str(row.get("source_label") or "")
+            kind = str(row.get("source_kind") or "")
+            loc = row.get("location_id")
+            lines.append(f"• **{p:,.2f}** ISK × **{vol}** — _{kind}_ {src} (loc `{loc}`)")
+        if trunc:
+            lines.append("\n_Results may be truncated (ESI page caps); raise limits on core if needed._")
+        parts = ["\n".join(lines)]
+    if isinstance(notes, list) and notes:
+        snips = []
+        for n in notes[:5]:
+            if isinstance(n, dict):
+                snips.append(f"structure `{n.get('structure_id')}`: {n.get('error')}")
+        if snips:
+            parts.append("**Structure fetch notes**\n" + "\n".join(snips))
+    return parts
+
+
+def _finance_contribute_message(data: dict[str, object]) -> list[str]:
+    results = data.get("results") or []
+    if not isinstance(results, list):
+        return ["**Finance** — invalid contribute response."]
+    lines = ["**Finance — structure contribute** (your linked character must see that market in-game):"]
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        sid = r.get("structure_id")
+        if r.get("ok"):
+            lines.append(
+                f"• **`{sid}`** ✓ **{r.get('structure_name')}** (region `{r.get('region_id')}`, witness char `{r.get('witness_character_id')}`)"
+            )
+        else:
+            err = r.get("error")
+            nm = r.get("structure_name")
+            extra = f" — _{nm}_" if nm else ""
+            lines.append(f"• **`{sid}`** ✗ `{err}`{extra}")
+    if not data.get("ok"):
+        lines.append(
+            "\n_Tip: run **`/settings link`** again so core stores **`esi-markets.structure_markets.v1`** on your token._"
+        )
+    return ["\n".join(lines)]
+
+
+def _finance_structures_message(data: list[object] | None) -> list[str]:
+    if not isinstance(data, list):
+        return ["**Finance** — invalid structures list."]
+    if not data:
+        return [
+            "**Finance — known structure markets:** _none yet._\n"
+            "When members dock at citadels and run **`/finance contribute`** with the structure id, "
+            "this list (and regional **`/finance sells`**) grows."
+        ]
+    lines = [f"**Finance — known structure markets** ({len(data)} total):"]
+    for row in data[:18]:
+        if not isinstance(row, dict):
+            continue
+        lines.append(
+            f"• **`{row.get('structure_id')}`** — {row.get('structure_name')} (region `{row.get('region_id')}`)"
+        )
+    if len(data) > 18:
+        lines.append(f"_…{len(data) - 18} more not shown._")
+    return ["\n".join(lines)]
 
 
 @dataclass
@@ -2056,6 +2263,14 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             "`/miner respawns` — timers in ±10h window\n"
             "`/settings link` — browser link to connect this Discord account to **eve-emu core** (EVE SSO)\n"
             "`/settings sync` — False Gods rank roles from core (needs env mapping)\n"
+            "`/moontaxes summary` — mining ledger vs tax contracts (core + ESI; link first)\n"
+            "`/finance lookup` — search SDE type names → `type_id`\n"
+            "`/finance sells` — cheapest sells (NPC region + known citadels; optional `region_id`)\n"
+            "`/finance contribute` — register a citadel market your character can access\n"
+            "`/finance structures` — list contributed structure markets\n"
+            "`/hr guide` — member audit policy (restricted)\n"
+            "`/hr checklist` — repeatable audit steps\n"
+            "`/hr member` — snapshot join / roles for one member\n"
             "`/srp` `/auth` `/mumble` `/intel` `/buyback` — quick links / guides\n\n"
             "_Slash replies are **ephemeral** (only you see them in this channel)._"
         )
@@ -2358,6 +2573,14 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         name="moontaxes",
         description="Moon mining ledger vs tax contracts (eve-emu core + ESI).",
     )
+    finance_group = app_commands.Group(
+        name="finance",
+        description="Regional market browser: NPC stations + citadels contributed via linked SSO (core + ESI).",
+    )
+    hr_group = app_commands.Group(
+        name="hr",
+        description="Member audits and HR workflow (restricted to auditors).",
+    )
 
     async def autocomplete_eve_time(
         interaction: discord.Interaction, current: str
@@ -2593,6 +2816,257 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             ephemeral=True,
         )
 
+    @moontaxes_group.command(
+        name="summary",
+        description="Compare your mining ledger to item_exchange contracts to the corp tax assignee (core + ESI).",
+    )
+    @app_commands.guild_only()
+    @app_commands.describe(
+        period_days="How many days back to scan (1–90).",
+        include_assets="Also list assets for mined types (needs assets scope on your SSO token).",
+        character_id="Linked character id; leave empty to use your main on core.",
+    )
+    async def moontaxes_summary(
+        interaction: discord.Interaction,
+        period_days: int = 30,
+        include_assets: bool = False,
+        character_id: int | None = None,
+    ) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET** (see **example.env**).",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        payload: dict[str, object] = {
+            "discord_user_id": interaction.user.id,
+            "period_days": int(period_days),
+            "include_assets": bool(include_assets),
+        }
+        if character_id is not None:
+            payload["character_id"] = int(character_id)
+        status, data, raw = await _core_post_json(
+            cfg,
+            "/v1/plugins/moon-taxes/summary",
+            payload,
+            timeout_sec=120.0,
+        )
+        if data is None:
+            await interaction.followup.send(
+                f"Core request failed (HTTP {status}).\n```{raw[:500]}```",
+                ephemeral=True,
+            )
+            return
+        parts = _moon_tax_summary_message_parts(data)
+        for part in parts:
+            await interaction.followup.send(part[:2000], ephemeral=True)
+
+    @finance_group.command(
+        name="lookup",
+        description="Search SDE type names; use the type_id with /finance sells.",
+    )
+    @app_commands.guild_only()
+    @app_commands.describe(query="Part of the type name (at least 2 characters).")
+    async def finance_lookup(interaction: discord.Interaction, query: str) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET**.",
+                ephemeral=True,
+            )
+            return
+        q = query.strip()
+        if len(q) < 2:
+            await interaction.response.send_message("Use at least **2** characters for the search.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        path = f"/v1/plugins/finance/types?q={quote(q)}&limit=15"
+        status, data, raw = await _core_get_json(cfg, path, timeout_sec=45.0)
+        if status != 200:
+            await interaction.followup.send(
+                f"Core lookup failed (HTTP {status}).\n```{str(raw)[:450]}```",
+                ephemeral=True,
+            )
+            return
+        for part in _finance_lookup_message(data):
+            await interaction.followup.send(part[:2000], ephemeral=True)
+
+    @finance_group.command(
+        name="sells",
+        description="Cheapest merged sell orders (NPC stations in region + citadels we know about).",
+    )
+    @app_commands.guild_only()
+    @app_commands.describe(
+        type_id="Inventory type id (from SDE / /finance lookup).",
+        region_id="Optional Tranquility region id (omit to use core default, often The Forge).",
+    )
+    async def finance_sells(interaction: discord.Interaction, type_id: int, region_id: int | None = None) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET**.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        path = f"/v1/plugins/finance/sells?type_id={int(type_id)}&limit=15"
+        if region_id is not None:
+            path += f"&region_id={int(region_id)}"
+        status, data, raw = await _core_get_json(cfg, path, timeout_sec=120.0)
+        if status != 200 or not isinstance(data, dict):
+            await interaction.followup.send(
+                f"Core sells request failed (HTTP {status}).\n```{str(raw)[:450]}```",
+                ephemeral=True,
+            )
+            return
+        for part in _finance_sells_message(data):
+            await interaction.followup.send(part[:2000], ephemeral=True)
+
+    @finance_group.command(
+        name="contribute",
+        description="Register a player structure market you can access (dock + market); grows shared coverage.",
+    )
+    @app_commands.guild_only()
+    @app_commands.describe(structure_id="Upwell / player structure id (from show info in-game).")
+    async def finance_contribute(interaction: discord.Interaction, structure_id: int) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET**.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        payload: dict[str, object] = {
+            "discord_user_id": interaction.user.id,
+            "structure_ids": [int(structure_id)],
+        }
+        status, data, raw = await _core_post_json(
+            cfg,
+            "/v1/plugins/finance/structures/contribute",
+            payload,
+            timeout_sec=90.0,
+        )
+        if data is None:
+            await interaction.followup.send(
+                f"Core contribute failed (HTTP {status}).\n```{str(raw)[:450]}```",
+                ephemeral=True,
+            )
+            return
+        for part in _finance_contribute_message(data):
+            await interaction.followup.send(part[:2000], ephemeral=True)
+
+    @finance_group.command(
+        name="structures",
+        description="List structure markets registered via /finance contribute.",
+    )
+    @app_commands.guild_only()
+    async def finance_structures(interaction: discord.Interaction) -> None:
+        if not cfg.core_base_url or not cfg.core_bot_secret:
+            await interaction.response.send_message(
+                "Core integration is not configured. Set **EVE_CORE_BASE_URL** and **EVE_CORE_BOT_SECRET**.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        status, data, raw = await _core_get_json(cfg, "/v1/plugins/finance/structures", timeout_sec=45.0)
+        if status != 200:
+            await interaction.followup.send(
+                f"Core structures list failed (HTTP {status}).\n```{str(raw)[:450]}```",
+                ephemeral=True,
+            )
+            return
+        for part in _finance_structures_message(data if isinstance(data, list) else None):
+            await interaction.followup.send(part[:2000], ephemeral=True)
+
+    async def _hr_must_be_auditor(interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            await interaction.response.send_message("Use **`/hr`** from a server channel.", ephemeral=True)
+            return False
+        m = interaction.user
+        if not isinstance(m, discord.Member):
+            await interaction.response.send_message(
+                "Could not resolve your membership in this server.", ephemeral=True
+            )
+            return False
+        if not _hr_auditor_allowed(m, cfg):
+            await interaction.response.send_message(
+                "You are not allowed to run **`/hr`** here. Requires **Manage Server** (or **Administrator**), "
+                "or your user id in **`EVE_HR_AUDITOR_USER_IDS`**, or a role id in **`EVE_HR_AUDITOR_ROLE_IDS`**.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    def _split_ephemeral_chunks(text: str, limit: int = 1850) -> list[str]:
+        t = text.strip()
+        if not t:
+            return ["(empty)"]
+        if len(t) <= limit:
+            return [t]
+        parts: list[str] = []
+        i = 0
+        while i < len(t):
+            parts.append(t[i : i + limit])
+            i += limit
+        return parts
+
+    @hr_group.command(name="guide", description="HR / member audit policy and how we use these tools (ephemeral).")
+    @app_commands.guild_only()
+    async def hr_guide(interaction: discord.Interaction) -> None:
+        if not await _hr_must_be_auditor(interaction):
+            return
+        body = cfg.hr_audit_guide
+        if cfg.hr_audit_guide_url:
+            body += f"\n\n**External guide:** {cfg.hr_audit_guide_url}"
+        await _defer_ephemeral_followups(interaction, _split_ephemeral_chunks(body))
+
+    @hr_group.command(name="checklist", description="Repeatable member audit checklist for auditors (ephemeral).")
+    @app_commands.guild_only()
+    async def hr_checklist(interaction: discord.Interaction) -> None:
+        if not await _hr_must_be_auditor(interaction):
+            return
+        items = _hr_checklist_lines_from_env(cfg.hr_checklist_env)
+        lines = ["**Member audit checklist** — tick mentally or paste into your ticket:\n"]
+        for n, it in enumerate(items, start=1):
+            lines.append(f"{n}. {it}")
+        lines.append(
+            "\n_When done, record the outcome wherever your alliance stores HR decisions "
+            "(forum, SEAT ticket, private admin channel)._"
+        )
+        await _defer_ephemeral_followups(interaction, _split_ephemeral_chunks("\n".join(lines)))
+
+    @hr_group.command(name="member", description="Snapshot a member for audits (join, account age, roles; ephemeral).")
+    @app_commands.guild_only()
+    @app_commands.describe(member="Server member to audit (pick from the list).")
+    async def hr_member(interaction: discord.Interaction, member: discord.Member) -> None:
+        if not await _hr_must_be_auditor(interaction):
+            return
+        await interaction.response.defer(ephemeral=True)
+        g = interaction.guild
+        assert g is not None
+        roles = [r.name for r in sorted(member.roles, key=lambda x: x.position, reverse=True) if not r.is_default()]
+        roles_blob = ", ".join(roles[:40])
+        if len(roles) > 40:
+            roles_blob += f", …(+{len(roles) - 40} more)"
+        nick = member.nick or "_(no server nick)_"
+        joined = _fmt_discord_dt(member.joined_at)
+        created = _fmt_discord_dt(member.created_at)
+        core_hint = ""
+        if cfg.core_base_url:
+            core_hint = "\n• **Core:** If policy requires, confirm they completed **`/settings link`** for EVE ↔ Discord."
+        msg = (
+            f"**Member audit snapshot** — {member.mention}\n"
+            f"• **User id:** `{member.id}`\n"
+            f"• **Server:** {g.name}\n"
+            f"• **Display:** {member.display_name}\n"
+            f"• **Nick:** {nick}\n"
+            f"• **Joined server:** {joined}\n"
+            f"• **Discord account created:** {created}\n"
+            f"• **Roles ({len(roles)}):** {roles_blob or '_(none beyond @everyone)_'}"
+            f"{core_hint}\n\n"
+            f"_Generated {_format_eve_time(datetime.now(UTC))} — paste into your HR ticket as needed._"
+        )
+        await interaction.followup.send(msg[:2000], ephemeral=True)
+
     miner_timer.autocomplete("eve_time")(autocomplete_eve_time)
     miner_timer.autocomplete("system_name")(autocomplete_system_name)
     miner_timer.autocomplete("belt_type")(autocomplete_anom_type)
@@ -2600,6 +3074,9 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     bot.tree.add_command(admin_group)
     bot.tree.add_command(miner_group)
     bot.tree.add_command(settings_group)
+    bot.tree.add_command(moontaxes_group)
+    bot.tree.add_command(finance_group)
+    bot.tree.add_command(hr_group)
 
     return bot
 

@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Heuristic / config for “WOMP Standing” detection (implement in service layer).
     womp_fleet_motd_substrings: str = "WOMP,Standing"
     womp_alliance_id: int = 99010468
+    # Optional overrides for operator-editable JSON (defaults: ./data/srp_matrix.json, ./data/doctrines.json).
+    srp_matrix_path: str = ""
+    doctrines_path: str = ""
 
 
 settings = Settings()

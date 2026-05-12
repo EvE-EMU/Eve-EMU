@@ -41,6 +41,24 @@ Combine with **staggered polling** and ESI cache timers (character fleet is shor
 - **Backend**: FastAPI (this scaffold) + async HTTP to `https://esi.evetech.net/latest/...`.
 - **Frontend**: separate SPA or server-rendered pages; host at **fleet.eve-emu.com** behind TLS terminator.
 
+## SRP matrix & doctrine tool (live today)
+
+Operator-editable **JSON** drives two reference UIs (no SSO required yet):
+
+| Path | Description |
+|------|-------------|
+| **`/`** | Short home with links into tools and JSON APIs. |
+| **`/tools/srp`** | SRP matrix table (category, reimbursement %, ISK cap, notes) + outbound links. |
+| **`/tools/doctrine`** | Doctrine index (cards). |
+| **`/tools/doctrine/{slug}`** | One doctrine: roles, hull counts, pitfalls, links. |
+| **`/api/tools/srp.json`** | Parsed SRP matrix as JSON (for bots / core). |
+| **`/api/tools/doctrines.json`** | All doctrines. |
+| **`/api/tools/doctrines/{slug}.json`** | Single doctrine + bundle intro. |
+
+Defaults read **`data/srp_matrix.json`** and **`data/doctrines.json`** next to the app root in the image. Override with **`FLEET_TRACKER_SRP_MATRIX_PATH`** and **`FLEET_TRACKER_DOCTRINES_PATH`** (absolute paths inside the container).
+
+Schemas are defined in **`app/schemas_tools.py`** — validate edits locally with `python -c "from app.schemas_tools import SrpMatrix; print(SrpMatrix.model_validate_json(open('data/srp_matrix.json').read()))"`.
+
 ## Deployment
 
 - Build with **`Dockerfile`** in this directory.

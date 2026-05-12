@@ -109,3 +109,20 @@ class EveOAuthToken(Base):
         nullable=False,
         default=lambda: datetime.now(UTC),
     )
+
+
+class FinanceMarketStructure(Base):
+    """Player structure IDs whose markets were verified via an authed character (``esi-markets.structure_markets.v1``)."""
+
+    __tablename__ = "finance_market_structures"
+
+    structure_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    structure_name: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    solar_system_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    region_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    witness_character_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )

@@ -1,2 +1,21 @@
-# Ignore the bot environment file
+# =============================================================================
+# Secrets — never commit real tokens (Discord will reset if leaked on GitHub)
+# =============================================================================
+# Ignore any file literally named ".env" anywhere in the repo (was: only
+# "bot/.env", which did NOT match discord-bot/bot/.env — that caused leaks).
+.env
+
+# Common local overrides (Next.js, tools)
+.env.local
+.env.*.local
+
+# Python / local (legacy path if you still keep a bot at repo root /bot)
 bot/.env
+
+# =============================================================================
+# Tooling / build output
+# =============================================================================
+# Node (eve-emu core-web)
+core-web/node_modules/
+core-web/.next/
+core-web/out/

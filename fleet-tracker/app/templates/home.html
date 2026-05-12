@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<h1>EVE-EMU fleet tracker</h1>
+<p class="muted">Scaffold service for fleet participation and tools. SSO and pollers are not wired yet; below are operator-editable reference pages.</p>
+<ul>
+  <li><a href="/tools/srp"><strong>SRP matrix</strong></a> — reimbursement tiers (JSON-driven).</li>
+  <li><a href="/tools/doctrine"><strong>Doctrine tool</strong></a> — comps, hull counts, pitfalls, links.</li>
+  <li><a href="/api/tools/srp.json">SRP JSON</a> · <a href="/api/tools/doctrines.json">Doctrines JSON</a> for other apps.</li>
+</ul>
+<p class="muted">Configure paths with <code>FLEET_TRACKER_SRP_MATRIX_PATH</code> and <code>FLEET_TRACKER_DOCTRINES_PATH</code>, or edit files under <code>data/</code> in the container.</p>
+{% endblock %}

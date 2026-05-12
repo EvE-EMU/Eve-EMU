@@ -18,8 +18,18 @@ class Settings(BaseSettings):
     sso_scopes: str = (
         "publicData esi-characters.read_corporation_membership.v1 "
         "esi-industry.read_character_mining.v1 esi-contracts.read_character_contracts.v1 "
-        "esi-assets.read_assets.v1"
+        "esi-assets.read_assets.v1 esi-markets.structure_markets.v1"
     )
+
+    # Finance plugin: default region for merged NPC-station + structure market browse (The Forge).
+    finance_default_region_id: int = 10000002
+    finance_region_orders_max_pages: int = 10
+    finance_structure_orders_max_pages: int = 3
+    finance_sells_max_structure_sources: int = 40
+    finance_sells_default_limit: int = 15
+    finance_sells_max_limit: int = 50
+    # Cheap probe order on structure markets (Tritanium); page-1 GET verifies dock ACL + market module.
+    finance_structure_probe_type_id: int = 34
 
     # Shared secret: Discord bot calls ``POST /v1/integrations/discord/*`` with ``Authorization: Bearer …``.
     discord_bot_secret: str = ""
@@ -60,6 +70,13 @@ class Settings(BaseSettings):
     def empty_assignee_id(cls, v: object) -> object:
         if v == "" or v is None:
             return 0
+        return v
+
+    @field_validator("finance_default_region_id", mode="before")
+    @classmethod
+    def empty_finance_region(cls, v: object) -> object:
+        if v == "" or v is None:
+            return 10000002
         return v
 
 

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title | default('Fleet') }}{% endblock %} — EVE-EMU Fleet</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --fg: #e8eaef;
+      --muted: #9aa3b2;
+      --accent: #6eb5ff;
+      --border: #2a3140;
+      --card: #12161d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      margin: 0;
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1.25rem;
+      background: var(--card);
+    }
+    header nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; }
+    header strong a { color: var(--fg); }
+    main { max-width: 920px; margin: 0 auto; padding: 1.25rem 1.25rem 2.5rem; }
+    h1 { font-size: 1.45rem; font-weight: 600; margin: 0 0 0.75rem; }
+    h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--border); padding: 0.55rem 0.7rem; text-align: left; vertical-align: top; }
+    th { background: #161c26; color: #c8d0e0; font-weight: 600; }
+    tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .tag {
+      display: inline-block;
+      background: #1c2433;
+      border: 1px solid var(--border);
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      margin: 0.15rem 0.35rem 0 0;
+      font-size: 0.8rem;
+      color: #b8c4d9;
+    }
+    .banner {
+      background: #2a1818;
+      border: 1px solid #5c3030;
+      padding: 0.65rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      font-size: 0.92rem;
+    }
+    .cards { display: grid; gap: 1rem; margin-top: 1rem; }
+    @media (min-width: 560px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+    }
+    .card h2 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+    ul.pitfalls { margin: 0.5rem 0 0 1.1rem; color: #d4c4a8; }
+    .role-block { margin: 1rem 0; padding-left: 0.75rem; border-left: 3px solid var(--accent); }
+    .hull-line { margin: 0.35rem 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <strong><a href="/">Fleet tracker</a></strong>
+      <span class="muted">|</span>
+      <a href="/tools/srp">SRP matrix</a>
+      <a href="/tools/doctrine">Doctrines</a>
+      <span class="muted">|</span>
+      <a href="/meta">Meta</a>
+      <a href="/healthz">Health</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

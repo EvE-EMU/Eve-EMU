@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Doctrines{% endblock %}
+{% block content %}
+<h1>Doctrine tool</h1>
+{% if load_error %}
+<div class="banner">Data issue: <strong>{{ load_error }}</strong></div>
+{% endif %}
+{% if bundle.intro %}
+<p>{{ bundle.intro }}</p>
+{% endif %}
+{% if bundle.doctrines %}
+<div class="cards">
+  {% for d in bundle.doctrines %}
+  <article class="card">
+    <h2><a href="/tools/doctrine/{{ d.slug }}">{{ d.display_name }}</a></h2>
+    <p>{{ d.summary }}</p>
+    {% if d.tags %}
+    <div>
+      {% for t in d.tags %}<span class="tag">{{ t }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="muted">No doctrines defined.</p>
+{% endif %}
+{% endblock %}

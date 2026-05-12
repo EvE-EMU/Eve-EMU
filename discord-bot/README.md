@@ -43,6 +43,8 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 
 **`/settings` + core:** set **`EVE_CORE_BASE_URL`**, **`EVE_CORE_BOT_SECRET`** (same string as **`CORE_DISCORD_BOT_SECRET`** on core), **`EVE_FG_RANK_DISCORD_ROLES`** (`slug=role_id` pairs, e.g. `fg_ceo=123;fg_member=456`), and configure core with **`CORE_FALSE_GODS_CORPORATION_ID`**, **`CORE_FG_RANK_ROLES_JSON`**, SSO, DB, and **`CORE_TOKEN_ENCRYPTION_KEY`**. The bot needs **Manage Roles** and its role must sit **above** every rank role it assigns.
 
+**`/hr` (member audits):** auditors need **Manage Server** (or **Administrator**), or be listed in **`EVE_HR_AUDITOR_USER_IDS`**, or hold a role whose id is in **`EVE_HR_AUDITOR_ROLE_IDS`**. Customize **`EVE_HR_AUDIT_GUIDE`**, **`EVE_HR_AUDIT_GUIDE_URL`**, and **`EVE_HR_CHECKLIST`** (semicolon-separated steps). **`/hr member`** needs the **Server Members Intent** only if you rely on resolving members outside slash autocomplete; picking a member from the command picker usually works without it.
+
 ---
 
 ## Slash commands
@@ -57,6 +59,8 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 | **`/miner timer`** | Ore respawn from **pop time** (system, anomaly name, UTC). Durations are **inferred from the anomaly name**; **Large / Enormous Mercoxit** use fixed **8h / 12h**. |
 | **`/miner respawns`** | Timers in **±10 hours** (EVE/UTC) (ephemeral). |
 | **`/settings link`**, **`/settings sync`** | Optional **eve-emu core**: browser SSO to link this Discord user, then sync **False Gods** rank roles from core (needs env on bot + core). |
+| **`/moontaxes summary`** | Mining ledger vs **item_exchange** contracts to the configured tax assignee; ISK hints and payment text from **core** (link + scopes first). |
+| **`/hr guide`**, **`/hr checklist`**, **`/hr member`** | **HR / member audits:** policy text, checklist, and a **member snapshot** (join, account age, roles). Restricted to **Manage Server** or env allowlists. |
 | **`/srp`**, **`/auth`**, **`/mumble`**, **`/intel`**, **`/buyback`** | Static links / guides (`/mumble` can attach a PTT GIF if configured). |
 
 **`/admin restart`** and **`/admin rebuild`** run **`docker compose`** on the host where the bot process runs (`docker` must be on `PATH`, with access to the compose project in **`EVE_DOCKER_COMPOSE_DIR`**). If the bot is **inside** the container it restarts, the ephemeral reply may not show; check **`docker compose logs`**. See **`example.env`** (`EVE_DOCKER_ADMIN_ENABLED`, `EVE_DOCKER_COMPOSE_SERVICE`, etc.).

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}SRP matrix{% endblock %}
+{% block content %}
+<h1>{{ matrix.title }}</h1>
+{% if load_error %}
+<div class="banner">Data issue: <strong>{{ load_error }}</strong> — check server logs and JSON paths.</div>
+{% endif %}
+{% if matrix.last_updated %}
+<p class="muted">Last updated: {{ matrix.last_updated }}</p>
+{% endif %}
+{% if matrix.intro %}
+<p>{{ matrix.intro }}</p>
+{% endif %}
+{% if matrix.links %}
+<p>
+  {% for link in matrix.links %}
+    <a href="{{ link.href }}">{{ link.label }}</a>{% if not loop.last %} · {% endif %}
+  {% endfor %}
+</p>
+{% endif %}
+{% if matrix.rows %}
+<table>
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Reimbursement</th>
+      <th>Cap (ISK)</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in matrix.rows %}
+    <tr>
+      <td>{{ row.category }}</td>
+      <td>{{ row.reimbursement }}</td>
+      <td>{{ row.cap_isk | isk }}</td>
+      <td>{{ row.notes }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No rows defined yet.</p>
+{% endif %}
+{% endblock %}
