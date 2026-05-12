@@ -1,6 +1,8 @@
 # EVE-EMU **Core**
 
-Central platform service: **authentication** (EVE SSO + eve-emu sessions), **SDE** access, **EVE image URLs**, **Postgres**, and a **stable OpenAPI** surface for other apps (`fleet-tracker`, web UI, bots, etc.).
+Central platform service: **authentication** (EVE SSO + eve-emu sessions), **SDE** access, **EVE image URLs**, **Postgres**, and a **stable OpenAPI** surface for other apps (`fleet-tracker`, bots, etc.).
+
+**Alliance-style main web portal:** use **[Alliance Auth v5](https://allianceauth.readthedocs.io/en/v5.0.1/)** from the **`allianceauth/`** Git submodule (Django). See **`docs/ALLIANCE_AUTH.md`**. **`core-web/`** (Next.js) is optional for custom pages that call this API; **`core/`** remains the **FastAPI backend** for SDE, Discord bot plugins, and related services.
 
 - **OpenAPI**: served at `/openapi.json`, interactive docs at `/docs` (disable in production if desired).
 - **Plugin API**: versioned under **`/v1/...`** — keep compatibility; extend with new routes or `/v2` when breaking.
@@ -69,6 +71,7 @@ Tables: `core_users`, `eve_linked_characters`, `eve_oauth_tokens` (see `app/db/m
 - **`core_users.discord_user_id`** stores the Discord snowflake once SSO completes.
 - **`discord_pending_sso_links`** holds short-lived rows created by **`POST /v1/integrations/discord/prepare-link`** (Bearer **`CORE_DISCORD_BOT_SECRET`**). The returned URL points at **`GET /v1/auth/eve/start?link_id=…`**, which sends that UUID as CCP **`state`**; **`GET /v1/auth/eve/callback`** exchanges the code and links EVE + Discord.
 - **False Gods rank**: set **`CORE_FALSE_GODS_CORPORATION_ID`** and **`CORE_FG_RANK_ROLES_JSON`** (corporation role id → slug + weight). CEO is detected via public ESI **`/corporations/{id}/`**. **`POST /v1/integrations/discord/sync-roles`** returns **`rank_key`** for the bot to map to guild roles.
+- **Moon mining taxes**: set **`CORE_MOON_TAX_ASSIGNEE_ID`** (character or corporation id contracts must use as **assignee**), optional **`CORE_MOON_TAX_PERCENT_OF_OWED_VALUE`** and **`CORE_MOON_TAX_PAYMENT_INSTRUCTIONS`**. **`POST /v1/plugins/moon-taxes/summary`** compares the character **mining ledger** to **item_exchange** contracts you issued to that assignee (optional **assets** snapshot for mined types). Linked SSO tokens need **mining**, **contracts**, and (if using assets) **assets** scopes.
 
 ## Databases
 
