@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EVE-EMU Core",
-  description: "Main web app for EVE-EMU (Discord bot is a separate surface).",
+  title: "EvE-EMU",
+  description:
+    "Industrial, PvP, and automation suite for EVE Online organizations — Discord-first workflows with FastAPI core and optional Alliance Auth.",
 };
 
 export default function RootLayout({

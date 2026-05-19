@@ -1,0 +1,45 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Forum" %}
+{% endblock %}
+
+{% block header_nav_brand %}
+    {% translate "Forum" %}
+{% endblock %}
+
+{% block header_nav_collapse_left %}
+    {% include "aa_forum/partials/menu.html" %}
+{% endblock header_nav_collapse_left %}
+
+{% block header_nav_collapse_right %}
+    <li role="presentation" class="nav-item">
+        {% include "aa_forum/partials/search/search-form.html" with suffix="menu" %}
+    </li>
+{% endblock %}
+
+{% block content %}
+    <div class="aa-forum">
+        <div class="aa-forum-header mb-3 clearfix">
+            {% block aa_forum_header %}{% endblock %}
+        </div>
+
+        <div class="aa-forum-body">
+            <script>
+                const aaForumJsSettingsDefaults = {
+                    {#url: ''#}
+                }
+            </script>
+
+            {% block aa_forum_body %}{% endblock %}
+        </div>
+
+        <div class="aa-forum-footer mt-3 pt-3 border-top border-light">
+            {% include "aa_forum/partials/footer/app-translation-footer.html" %}
+        </div>
+
+        {% include "aa_forum/bundles/svg/aa-forum-icons.svg" %}
+    </div>
+{% endblock %}

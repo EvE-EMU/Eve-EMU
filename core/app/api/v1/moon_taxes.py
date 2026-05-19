@@ -25,7 +25,7 @@ class MoonTaxSummaryIn(BaseModel):
     )
 
 
-@router.post("/summary")
+@router.post("/summary", response_model=None)
 async def moon_tax_summary(
     body: MoonTaxSummaryIn,
     authorization: Annotated[str | None, Header()] = None,

@@ -1,0 +1,28 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block page_title %}{% block sft_title %}Standing Fleet{% endblock %}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <nav class="mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'standing_fleet_tracker:dashboard' %}">{% trans "Overview" %}</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'standing_fleet_tracker:leaderboard' %}">{% trans "Leaderboard" %}</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'standing_fleet_tracker:lagging_board' %}">{% trans "Lagging board" %}</a>
+  </nav>
+  {% block sft_body %}{% endblock %}
+  {% block sft_fit_modal %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+{% block sft_fit_css %}{% endblock %}
+{% endblock %}
+
+{% block extra_javascript %}
+{{ block.super }}
+{% block sft_fit_js %}{% endblock %}
+{% endblock %}
+

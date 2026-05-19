@@ -1,0 +1,42 @@
+{% extends 'buybackprogram/page.html' %}
+{% load i18n %}
+{% load humanize %}
+{% load bootstrap %}
+{% load static %}
+
+{% block body %}
+
+<div class="card">
+  <h5 class="card-header">{% trans "Frequently Asked Questions" %}</h5>
+  <div class="card-body">
+    <h5 class="card-title">{% trans "Where can I sell my items?" %}</h5>
+    <p class="card-text">{% trans "Each program has a system and a structure mentioned on the program page. The manager for this program will most likely only accept items if the contract has been created at this exact location." %}</p>
+    <h5 class="card-title">{% trans "How can I sell my items?" %}</h5>
+    <p class="card-text">
+      <ul>
+        <li>{% trans "Have your items at the program location" %}</li>
+        <li>{% trans "Click <b>Use</b> on the program you wish to use" %}</li>
+        <li>{% trans "Copy paste your items from your inventory into the calculator" %}</li>
+        <li>{% trans "Follow the settings given by the calculator when creating the contract" %}</li>
+      </ul>
+    </p>
+    <h5 class="card-title">{% trans "How can I disable discord notifications for my contracts?" %}</h5>
+    <p class="card-text">{% trans "You can disable notifications about your contracts via the" %} <a href="user_settings_edit">{% trans "My Settings</a> page</p>" %}
+
+    {% for faq in faqs %}
+      <h5 class="card-title">{{faq.header}}</h5>
+      <p class="card-text">{{faq.body}}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+{% endblock %}
+
+{% block extra_css %}
+{% include "buybackprogram/bundles/buybackprogram-css-light.html" %}
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

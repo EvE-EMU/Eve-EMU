@@ -4,6 +4,9 @@
 # Ignore any file literally named ".env" anywhere in the repo (was: only
 # "bot/.env", which did NOT match discord-bot/bot/.env — that caused leaks).
 .env
+.env.*
+!.env.example
+!.env.*.example
 
 # Common local overrides (Next.js, tools)
 .env.local
@@ -13,9 +16,56 @@
 bot/.env
 
 # =============================================================================
+# Python bytecode / virtualenvs
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+.venv_aa_test/
+venv/
+aa_gen_test/
+ENV/
+env/
+
+# =============================================================================
+# Local databases & media (Django / FastAPI dev)
+# =============================================================================
+*.sqlite3
+*.db
+db.sqlite3
+local.sqlite
+/media/
+**/media/
+staticfiles/
+
+# =============================================================================
 # Tooling / build output
 # =============================================================================
 # Node (eve-emu core-web)
 core-web/node_modules/
 core-web/.next/
 core-web/out/
+
+# Python packaging / tests
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Fleet tracker / app local data (if generated)
+fleet-tracker/**/*.log

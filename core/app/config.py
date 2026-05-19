@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     sso_token_url: str = "https://login.eveonline.com/v2/oauth/token"
     sso_callback_url: str = "http://localhost:8000/v1/auth/eve/callback"
     sso_scopes: str = (
-        "publicData esi-characters.read_corporation_membership.v1 "
+        "publicData "
         "esi-industry.read_character_mining.v1 esi-contracts.read_character_contracts.v1 "
         "esi-assets.read_assets.v1 esi-markets.structure_markets.v1"
     )

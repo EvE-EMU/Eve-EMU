@@ -1,0 +1,133 @@
+{% extends 'opcalendar/base.html' %}
+{% load bootstrap %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+{% load evelinks %}
+{% block page_title %}{% trans "Create Operation" %}{% endblock page_title %}
+
+{% block details %}
+<div class="allianceauth-opcalendar">
+    <div class="clearfix">
+        {% include "opcalendar/partials/calendar/legends.html" %}
+    </div>
+</div>
+<div class="allianceauth-opcalendar">
+    <div class="card" style="margin-top:10px;">
+        <div class="card-header">
+            {% include "opcalendar/partials/calendar/navigation.html" %}
+        </div>
+        <div class="card-body">
+            {{ calendar }}
+        </div>
+    </div>
+</div>
+{% endblock details %}
+
+{% block extra_javascript %}
+    {% include "bundles/moment-js.html" with locale=True %}
+    {% include "bundles/timers-js.html" %}
+
+    <script>
+        const timers = [
+            {% for timer in all_events_per_month %}
+                {
+                    'id': '{{ timer.id }}',
+                    'targetDate': moment("{{ timer.start_time|date:"c" }}"),
+                    'expired': false
+                },
+            {% endfor %}
+        ];
+
+        const updateAllTimers = () => {
+            const l = timers.length;
+
+            for (let i = 0; i < l; ++i) {
+                if (timers[i].expired) continue;
+                // Additional logic if needed
+            }
+        };
+
+        const updateClock = () => {
+            document.getElementById("current-time").innerHTML = getCurrentEveTimeString();
+        };
+
+        const timedUpdate = () => {
+            updateClock();
+            updateAllTimers();
+        }
+
+        // Start timed updates
+        setInterval(timedUpdate, 1000);
+
+        // Set initial values
+        timedUpdate();
+
+        {% if user_settings.use_local_times %}
+        /**
+         * Set the local time info for the timer
+         * @param timer Timer information
+         */
+        const setLocalTime = (timer) => {
+            const element = document.getElementById("event-time-" + timer.id);
+            if (element) {
+                element.innerHTML = timer.targetDate.format("HH:mm");
+            }
+        };
+
+        /**
+         * Set all local time fields
+         */
+        const setAllLocalTimes = () => {
+            const l = timers.length;
+
+            for (let i = 0; i < l; ++i) {
+                setLocalTime(timers[i]);
+            }
+        };
+
+        // Set local time values
+        setAllLocalTimes();
+        {% endif %}
+    </script>
+    <script>
+        let selectedEvents = []
+
+        $('.legend').on('click', 'span', function(){
+            const classes = $(this).attr('class')
+            const selectors = '.' + classes.split(' ').join('.').replace('.active', '')
+
+            // clear all selections on show-all
+            if(selectors.includes('show-all')){
+                selectedEvents = []
+                $('.legend .event').removeClass('active')
+                $(this).addClass('active')
+            }
+
+            // remove current selection if it's already present in the selectedEvents array
+            else if(selectedEvents.includes(selectors)){
+                selectedEvents = selectedEvents.filter(event => event !== selectors)
+                $(this).removeClass('active')
+            }
+
+            // add the current selection to the selectedEvents array
+            else{
+                selectedEvents.push(selectors)
+                $(this).addClass('active')
+            }
+
+            applyCalendarFilters(selectedEvents)
+
+        })
+
+        function applyCalendarFilters(selectedEvents){
+            $('.calendar .event').hide()
+
+            if(selectedEvents.length){
+                selectedEvents.forEach(selectors => $('.calendar ' + selectors).show())
+            }
+            else{
+                $('.calendar .event').show()
+            }
+        }
+    </script>
+{% endblock extra_javascript %}

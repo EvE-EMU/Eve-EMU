@@ -1,0 +1,93 @@
+{% extends 'buybackprogram/page.html' %}
+{% load i18n %}
+{% load humanize %}
+{% load bootstrap %}
+{% load static %}
+
+{% block body %}
+{% load i18n %}
+<div class="card">
+	<div class="card-header">
+    {% trans "Leaderboard for:" %} {{program.name}}
+  </div>
+  <div class='row'>
+    <div class='col-md-1'>
+	    <button class="btn btn-default" onclick="prior()"><span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span></button>
+    </div>
+    <div class='col-md-7 col-md-offset-3'>
+	    <h3>{% trans "Month:" %} <span id="month"></span></h3>
+    </div>
+    <div class='col-md-1'>
+	    <button class="btn btn-default" onclick="next()"><span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span></button>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='col-md-12'>
+	    <table id="leaderboard" class="table table-striped"><thead><tr><th>{% trans "Name" %}</th><th>{% trans "Contract Total (ISK)" %}</th><th>{% trans "Donation Total (ISK)" %}</th></tr></thead>
+		    <tbody id="data"></tbody>
+	    </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="//cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript">
+{% autoescape off %}
+var data;
+var curi;
+var leaderboard;
+
+function next() {
+	if (data.months.length == 0) { return; }
+	curi++;
+	if (curi >= data.months.length) {
+		curi = data.months.length - 1;
+	}
+	render();
+}
+
+function prior() {
+	if (data.months.length == 0) { return; }
+	curi--;
+	if (curi < 0) {
+		curi = 0;
+	}
+	render();
+}
+
+function render() {
+	if (data.months.length == 0) { return; }
+	leaderboard.clear();
+	var month = data.months[curi].split(":")[1];
+	$("#month").html(month);
+	for (const [uid, arr] of Object.entries(data.users[data.months[curi]])) {
+		leaderboard.row.add(["<img src='" + data.userinfo[uid].pic + "'/> " + data.userinfo[uid].name,
+			arr[0].toLocaleString("en-US"),
+			arr[1].toLocaleString("en-US") ]);
+	}
+	leaderboard.draw();
+}
+
+(function() {
+	data = {{stats}};
+	if (data.months.length == 0) { return; }
+	curi = data.months.length - 1;
+	leaderboard = $('#leaderboard').DataTable({
+		"order":[[1, 'desc']],
+	});
+	render();
+})();
+{% endautoescape %}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/billboard.js/3.5.1/billboard.min.css" integrity="sha512-RMOXiaUbYERixbCxwbAyhJcq/KDpbXMZGLLUbexHB5JWdXsZONmsv2tLycOcTnAGCDZ9qPGG5pbd6bnL8YRhSw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+{% include "buybackprogram/bundles/buybackprogram-css-light.html" %}
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

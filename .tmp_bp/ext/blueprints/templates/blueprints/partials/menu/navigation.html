@@ -1,0 +1,31 @@
+{% load i18n %}
+{% load navactive %}
+<li class="active">
+    <a class="nav-link active" aria-controls="tab-library" role="tab" type="button" data-bs-toggle="tab" data-bs-target="#tab-library">
+        {% translate "Library" %}
+    </a>
+</li>
+{% if perms.blueprints.request_blueprints %}
+    <li>
+        <a class="nav-link" aria-controls="tab-user-requests" role="tab" type="button" data-bs-toggle="tab" data-bs-target="#tab-user-requests">
+            {% translate "My Requests" %}
+        </a>
+    </li>
+{% endif %}
+{% if perms.blueprints.manage_requests %}
+    <li>
+        <a class="nav-link" aria-controls="tab-open-requests" role="tab" type="button" data-bs-toggle="tab" data-bs-target="#tab-open-requests">
+            {% translate "Open Requests" %}
+            {% if request_count %}
+                <span class="badge text-bg-info badge-nav">{{ request_count }}</span>
+            {% endif %}
+        </a>
+    </li>
+{% endif %}
+{% if perms.blueprints.add_personal_blueprint_owner or perms.blueprints.add_corporate_blueprint_owner %}
+    <li>
+        <a class="nav-link" aria-controls="tab-manage-blueprints" role="tab" type="button" data-bs-toggle="tab" data-bs-target="#tab-manage-blueprints">
+            {% translate "Manage Blueprints" %}
+        </a>
+    </li>
+{% endif %}

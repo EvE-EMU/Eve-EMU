@@ -1,0 +1,42 @@
+{% extends "fleetfinder/base.html" %}
+
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Edit fleet" as page_title %}
+    {{ page_title|title }} » {% translate "Fleet Finder" %}
+{% endblock %}
+
+{% block aa_fleetfinder_body %}
+    <div class="card card-primary border-0">
+        <div class="card-header card-default">
+            <div class="card-title mb-0">
+                {% translate "Edit fleet" %}
+            </div>
+        </div>
+
+        <div class="card-body container">
+            <div class="row">
+                <div class="align-self-center">
+                    {% include "fleetfinder/partials/body/form-fleet-details.html" with name=fleet.name origin="edit" groups=fleet.groups.all %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+    {% include "fleetfinder/bundles/css/slim-select-css.html" %}
+    {% include "fleetfinder/bundles/css/fleetfinder-css.html" %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include "fleetfinder/bundles/js/slim-select-js.html" %}
+
+    <script>
+        new SlimSelect({
+            select: '#groups',
+            hideSelectedOption: true
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,624 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+# Translators:
+# Joel Falknau <ozirascal@gmail.com>, 2023
+# 
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-11 22:06+1000\n"
+"PO-Revision-Date: 2023-10-08 10:48+0000\n"
+"Last-Translator: Joel Falknau <ozirascal@gmail.com>, 2023\n"
+"Language-Team: Japanese (https://app.transifex.com/alliance-auth/teams/107430/ja/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: marketmanager/auth_hooks.py:16
+#: marketmanager/templates/marketmanager/marketbrowser-bs5.html:6
+#: marketmanager/templates/marketmanager/marketbrowser-bs5.html:10
+#: marketmanager/templates/marketmanager/marketbrowser.html:5
+#: marketmanager/templates/marketmanager/marketbrowser.html:19
+#: marketmanager/templates/marketmanager/marketwatches-bs5.html:10
+#: marketmanager/templates/marketmanager/marketwatches.html:5
+msgid "Market Browser"
+msgstr "マーケットブラウザー"
+
+#: marketmanager/auth_hooks.py:35
+#: marketmanager/templates/marketmanager/base-bs5.html:7
+#: marketmanager/templates/marketmanager/base-bs5.html:11
+msgid "Market Manager"
+msgstr "マーケットマネージャー"
+
+#: marketmanager/models.py:38
+msgid "Order ID"
+msgstr "オーダー ID"
+
+#: marketmanager/models.py:39
+msgid "Unique order ID"
+msgstr ""
+
+#: marketmanager/models.py:43 marketmanager/models.py:164
+#: marketmanager/models.py:564
+msgid "Type"
+msgstr "タイプ"
+
+#: marketmanager/models.py:46
+msgid "Duration"
+msgstr "所要時間"
+
+#: marketmanager/models.py:47
+msgid ""
+"Number of days the order was valid for (starting from the issued date). An "
+"order expires at time issued + duration"
+msgstr ""
+
+#: marketmanager/models.py:49 marketmanager/models.py:241
+#: marketmanager/models.py:304 marketmanager/models.py:401
+msgid "Buy Order"
+msgstr "購入注文"
+
+#: marketmanager/models.py:51
+msgid "True if the order is a bid (buy) order"
+msgstr ""
+
+#: marketmanager/models.py:54
+msgid "Issued"
+msgstr "発行済み"
+
+#: marketmanager/models.py:55
+msgid "Date and time when this order was issued"
+msgstr ""
+
+#: marketmanager/models.py:59
+msgid "Location ID"
+msgstr "ロケーション ID"
+
+#: marketmanager/models.py:60
+msgid "ID of the location where order was placed"
+msgstr ""
+
+#: marketmanager/models.py:63
+msgid "System"
+msgstr "システム"
+
+#: marketmanager/models.py:69 marketmanager/models.py:91
+#: marketmanager/models.py:253 marketmanager/models.py:323
+#: marketmanager/models.py:437 marketmanager/models.py:569
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:11
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:11
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:11
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:11
+msgid "Region"
+msgstr "リージョン"
+
+#: marketmanager/models.py:72
+msgid "Minimum Volume"
+msgstr "最小数量"
+
+#: marketmanager/models.py:75
+msgid ""
+"For buy orders, the minimum quantity that will be accepted in a matching "
+"sell order"
+msgstr ""
+
+#: marketmanager/models.py:77 marketmanager/models.py:339
+#: marketmanager/models.py:455
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:13
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:13
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:13
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:13
+msgid "Price"
+msgstr "価格"
+
+#: marketmanager/models.py:80
+msgid "Cost per unit for this order"
+msgstr ""
+
+#: marketmanager/models.py:82
+msgid "1"
+msgstr ""
+
+#: marketmanager/models.py:83
+msgid "2"
+msgstr ""
+
+#: marketmanager/models.py:84
+msgid "3"
+msgstr ""
+
+#: marketmanager/models.py:85
+msgid "4"
+msgstr ""
+
+#: marketmanager/models.py:86
+msgid "5"
+msgstr ""
+
+#: marketmanager/models.py:87
+msgid "10"
+msgstr ""
+
+#: marketmanager/models.py:88
+msgid "20"
+msgstr ""
+
+#: marketmanager/models.py:89
+msgid "30"
+msgstr ""
+
+#: marketmanager/models.py:90
+msgid "40"
+msgstr ""
+
+#: marketmanager/models.py:92 marketmanager/models.py:159
+#: marketmanager/models.py:249 marketmanager/models.py:319
+#: marketmanager/models.py:433
+msgid "Solar System"
+msgstr "ソーラーシステム"
+
+#: marketmanager/models.py:93
+msgid "Station"
+msgstr "ステーション"
+
+#: marketmanager/models.py:95
+msgid "Order Range"
+msgstr "注文範囲"
+
+#: marketmanager/models.py:98
+msgid "Valid order range, numbers are ranges in jumps"
+msgstr ""
+
+#: marketmanager/models.py:100
+msgid "Volume Remaining"
+msgstr "残りの数量"
+
+#: marketmanager/models.py:101
+msgid "Quantity of items still required or offered"
+msgstr ""
+
+#: marketmanager/models.py:103
+msgid "Is Corporation"
+msgstr "Is Corporation"
+
+#: marketmanager/models.py:105
+msgid ""
+"Signifies whether the buy/sell order was placed on behalf of a corporation."
+msgstr ""
+
+#: marketmanager/models.py:107
+msgid "Wallet Division"
+msgstr "ウォレット部門"
+
+#: marketmanager/models.py:110
+msgid "The corporation wallet division used for this order."
+msgstr ""
+
+#: marketmanager/models.py:113
+msgid "Character"
+msgstr "キャラクター"
+
+#: marketmanager/models.py:119
+msgid "Corporation"
+msgstr "コーポレーション"
+
+#: marketmanager/models.py:125
+msgid "Cancelled"
+msgstr "キャンセルされました"
+
+#: marketmanager/models.py:126
+msgid "Expired"
+msgstr "有効期限切れ"
+
+#: marketmanager/models.py:128
+msgid "Order State"
+msgstr "注文状況"
+
+#: marketmanager/models.py:131
+msgid ""
+"Current order state, Only valid for Authenticated order History. Will not "
+"update from Public Market Data."
+msgstr ""
+
+#: marketmanager/models.py:151
+msgid "Structure ID"
+msgstr "ストラクチャ ID"
+
+#: marketmanager/models.py:154 marketmanager/models.py:183
+#: marketmanager/models.py:200
+msgid "Name"
+msgstr "名前"
+
+#: marketmanager/models.py:156
+msgid "Owner Corporation ID"
+msgstr "オーナーコーポレーション ID"
+
+#: marketmanager/models.py:171
+msgid "Pull Market Orders"
+msgstr "プルマーケット注文"
+
+#: marketmanager/models.py:172
+msgid "Useful to ignore specific structures for _reasons_"
+msgstr ""
+
+#: marketmanager/models.py:186
+msgid "URL"
+msgstr "URL"
+
+#: marketmanager/models.py:212
+msgid "Channel"
+msgstr ""
+
+#: marketmanager/models.py:213 marketmanager/models.py:276
+#: marketmanager/models.py:359 marketmanager/models.py:469
+msgid "Channels"
+msgstr "チャンネル"
+
+#: marketmanager/models.py:218
+msgid "Managed By App"
+msgstr "アプリによる管理"
+
+#: marketmanager/models.py:221
+msgid "The App managing this SupplyConfig"
+msgstr ""
+
+#: marketmanager/models.py:224
+msgid "Managed App-Identifier"
+msgstr "アプリ識別による管理"
+
+#: marketmanager/models.py:227
+msgid "An identifier relevant to the App managing this SupplyConfig"
+msgstr ""
+
+#: marketmanager/models.py:230
+msgid "Managed App Reason"
+msgstr "管理対象アプリの理由"
+
+#: marketmanager/models.py:233
+msgid "User Facing reason for this Managed SupplyConfig"
+msgstr ""
+
+#: marketmanager/models.py:236
+msgid "quantity"
+msgstr "数量"
+
+#: marketmanager/models.py:237
+msgid "Apply a multiplier to the volumes that will be generated"
+msgstr ""
+
+#: marketmanager/models.py:245 marketmanager/models.py:315
+#: marketmanager/models.py:429
+msgid "Structure"
+msgstr "ストラクチャ"
+
+#: marketmanager/models.py:258 marketmanager/models.py:329
+#: marketmanager/models.py:443
+msgid "Filter by structure Type/Size/Docking (ie, forts/keeps for cap fuel)"
+msgstr ""
+
+#: marketmanager/models.py:259 marketmanager/models.py:330
+#: marketmanager/models.py:444
+msgid "Structure Type Filter"
+msgstr "ストラクチャタイプフィルター"
+
+#: marketmanager/models.py:263 marketmanager/models.py:346
+#: marketmanager/models.py:448
+msgid "Jita Comparison %"
+msgstr "ジタ価格との比較%"
+
+#: marketmanager/models.py:264 marketmanager/models.py:347
+#: marketmanager/models.py:449
+msgid "If set ignores Flat price value"
+msgstr ""
+
+#: marketmanager/models.py:272 marketmanager/models.py:355
+#: marketmanager/models.py:465
+msgid "Webhooks"
+msgstr "ウェブフック"
+
+#: marketmanager/models.py:280 marketmanager/models.py:363
+#: marketmanager/models.py:473
+msgid "Debug Webhook"
+msgstr "ウェブフックのデバッグ"
+
+#: marketmanager/models.py:283
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on Supplyonfigs that _dont_ notify. Because their Configs didnt Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:286 marketmanager/models.py:369
+#: marketmanager/models.py:479
+msgid "Debug Channels"
+msgstr "デバッグチャネル"
+
+#: marketmanager/models.py:289 marketmanager/models.py:366
+#: marketmanager/models.py:372
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on SupplyConfigs that _dont_ notify. Because their Configs didnt "
+"Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:298
+msgid "Managed Supply Config"
+msgstr ""
+
+#: marketmanager/models.py:299
+msgid "Managed Supply Configs"
+msgstr ""
+
+#: marketmanager/models.py:307 marketmanager/models.py:409
+#: marketmanager/templates/marketmanager/marketwatches.html:16
+#: marketmanager/templates/marketmanager/marketwatches/structure-bs5.html:9
+msgid "EVE Type"
+msgstr "EVEタイプ"
+
+#: marketmanager/models.py:334
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:53
+#: marketmanager/templates/marketmanager/marketbrowser/item_details.html:45
+msgid "Volume"
+msgstr "数量"
+
+#: marketmanager/models.py:335
+msgid "Set to Zero to check ANY/EVERY order against Price"
+msgstr ""
+
+#: marketmanager/models.py:340
+msgid "Set to Zero to skip this filter"
+msgstr ""
+
+#: marketmanager/models.py:375
+msgid "Managed Watch Configs"
+msgstr "マネージドウォッチ設定"
+
+#: marketmanager/models.py:381 marketmanager/models.py:485
+msgid "Last Task Runtime"
+msgstr "最終タスクランタイム"
+
+#: marketmanager/models.py:385
+msgid "Last Result Volume"
+msgstr "最終結果数量"
+
+#: marketmanager/models.py:386
+msgid "The Volume returned the last time this WatchConfig was run"
+msgstr ""
+
+#: marketmanager/models.py:394
+msgid "Supply Config"
+msgstr ""
+
+#: marketmanager/models.py:395
+msgid "Supply Configs"
+msgstr ""
+
+#: marketmanager/models.py:404
+msgid "Scalp Finder?"
+msgstr ""
+
+#: marketmanager/models.py:405
+msgid "True for Scalp, False for Bargain"
+msgstr ""
+
+#: marketmanager/models.py:413
+msgid "EVE Inventory Group"
+msgstr ""
+
+#: marketmanager/models.py:417
+msgid "EVE Market Group"
+msgstr ""
+
+#: marketmanager/models.py:420
+msgid "Minimum Price"
+msgstr ""
+
+#: marketmanager/models.py:457
+msgid ""
+"WARNING: Use Jita% when possible, this sets a flat price for ALL items "
+"included in this Config. Possibly useful for Caps/Soups"
+msgstr ""
+
+#: marketmanager/models.py:476 marketmanager/models.py:482
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on PriceConfigs that _dont_ notify. Because their Configs didnt Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:493
+msgid "Price Config"
+msgstr ""
+
+#: marketmanager/models.py:494
+msgid "Price Configs"
+msgstr ""
+
+#: marketmanager/models.py:500
+msgid "Fetch Regions"
+msgstr "リージョンを取得"
+
+#: marketmanager/models.py:504 marketmanager/models.py:510
+msgid "Public Market Configuration"
+msgstr ""
+
+#: marketmanager/models.py:516
+msgid "TypeStatistics Calculation Regions"
+msgstr "タイプ:統計計算リージョン"
+
+#: marketmanager/models.py:520 marketmanager/models.py:526
+msgid "TypeStatistics Calculation Configuration"
+msgstr ""
+
+#: marketmanager/models.py:532
+msgid "ESI Token"
+msgstr "ESI トークン"
+
+#: marketmanager/models.py:537
+msgid "Valid Corporation Markets for this Token"
+msgstr "このトークンが有効なコーポレーション市場"
+
+#: marketmanager/models.py:542
+msgid "Valid Structure Markets for this Token"
+msgstr "このトークンが有効なストラクチャマーケット"
+
+#: marketmanager/models.py:546
+msgid "Disabled due to Failure, Check reason, adjust config and re-enable"
+msgstr "何らかの障害のため無効化されました。理由を確認し、設定を調整して再度有効にしてください"
+
+#: marketmanager/models.py:548
+msgid "Failure Reason"
+msgstr "障害が発生した理由"
+
+#: marketmanager/models.py:557
+msgid "Private Market Configuration"
+msgstr ""
+
+#: marketmanager/models.py:558
+msgid "Private Market Configurations"
+msgstr ""
+
+#: marketmanager/models.py:575
+msgid "Buy 5th Percentile"
+msgstr "5パーセンタイルを購入"
+
+#: marketmanager/models.py:580
+msgid "Sell 5th Percentile"
+msgstr "5パーセンタイルを売る"
+
+#: marketmanager/models.py:585
+msgid "Buy Weighted Average"
+msgstr "加重平均を購入"
+
+#: marketmanager/models.py:590
+msgid "Sell Weighted Average"
+msgstr "加重平均を売却"
+
+#: marketmanager/models.py:595
+msgid "Buy Median"
+msgstr "中央値を購入"
+
+#: marketmanager/models.py:600
+msgid "Sell Median"
+msgstr "中央値を売る"
+
+#: marketmanager/models.py:610
+msgid "Item Type Statistics"
+msgstr ""
+
+#: marketmanager/models.py:611
+msgid "Item Types Statistics"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:29
+#: marketmanager/templates/marketmanager/marketbrowser.html:34
+msgid "Add Character Token"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:32
+#: marketmanager/templates/marketmanager/marketbrowser.html:39
+msgid "Add Corporate Token"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:35
+#: marketmanager/templates/marketmanager/marketbrowser.html:44
+msgid "Market Watch Status"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser.html:14
+msgid "Toggle navigation"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:5
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:5
+msgid "Buy Orders"
+msgstr "購入注文"
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:12
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:12
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:12
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:12
+msgid "Quantity"
+msgstr "数量"
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:14
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:14
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:14
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:14
+msgid "Location"
+msgstr "ロケーション"
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:15
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:15
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:15
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:15
+msgid "Expires"
+msgstr "期限切れ"
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:16
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:16
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:16
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:16
+msgid "Last Updated"
+msgstr "最終更新日"
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:20
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:21
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:20
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:21
+msgid "Owned Character Orders"
+msgstr "所有しているキャラクターオーダー"
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:21
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders.html:24
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:21
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:24
+msgid "Owned Corporation Orders"
+msgstr "所有しているコーポレーションの注文"
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:44
+#: marketmanager/templates/marketmanager/marketbrowser/item_details.html:42
+#, python-format
+msgid "5%%"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:47
+#: marketmanager/templates/marketmanager/marketbrowser/item_details.html:43
+msgid "Weighted Average"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:50
+#: marketmanager/templates/marketmanager/marketbrowser/item_details.html:44
+msgid "Median"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:58
+#: marketmanager/templates/marketmanager/marketbrowser/item_details.html:48
+msgid "Selling"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:67
+#: marketmanager/templates/marketmanager/marketbrowser/item_details.html:55
+msgid "Buying"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:5
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders.html:5
+msgid "Sell Orders"
+msgstr "注文を売る"
+
+#: marketmanager/templates/marketmanager/marketwatches-bs5.html:6
+#: marketmanager/templates/marketmanager/marketwatches.html:10
+#: marketmanager/templates/marketmanager/marketwatches/structure-bs5.html:3
+msgid "Market Watches"
+msgstr "マーケットウォッチ"
+
+#: marketmanager/templates/marketmanager/marketwatches.html:17
+#: marketmanager/templates/marketmanager/marketwatches/structure-bs5.html:10
+msgid "Missing Quantity"
+msgstr "数量が不足しています"

@@ -1,0 +1,13 @@
+{% load i18n %}
+{% load navactive %}
+
+{% if perms.blueprints.add_personal_blueprint_owner %}
+    <a class="nav-link py-0" href="{% url 'blueprints:add_personal_blueprint_owner' %}">
+        <span class="btn btn-success">{% translate "Add My Blueprints" %}</span>
+    </a>
+{% endif %}
+{% if perms.blueprints.add_corporate_blueprint_owner %}
+    <a class="nav-link py-0" href="{% url 'blueprints:add_corporate_blueprint_owner' %}">
+       <span class="btn btn-success">{% translate "Add Corporation Blueprints" %}</span>
+    </a>
+{% endif %}

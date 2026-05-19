@@ -1,0 +1,8 @@
+{% load i18n %}
+{% load navactive %}
+
+{% include "aa_forum/partials/menu/menu-user.html" %}
+
+{% if perms.aa_forum.manage_forum %}
+    {% include "aa_forum/partials/menu/menu-admin.html" %}
+{% endif %}

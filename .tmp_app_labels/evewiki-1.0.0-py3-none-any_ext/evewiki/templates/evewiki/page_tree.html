@@ -1,0 +1,21 @@
+<li class='{% if request.path == "/evewiki/"|add:node.path %} selected {% endif %}'>
+    <a href="/evewiki/{{ node.path }}">
+        {%if node.children|length > 0 %}
+            <span class="expand-icon">
+                <i class="fa-solid fa-caret-right fa-custom-width"></i>
+            </span>
+        {% else %}
+            <span class="tree-placeholder">
+
+            </span>
+        {% endif %}
+        {{ node.title }}
+    </a>
+    {% if node.children and node.depth < settings.hierarchy_max_display_depth %}
+        <ul>
+            {% for child in node.children %}
+                {% include "evewiki/page_tree.html" with node=child %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

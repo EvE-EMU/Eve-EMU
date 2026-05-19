@@ -1,0 +1,186 @@
+{% extends "standing_fleet_tracker/base_page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block sft_title %}{% trans "Fleet" %} {{ report.session.fleet_id }}{% endblock %}
+
+{% block sft_body %}
+<h1>
+  {% trans "Fleet session" %} {{ report.session.fleet_id }}
+  <span class="text-muted fs-5">— {{ character.character_name }}</span>
+</h1>
+<p>
+  <a href="{% url 'standing_fleet_tracker:character_detail' character_id=character.pk %}">{% trans "Back to character" %}</a>
+  ·
+  {% if report.session.is_standing_fleet %}
+    <span class="badge bg-success">{% trans "Standing fleet" %}</span>
+  {% else %}
+    <span class="badge bg-secondary">{% trans "Fleet" %}</span>
+  {% endif %}
+  · {{ report.session.started_at }} — {{ report.session.ended_at|default:_("active") }}
+</p>
+
+<h2 class="h4 mt-4">{% trans "Systems visited" %}</h2>
+<p class="text-muted small">{% trans "Distinct solar systems from location polls during this fleet." %}</p>
+<table class="table table-sm table-striped">
+  <thead>
+    <tr>
+      <th>{% trans "System" %}</th>
+      <th>{% trans "First seen" %}</th>
+      <th>{% trans "Last seen" %}</th>
+      <th>{% trans "Polls" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in report.systems %}
+    <tr>
+      <td>{{ row.system_name }} <span class="text-muted small">({{ row.solar_system_id }})</span></td>
+      <td>{{ row.first_seen }}</td>
+      <td>{{ row.last_seen }}</td>
+      <td>{{ row.sample_count }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">{% trans "No location samples for this session yet." %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="h4 mt-4">{% trans "Ships flown" %}</h2>
+<p class="text-muted small">{% trans "View fit uses saved snapshots from this fleet (90-day retention). Use Live only to force a fresh ESI pull." %}</p>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>{% trans "Hull type" %}</th>
+      <th>{% trans "Ship name" %}</th>
+      <th>{% trans "From" %}</th>
+      <th>{% trans "To" %}</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in report.ships %}
+    <tr>
+      <td>{{ row.ship_type_name }}</td>
+      <td>{{ row.ship_name|default:"—" }}</td>
+      <td>{{ row.first_seen }}</td>
+      <td>{{ row.last_seen }}</td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-primary sft-view-fit"
+          data-fit-url="{% url 'standing_fleet_tracker:ship_fit_json' ship_type_id=row.ship_type_id %}?character_id={{ character.character_id }}&session_id={{ report.session.pk }}{% if row.ship_name %}&ship_name={{ row.ship_name|urlencode }}{% endif %}&first_seen={{ row.first_seen|date:'c' }}&last_seen={{ row.last_seen|date:'c' }}{% if row.latest_snapshot_id %}&snapshot_id={{ row.latest_snapshot_id }}{% endif %}"
+          data-ship-label="{{ row.ship_name|default:row.ship_type_name }}">
+          {% trans "View fit" %}
+        </button>
+        <a class="btn btn-sm btn-link" href="{% url 'standing_fleet_tracker:ship_fit_json' ship_type_id=row.ship_type_id %}?character_id={{ character.character_id }}&live=1" target="_blank" rel="noopener">{% trans "Live ESI" %}</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">{% trans "No ship changes recorded yet." %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="h4 mt-4">{% trans "Fit snapshots" %}</h2>
+<p class="text-muted small">{% trans "Saved fitted-module snapshots during this fleet. Compare WH ROLLR (or any named ship) between two times." %}</p>
+<table class="table table-sm table-striped">
+  <thead>
+    <tr>
+      <th>{% trans "When" %}</th>
+      <th>{% trans "Ship name" %}</th>
+      <th>{% trans "Hull" %}</th>
+      <th>{% trans "Standing?" %}</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in report.snapshot_rows %}
+    <tr>
+      <td>{{ row.snapshot.recorded_at }}</td>
+      <td>{{ row.snapshot.ship_name|default:"—" }}</td>
+      <td>{{ row.ship_type_name }}</td>
+      <td>{% if row.snapshot.in_standing_fleet %}✓{% else %}—{% endif %}</td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-primary sft-view-fit"
+          data-fit-url="{% url 'standing_fleet_tracker:ship_fit_json' ship_type_id=row.snapshot.ship_type_id %}?character_id={{ character.character_id }}&snapshot_id={{ row.snapshot.pk }}"
+          data-ship-label="{{ row.snapshot.ship_name }}">
+          {% trans "View snapshot" %}
+        </button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">{% trans "No fit snapshots yet — snapshots are taken each poll while in fleet (requires assets scope)." %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if report.snapshot_rows|length >= 2 %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h3 class="h6">{% trans "Compare two snapshots" %}</h3>
+    <p class="small text-muted mb-2">{% trans "Pick two points in time (e.g. WH ROLLR before and after a refit)." %}</p>
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label" for="sft-snap-a">{% trans "Earlier" %}</label>
+        <select class="form-select" id="sft-snap-a">
+          {% for row in report.snapshot_rows %}
+          <option value="{{ row.snapshot.pk }}" data-ship-type="{{ row.snapshot.ship_type_id }}" data-label="{{ row.snapshot.ship_name|default:row.ship_type_name }} @ {{ row.snapshot.recorded_at }}">
+            {{ row.snapshot.recorded_at }} — {{ row.snapshot.ship_name|default:row.ship_type_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label" for="sft-snap-b">{% trans "Later" %}</label>
+        <select class="form-select" id="sft-snap-b">
+          {% for row in report.snapshot_rows %}
+          <option value="{{ row.snapshot.pk }}" data-ship-type="{{ row.snapshot.ship_type_id }}" data-label="{{ row.snapshot.ship_name|default:row.ship_type_name }} @ {{ row.snapshot.recorded_at }}"{% if forloop.last %} selected{% endif %}>
+            {{ row.snapshot.recorded_at }} — {{ row.snapshot.ship_name|default:row.ship_type_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-1">
+        <button type="button" class="btn btn-primary btn-sm sft-compare-snap" data-slot="a">{% trans "View A" %}</button>
+        <button type="button" class="btn btn-primary btn-sm sft-compare-snap" data-slot="b">{% trans "View B" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  const base = "{% url 'standing_fleet_tracker:ship_fit_json' ship_type_id=0 %}".replace("/0/", "/");
+  const charId = {{ character.character_id }};
+  document.querySelectorAll('.sft-compare-snap').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const slot = btn.getAttribute('data-slot');
+      const sel = document.getElementById(slot === 'b' ? 'sft-snap-b' : 'sft-snap-a');
+      const opt = sel.options[sel.selectedIndex];
+      const snapId = opt.value;
+      const shipType = opt.getAttribute('data-ship-type');
+      const label = opt.getAttribute('data-label') || '';
+      const fitBtn = document.createElement('button');
+      fitBtn.className = 'btn btn-sm btn-outline-primary sft-view-fit d-none';
+      fitBtn.setAttribute('data-fit-url', base + shipType + '/?character_id=' + charId + '&snapshot_id=' + snapId);
+      fitBtn.setAttribute('data-ship-label', label);
+      document.body.appendChild(fitBtn);
+      fitBtn.click();
+      fitBtn.remove();
+    });
+  });
+})();
+</script>
+{% endif %}
+
+{% endblock %}
+
+{% block sft_fit_modal %}
+{% include "standing_fleet_tracker/partials/ship_fit_modal.html" %}
+{% endblock %}
+
+{% block sft_fit_css %}
+{% include "fittings/bundles/view-fit-css.html" %}
+<link rel="stylesheet" href="{% static 'standing_fleet_tracker/css/sft-fit-modal.css' %}">
+{% endblock %}
+
+{% block sft_fit_js %}
+{% include "standing_fleet_tracker/partials/ship_fit_script.html" %}
+{% endblock %}

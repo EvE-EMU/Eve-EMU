@@ -1,0 +1,38 @@
+{% load i18n %}
+
+<div class="card">
+    <div class="card-header">{% trans "Legend & Filters" %}</div>
+    <div class="card-body">
+        <div class="legend">
+            <span class="event show-all">{% trans "Show all" %}</span>
+            <span class="event external">External NPSI</span>
+            <span class="event ingame-event">{% trans "Ingame" %}</span>
+            {% for event in visibility %}
+                <style>.{{ event.get_visibility_class }}:before {border-color: transparent {{ event.color }} transparent transparent;border-style: solid;}</style>
+                <span class="event {{ event.get_visibility_class }}">{{ event.name }}</span>
+            {% endfor %}
+            {% if moonmining_active %}
+                <span class="event event-moonmining">{% trans "Moon Mining" %}</span>
+            {% endif %}
+            {% if structuretimers_active %}
+                <span class="event event-structuretimer">{% trans "Timers" %}</span>
+            {% endif %}
+            {% for event in category %}
+                <span class="event {{ event.get_category_class }}">{{ event.name }}</span>
+            {% endfor %}
+        </div>
+        {% trans "Current Eve Time:" %} <strong class="label label-info text-left" id="current-time"></strong>
+        <br>
+        {% if user_settings.use_local_times %}
+            {% trans "Displaying times in:" %} <strong class="label label-info text-left">{% trans "Local Time" %}</strong>
+        {% else %}
+            {% trans "Displaying times in:" %} <strong class="label label-info text-left">{% trans "EVE Time" %}</strong>
+        {% endif %}
+        <br>
+        {% if OPCALENDAR_DISPLAY_MOONMINING_ARRIVAL_TIME %}
+            {% trans "Moon times shown:" %} <strong class="label label-info text-left">{% trans "Arrival Time" %}</strong>
+        {% else %}
+            {% trans "Moon times shown:" %} <strong class="label label-info text-left">{% trans "Fracture Time" %}</strong>
+        {% endif %}
+    </div>
+</div>

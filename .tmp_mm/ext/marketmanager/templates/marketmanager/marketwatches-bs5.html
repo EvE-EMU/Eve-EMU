@@ -1,0 +1,50 @@
+{% extends "marketmanager/base-bs5.html" %}
+{% load i18n %}
+{% load humanize %}
+{% load static %}
+{% block page_title %}
+    {% translate "Market Watches" %}
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    {% translate "Market Watches" %}
+{% endblock header_nav_brand %}
+
+{% block header_nav_collapse_left %}
+    {% comment %} Empty this block out {% endcomment %}
+{% endblock header_nav_collapse_left %}
+
+{% block content %}
+    {% comment %} for structure in structures, return the watches {% endcomment %}
+
+    <table class="table table-hover" id="table-market-watches">
+        <thead>
+            <tr>
+                <th class="text-left">{% translate "EVE Type" %}</th>
+                <th class="text-left">{% translate "Missing Quantity" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for watchconfig in watchconfigs %}
+                <tr>
+                    <td>{{ watchconfig.item_type.name }}</td>
+                    <td>{{ watchconfig.missing_volume }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock content %}
+
+{% block extra_script %}
+    $(document).ready( function () {
+    $('#table-market-watches').DataTable({
+    lengthMenu: [
+    [10, 25, 50, 100, -1],
+    [10, 25, 50, 100, 'All'],
+    ],
+    "stateSave": true,
+    "stateDuration": 0
+    });
+    } );
+{% endblock extra_script %}

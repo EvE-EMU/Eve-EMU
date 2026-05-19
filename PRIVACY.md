@@ -14,6 +14,18 @@ We build and maintain **localized datasets** derived from **EVE Online**—inclu
 
 ---
 
+## Corp-Level Data Audits (placeholder)
+
+EvE-EMU is evolving toward **coalition / corporation operational tooling** (for example HR or security workflows that compare Discord membership with in-game or auth records). **Placeholder policy text:** when your organization runs audits, document **who may access audit outputs**, **what sources** (Discord, Alliance Auth, ESI, internal spreadsheets) are consulted, **how long** artifacts are retained, and how members may **appeal** or correct records. Operators remain responsible for lawful basis and notices under GDPR or other regimes where they apply. Replace this section with your deployment-specific policy before production use.
+
+---
+
+## ESI Scoping (placeholder)
+
+Features that call **EVE Single Sign-On / ESI** must use **minimal scopes** for the task (for example industry ledger pulls vs character portrait display). **Placeholder:** publish a table per deployment listing each feature, required scopes, token storage location (`core/` vs Alliance Auth), retention, and revocation steps. Users should be able to understand **why** each scope is requested. Keep this aligned with CCP’s **EVE Developer License Agreement** and scope documentation on [developers.eveonline.com](https://developers.eveonline.com/).
+
+---
+
 ## What we process and why
 
 ### Game and emulation datasets

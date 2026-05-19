@@ -1,0 +1,77 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load i18n %}
+{% load aa_i18n %}
+
+{% block page_title %}
+    {% translate "Fleet Finder" %}
+{% endblock %}
+
+{% block header_nav_brand %}
+    {% translate "Fleet Finder" %}
+{% endblock %}
+
+{% block header_nav_collapse_left %}
+    {% include "fleetfinder/partials/header/header-nav-left.html" %}
+{% endblock %}
+
+
+{% block header_nav_collapse_right %}
+    {% include "fleetfinder/partials/header/header-nav-right.html" %}
+{% endblock %}
+
+{% block content %}
+    <div class="aa-fleetfinder">
+        <div class="aa-fleetfinder-body">
+            {% get_datatables_language_static LANGUAGE_CODE as DT_LANG_PATH %}
+
+            <script>
+                const aaFleetFinderSettings = {
+                    dataTables: {
+                        languageUrl: "{{ DT_LANG_PATH }}",
+                        datetimeFormat: 'YYYY-MM-DD, HH:mm',
+                        layout: { // see https://datatables.net/reference/option/layout
+                            topStart: 'pageLength',
+                            topEnd: 'search',
+                            bottomStart: 'info',
+                            bottomEnd: 'paging'
+                        },
+                        ordering: { // https://datatables.net/reference/option/ordering
+                            handler: true, // Enable ordering by clicking on column headers
+                            indicators: false, // Disable ordering indicators on column headers so ColumnControl can manage them
+                        },
+                        columnControl: [
+                            {
+                                target: 0,
+                                content: [
+                                    'order',
+                                    // [
+                                    //     'orderAsc',
+                                    //     'orderDesc',
+                                    //     'spacer',
+                                    //     'orderAddAsc',
+                                    //     'orderAddDesc',
+                                    //     'spacer',
+                                    //     'orderRemove'
+                                    // ]
+                                ]
+                            },
+                            {
+                                target: 1,
+                                content: [
+                                    'search'
+                                ]
+                            }
+                        ]
+                    }
+                }
+            </script>
+
+            {% block aa_fleetfinder_body %}{% endblock %}
+        </div>
+
+        <div class="aa-fleetfinder-footer mt-3 pt-3 border-top border-light">
+            {% include "fleetfinder/partials/footer/app-translation-footer.html" %}
+        </div>
+    </div>
+{% endblock %}

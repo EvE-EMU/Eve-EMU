@@ -1,0 +1,50 @@
+{% load i18n %}
+
+<form class="form-signin" role="form" action="{% url 'fleetfinder:save_fleet' %}" method="POST">
+    {% csrf_token %}
+
+    <input type="hidden" name="character_id" id="character_id" value="{{ character_id }}">
+    <input type="hidden" name="origin" id="origin" value="{{ origin }}">
+
+    <div class="mb-3">
+        <label for="name" class="control-label">{% translate "Fleet name" %}</label>
+        <input type="text" class="form-control" name="name" id="name" {% if name %}value="{{ name }}"{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <label for="groups" style="margin-bottom: 0;">{% translate "Select groups" %}</label>
+
+        <select name="groups" id="groups" multiple>
+            {% for group in auth_groups %}
+                {% if groups %}
+                    {% if group in groups %}
+                        <option value="{{ group.group_id }}" selected>{{ group }}</option>
+                    {% else %}
+                        <option value="{{ group.group_id }}">{{ group }}</option>
+                    {% endif %}
+                {% else %}
+                    <option value="{{ group.group_id }}">{{ group }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+
+        <p class="help-block text-muted small">
+            {% translate "Only selected groups will have access to the fleet. If no groups are selected the fleet will be available to all who have access to this module." %}
+        </p>
+    </div>
+
+{#    <div class="mb-3">#}
+{#        <label for="motd" class="control-label">{% translate "Fleet MOTD" %}</label>#}
+{##}
+{#        <div>#}
+{#            <textarea class="form-control" name="motd" id="motd" rows="10">{% if motd %}{{ motd }}{% endif %}</textarea>#}
+{#        </div>#}
+{#    </div>#}
+
+    <div class="mb-3">
+        <input type="checkbox" style="margin-right: 5px;" class="form-check-input" name="free_move" id="free_move" {% if fleet.is_free_move %}checked{% endif %}>
+        <label for="free_move" class="form-check-label">{% translate "Enable free move" %}</label>
+    </div>
+
+    <button class="btn btn-primary btn-block" type="submit">{% translate "Submit" %}</button>
+</form>

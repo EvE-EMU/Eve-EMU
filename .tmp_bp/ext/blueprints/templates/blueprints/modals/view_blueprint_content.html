@@ -1,0 +1,123 @@
+{% load i18n %}
+{% load humanize %}
+
+<div class="modal-content">
+    <div class="modal-header">
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="modalTitle">{% translate "View Blueprint" %}</h5>
+    </div>
+
+    <div class="modal-body">
+        <div class="row description-row">
+            <h4 id="blueprint-title">{{ blueprint.icn }} {{ blueprint.nme }}</h4>
+        </div>
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" aria-controls="tab-summary" role="tab" data-bs-toggle="tab" data-bs-target="#tab-summary">
+                    {% translate "Summary" %}
+                </button>
+            </li>
+            {% if blueprint.job %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" aria-controls="tab-current-job" role="tab" data-bs-toggle="tab" data-bs-target="#tab-current-job">
+                    {% translate "Current Job" %}
+                </button>
+            </li>
+            {% endif %}
+            {% if perms.blueprints.request_blueprints and blueprint.rns == "" and not blueprint.frm %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" aria-controls="tab-create-request" role="tab" data-bs-toggle="tab" data-bs-target="#tab-create-request">
+                    {% translate "Create Request" %}
+                </button>
+            </li>
+            {% endif %}
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane card active border-top-0 rounded-top-0" id="tab-summary">
+                <div class="card-body modal-tab">
+                        <div class="row description-row">
+                            <div class="col-sm-4">{% translate "Location name" %}</div>
+                            <div class='col-sm-8'>{{ blueprint.loc }}</div>
+                        </div>
+                        <div class="row description-row">
+                            <div class="col-sm-4">{% translate "Location detail" %}</div>
+                            <div class='col-sm-8'>{{ blueprint.lfg }}</div>
+                        </div>
+                        <div class="row description-row">
+                            <div class="col-sm-4">{% translate "Material Efficiency" %}</div>
+                            <div class='col-sm-8'>{{ blueprint.me }}</div>
+                        </div>
+                        <div class="row description-row">
+                            <div class="col-sm-4">{% translate "Time Efficiency" %}</div>
+                            <div class='col-sm-8'>{{ blueprint.te }}</div>
+                        </div>
+                        {% if blueprint.rns and blueprint.rns != "" %}
+                            <div class="row description-row">
+                                <div class="col-sm-4">{% translate "Runs Remaining" %}</div>
+                                <div class='col-sm-8'>{{ blueprint.rns|intcomma }}</div>
+                            </div>
+                        {% endif %}
+                </div>
+            </div>
+            {% if blueprint.job %}
+            <div class="tab-pane card border-top-0 rounded-top-0" id="tab-current-job">
+                <div class="card-body modal-tab">
+                    <div class="row description-row">
+                        <div class="col-sm-4">{% translate "Activity" %}</div>
+                        <div class='col-sm-8'>{{ blueprint.job.activity }}</div>
+                    </div>
+                    <div class="row description-row">
+                        <div class="col-sm-4">{% translate "Installer" %}</div>
+                        <div class='col-sm-8'>{{ blueprint.job.installer }}</div>
+                    </div>
+                    <div class="row description-row">
+                        <div class="col-sm-4">{% translate "Runs" %}</div>
+                        <div class='col-sm-8'>{{ blueprint.job.runs }}</div>
+                    </div>
+                    <div class="row description-row">
+                        <div class="col-sm-4">{% translate "Start Date" %}</div>
+                        <div class='col-sm-8'>{{ blueprint.job.start_date }}</div>
+                    </div>
+                    <div class="row description-row">
+                        <div class="col-sm-4">{% translate "End Date" %}</div>
+                        <div class='col-sm-8'>{{ blueprint.job.end_date }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if perms.blueprints.request_blueprints and blueprint.rns == "" and not blueprint.frm %}
+
+            <div class="tab-pane card border-top-0 rounded-top-0" id="tab-create-request">
+                <div class="card-body modal-tab">
+                    <form action="{% url 'blueprints:create_request' %}" method="POST" class="form-horizontal">
+
+                        <input type=hidden name="pk" value="{{ blueprint.pk }}">
+
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="runs" class="col-sm-4">Runs</label>
+                            <div class="col-sm-8">
+                                <input type="number" class="form-control" id="runs" name="runs">
+                                <p class="help-block">Leave blank for maximum runs.</p>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-12">
+                                <div class="pull-right">
+                                    <button type="submit" class="btn btn-success">
+                                        {% translate 'Create Request' %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+    </div>
+</div>

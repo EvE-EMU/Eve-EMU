@@ -1,0 +1,156 @@
+{% load i18n %}
+<script>
+(function () {
+  function hideAll(els) {
+    els.loading.classList.add('d-none');
+    els.meta.classList.add('d-none');
+    els.visual.classList.add('d-none');
+    els.visual.innerHTML = '';
+    els.eftWrap.classList.add('d-none');
+    els.eft.classList.add('d-none');
+    els.missing.classList.add('d-none');
+  }
+
+  function showVisual(visualEl, html) {
+    if (!html || !html.trim()) return;
+    visualEl.innerHTML = html;
+    visualEl.classList.remove('d-none');
+    try {
+      if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        visualEl.querySelectorAll('[data-bs-tooltip]').forEach(function (el) {
+          bootstrap.Tooltip.getOrCreateInstance(el);
+        });
+      }
+    } catch (e) { /* tooltips optional */ }
+  }
+
+  function closeModal(modalEl) {
+    modalEl.classList.remove('show');
+    modalEl.style.display = 'none';
+    modalEl.setAttribute('aria-hidden', 'true');
+    modalEl.removeAttribute('aria-modal');
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    document.querySelectorAll('.sft-fit-backdrop').forEach(function (el) {
+      el.remove();
+    });
+  }
+
+  function openModal(modalEl) {
+    const backdrop = document.createElement("div");
+    backdrop.className = 'modal-backdrop fade show sft-fit-backdrop';
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+    modalEl.style.display = 'block';
+    modalEl.classList.add('show');
+    modalEl.removeAttribute('aria-hidden');
+    modalEl.setAttribute('aria-modal', 'true');
+  }
+
+  function metaForSource(data) {
+    if (data.source === 'snapshot') {
+      const when = data.recorded_at ? (' @ ' + data.recorded_at.replace('T', ' ').slice(0, 16)) : '';
+      return '{% trans "Saved fit snapshot" %}' + when;
+    }
+    if (data.source === 'esi_live') {
+      return '{% trans "Live in-space fit from ESI (ship + fitted modules):" %} ' + (data.fitting_name || '');
+    }
+    if (data.source === 'doctrine') {
+      return '{% trans "Doctrine fit from Fittings app:" %} ' + (data.fitting_name || '');
+    }
+    return '';
+  }
+
+  function loadFit(btn, els) {
+    const fitUrl = btn.getAttribute('data-fit-url');
+    const shipLabel = btn.getAttribute('data-ship-label') || '';
+    if (!fitUrl) return;
+
+    hideAll(els);
+    els.loading.classList.remove('d-none');
+    els.title.textContent = shipLabel || '{% trans "Ship fit" %}';
+
+    fetch(fitUrl, {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const ct = r.headers.get('Content-Type') || '';
+        if (ct.indexOf('application/json') === -1) throw new Error('Not JSON');
+        return r.json();
+      })
+      .then(function (data) {
+        hideAll(els);
+        const hull = data.ship_type_name || shipLabel;
+        els.title.textContent = hull + ' — ' + (data.fitting_name || '{% trans "No fit" %}');
+        els.everef.href = data.everef_url || '#';
+        if (data.has_fitting && data.eft) {
+          const meta = metaForSource(data);
+          if (meta) {
+            els.meta.textContent = meta;
+            els.meta.classList.remove('d-none');
+          }
+          if (data.message) {
+            els.missing.textContent = data.message;
+            els.missing.classList.remove('d-none');
+          }
+          showVisual(els.visual, data.visual_html || '');
+          els.eft.textContent = data.eft;
+          els.eftWrap.classList.remove('d-none');
+          els.eft.classList.remove('d-none');
+        } else {
+          els.missing.textContent = data.message ||
+            '{% trans "No live modules found and no doctrine fit in the Fittings app." %}';
+          els.missing.classList.remove('d-none');
+        }
+      })
+      .catch(function () {
+        hideAll(els);
+        els.missing.textContent = '{% trans "Could not load fit data." %}';
+        els.missing.classList.remove('d-none');
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('sftFitModal');
+    if (!modalEl) return;
+
+    const els = {
+      loading: document.getElementById('sft-fit-loading'),
+      meta: document.getElementById('sft-fit-meta'),
+      visual: document.getElementById('sft-fit-visual'),
+      eftWrap: document.getElementById('sft-fit-eft-wrap'),
+      eft: document.getElementById('sft-fit-eft'),
+      missing: document.getElementById('sft-fit-missing'),
+      everef: document.getElementById('sft-fit-everef'),
+      title: document.getElementById('sftFitModalLabel'),
+    };
+
+    modalEl.querySelectorAll('.sft-fit-close').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        closeModal(modalEl);
+      });
+    });
+
+    modalEl.addEventListener('click', function (ev) {
+      if (ev.target === modalEl) closeModal(modalEl);
+    });
+
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && modalEl.classList.contains('show')) {
+        closeModal(modalEl);
+      }
+    });
+
+    document.addEventListener('click', function (ev) {
+      const btn = ev.target.closest('.sft-view-fit');
+      if (!btn) return;
+      ev.preventDefault();
+      openModal(modalEl);
+      loadFit(btn, els);
+    });
+  });
+})();
+</script>

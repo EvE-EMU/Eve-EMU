@@ -8,6 +8,18 @@ For how we handle data, see **[PRIVACY.md](PRIVACY.md)**.
 
 ---
 
+## Corp-Level Data Audits (placeholder)
+
+Where maintainers or operators provide **audit-style tools** (for example Discord HR snapshots or ESI-backed comparisons), those tools are provided **“as is”** for legitimate in-game organization administration. Operators must comply with applicable law, Discord’s Terms, CCP’s policies, and member expectations. **Placeholder:** your corporation or alliance should publish its own rules for when audits run, who authorizes them, and how results may be used. Nothing here creates a professional services or employment relationship.
+
+---
+
+## ESI Scoping (placeholder)
+
+Use of ESI is subject to CCP’s developer terms. Deployments should disclose **which scopes** each feature consumes and avoid requesting broad access without a matching feature. See the matching placeholder in **[PRIVACY.md](PRIVACY.md)**.
+
+---
+
 ## Legal information
 
 ### EVE Online and CCP hf.

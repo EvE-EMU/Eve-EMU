@@ -1,0 +1,27 @@
+.sft-fit-visual-wrap {
+  overflow-x: auto;
+  text-align: center;
+}
+
+.sft-fit-visual-wrap .card-body .row > .col-md-6:last-child {
+  display: none;
+}
+
+.sft-fit-visual-wrap .card-body .row > .col-md-6:first-child {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+.sft-fit-visual-wrap #fitting-panel {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#sftFitModal .modal-dialog {
+  max-width: 920px;
+}
+
+#sft-fit-eft-wrap {
+  max-height: 14rem;
+  overflow: auto;
+}

@@ -1,0 +1,67 @@
+.public-badge {
+	color:#ffc107;
+}
+.wiki_menu {
+	white-space: nowrap;
+	overflow-x: scroll;
+}
+.wiki-summary {
+	white-space: nowrap;
+	overflow-x: hidden;
+}
+.new-page {
+	position:absolute;
+	right:var(--bs-card-cap-padding-x);
+}
+.wiki_menu a, .wiki-summary a {
+	text-decoration: none;
+}
+.wiki_menu ul, .wiki-summary ul {
+	list-style-type: none;
+	padding-left: 0;
+}
+.wiki-summary ul {
+	padding-left: 1rem;
+}
+.wiki-summary > ul {
+	padding-left: 0rem;
+}
+.wiki_menu li {
+	display:block;
+	padding: .25rem 0 0 .25rem;
+}
+.wiki_menu .tree > li {
+	padding: .25rem 0 0 0;
+}
+.wiki_menu li a, .wiki-summary li a {
+	display:block;
+}
+
+ul.tree {display:block;}
+ul.tree ul {display:none;padding:0 0 0 1rem;}
+ul.tree li { display:block;line-height:1.5em;color:var(--text);}
+ul.tree li > a {display:block;background-color:var(--background);border:1px solid transparent;}
+ul.tree li > a:hover {cursor:pointer;background-color:var(--surface);}
+ul.tree li > a span.expand-icon {transform:rotate(0deg);float:left;padding:0;}
+ul.tree li.expanded > a span.expand-icon {transform:rotate(90deg);}
+ul.tree li.selected > a {color:var(--primary);background-color:var(--surface);}
+
+#the_output h1::after {
+	content: "";
+	display: block;
+	border-top: 1px solid currentColor;
+	opacity: 0.25;
+}
+
+#the_output h1 { font-size: 2.2em;margin-top:.75rem;}
+#the_output h2 { font-size: 1.8em; }
+#the_output h3 { font-size: 1.4em; }
+#the_output h4 { font-size: 1.2em; }
+#the_output h5 { font-size: 1em; }
+#the_output h6 { font-size: 0.85em; }
+
+.fa-custom-width, .tree-placeholder {
+	display: inline-block;
+	width: 1.5rem;
+	text-align: center;
+}

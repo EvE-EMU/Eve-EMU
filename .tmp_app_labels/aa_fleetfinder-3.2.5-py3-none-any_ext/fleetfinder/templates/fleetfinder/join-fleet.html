@@ -1,0 +1,68 @@
+{% extends "fleetfinder/base.html" %}
+
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Join fleet" as page_title %}
+    {{ page_title|title }} » {% translate "Fleet Finder" %}
+{% endblock %}
+
+{% block aa_fleetfinder_body %}
+    <div class="card card-primary border-0">
+        <div class="card-header">
+            <div class="card-title mb-0">
+                {% translate "Fleet invitation" %}
+            </div>
+        </div>
+
+        <div class="card-body container">
+            <div class="row">
+                <div class="align-self-center">
+                    <p>
+                        {% translate "Please ensure you don't have any CSPA charges set on your characters, as this will prevent fleet invites from being sent." %}
+                        <br>
+                        {% translate "You can select multiple characters to invite them all at once." %}
+                    </p>
+
+                    <p>
+                        {% translate "The selected characters will receive a fleet invite in-game, which they can accept to join the fleet." %}
+                    </p>
+
+                    <form class="form-signin" role="form" action="" method="POST">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="character_ids" class="mb-1">{% translate "Please select the characters you want to invite:" %}</label>
+
+                            <select class="multiselect-ui" multiple="multiple" name="character_ids" id="character_ids">
+                                {% for character in characters %}
+                                    <option value="{{ character.character_id }}" >{{ character.character_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary btn-block" style="margin-top: 10px;" type="submit">
+                            {% translate "Send fleet invites" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+    {% include "fleetfinder/bundles/css/slim-select-css.html" %}
+    {% include "fleetfinder/bundles/css/fleetfinder-css.html" %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include "fleetfinder/bundles/js/slim-select-js.html" %}
+
+    <script>
+        new SlimSelect({
+            select: '#character_ids',
+            hideSelectedOption: true
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,337 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Author50CO <tkddlschry@gmail.com>, 2023, 2024.
+# Peter Pfeufer <info@ppfeufer.de>, 2023, 2024, 2025.
+# Mind of the Raven <okanieva@gmail.com>, 2024.
+# SiO4 <hohoit0078@gmail.com>, 2025.
+msgid ""
+msgstr ""
+"Project-Id-Version: AA Fleet Finder 2.2.1\n"
+"Report-Msgid-Bugs-To: https://github.com/ppfeufer/aa-fleetfinder/issues\n"
+"POT-Creation-Date: 2026-05-05 14:27+0200\n"
+"PO-Revision-Date: 2025-10-25 13:38+0000\n"
+"Last-Translator: Peter Pfeufer <info@ppfeufer.de>\n"
+"Language-Team: Korean <https://weblate.ppfeufer.de/projects/alliance-auth-apps/aa-fleetfinder/ko/>\n"
+"Language: ko_KR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 5.14\n"
+
+#: fleetfinder/__init__.py:10 fleetfinder/models.py:24
+#: fleetfinder/templates/fleetfinder/base.html:7
+#: fleetfinder/templates/fleetfinder/base.html:11
+#: fleetfinder/templates/fleetfinder/create-fleet.html:7
+#: fleetfinder/templates/fleetfinder/edit-fleet.html:7
+#: fleetfinder/templates/fleetfinder/fleet-details.html:7
+#: fleetfinder/templates/fleetfinder/join-fleet.html:7
+msgid "Fleet Finder"
+msgstr "함대 찾기"
+
+#: fleetfinder/models.py:28
+msgid "Can access the Fleet Finder app"
+msgstr "Fleet Finder App을 이용할 수 있음"
+
+#: fleetfinder/models.py:44
+msgid "FC is not in the registered fleet anymore or fleet is no longer available."
+msgstr "함대 지휘관이 지정된 함대에 없거나 함대 참가가 더 이상 불가능합니다."
+
+#: fleetfinder/models.py:46
+msgid "Registered fleet seems to be no longer available."
+msgstr "지정된 함대가 참가가 더 이상 불가능합니다."
+
+#: fleetfinder/models.py:47
+msgid "FC is no longer the fleet boss."
+msgstr "함대 지휘관이 더 이상 함대 소유자가 아닙니다."
+
+#: fleetfinder/models.py:48
+msgid "FC switched to another fleet."
+msgstr "함대 지휘관이 다른 함대로 바꿨습니다."
+
+#: fleetfinder/models.py:51 fleetfinder/templates/fleetfinder/dashboard.html:20
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:10
+msgid "Fleet name"
+msgstr "함대 이름"
+
+#: fleetfinder/models.py:59 fleetfinder/templates/fleetfinder/dashboard.html:19
+msgid "Fleet commander"
+msgstr "함대 지휘관"
+
+#: fleetfinder/models.py:61
+msgid "Creation date and time"
+msgstr "생성 날짜 및 시간"
+
+#: fleetfinder/models.py:62
+msgid "Fleet MOTD"
+msgstr "함대 공지 사항"
+
+#: fleetfinder/models.py:63
+msgid "Free move"
+msgstr "자유 이동"
+
+#: fleetfinder/models.py:69
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:32
+msgid "Only selected groups will have access to the fleet. If no groups are selected the fleet will be available to all who have access to this module."
+msgstr "선택한 그룹만이 함대에 참가할 수 있습니다. 선택된 그룹이 없을 경우 해당 모듈을 사용 가능한 모든 유저가 참가 가능합니다."
+
+#: fleetfinder/models.py:73
+msgid "Group restrictions"
+msgstr "그룹 제한"
+
+#: fleetfinder/models.py:81
+msgid "Last ESI error"
+msgstr "최근 ESI 오류"
+
+#: fleetfinder/models.py:85
+msgid "Last ESI error time"
+msgstr "최근 ESI 오류 시각"
+
+#: fleetfinder/models.py:88
+msgid "ESI error count"
+msgstr "ESI 오류 갯수"
+
+#: fleetfinder/templates/fleetfinder/create-fleet.html:6
+#: fleetfinder/templates/fleetfinder/create-fleet.html:14
+#: fleetfinder/templates/fleetfinder/partials/header/header-nav-right.html:4
+msgid "Create fleet"
+msgstr "함대 생성"
+
+#: fleetfinder/templates/fleetfinder/dashboard.html:10
+msgid "Fleets available to you"
+msgstr "참여 가능한 플릿"
+
+#: fleetfinder/templates/fleetfinder/dashboard.html:21
+msgid "Created at"
+msgstr "생성된 시각"
+
+#: fleetfinder/templates/fleetfinder/dashboard.html:22
+msgid "Join"
+msgstr "참가"
+
+#: fleetfinder/templates/fleetfinder/edit-fleet.html:6
+#: fleetfinder/templates/fleetfinder/edit-fleet.html:14
+#, fuzzy
+#| msgid "Edit Fleet"
+msgid "Edit fleet"
+msgstr "함대 수정"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:7
+msgid "Fleet details"
+msgstr "함대 세부 사항"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:20
+msgid "Fleet composition"
+msgstr "함대 구성"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:29
+#: fleetfinder/templates/fleetfinder/fleet-details.html:55
+msgid "Ship class"
+msgstr "함급"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:30
+msgid "Count"
+msgstr "갯수"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:45
+#, fuzzy
+#| msgid "Fleet Members"
+msgid "Fleet members"
+msgstr "함대 멤버"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:54
+msgid "Name"
+msgstr "이름"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:56
+msgid "System"
+msgstr "시스템"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:57
+msgid "Action"
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:82
+#, fuzzy
+#| msgid "Fleet Members"
+msgid "Fleet boss"
+msgstr "함대 멤버"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:83
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:9
+msgid "Kick member from fleet"
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:84
+msgid "An unknown error occurred."
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:6 fleetfinder/views.py:194
+#, fuzzy
+#| msgid "Join Fleet"
+msgid "Join fleet"
+msgstr "함대 참가"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:14
+#, fuzzy
+#| msgid "Fleet Invitation"
+msgid "Fleet invitation"
+msgstr "함대 초대"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:22
+msgid "Please ensure you don't have any CSPA charges set on your characters, as this will prevent fleet invites from being sent."
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:24
+#, fuzzy
+#| msgid "Select the characters to invite"
+msgid "You can select multiple characters to invite them all at once."
+msgstr "초대할 캐릭터를 선택하세요"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:28
+msgid "The selected characters will receive a fleet invite in-game, which they can accept to join the fleet."
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:35
+#, fuzzy
+#| msgid "Select the characters to invite"
+msgid "Please select the characters you want to invite:"
+msgstr "초대할 캐릭터를 선택하세요"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:45
+msgid "Send fleet invites"
+msgstr "함대 초대 보내기"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:12
+msgid "Close"
+msgstr "닫기"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:17
+msgid "Are you sure you want to kick this member from the fleet?"
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:26
+msgid "Error"
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:35
+msgid "Cancel"
+msgstr "취소"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:40
+msgid "Confirm"
+msgstr ""
+
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:15
+#, fuzzy
+#| msgid "Select Groups"
+msgid "Select groups"
+msgstr "그룹 선택"
+
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:46
+#, fuzzy
+#| msgid "Enable Free Move"
+msgid "Enable free move"
+msgstr "자유 이동 설정"
+
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:49
+msgid "Submit"
+msgstr "전송"
+
+#: fleetfinder/templates/fleetfinder/partials/footer/app-translation-footer.html:5
+msgid "Do you want to help translate this app into your language or improve the existing translation?"
+msgstr "이 앱을 번역하거나 기존 번역을 개선하고 싶으신가요?"
+
+#: fleetfinder/templates/fleetfinder/partials/footer/app-translation-footer.html:8
+msgid "Join our team of translators!"
+msgstr "번역가 팀에 참여하세요!"
+
+#: fleetfinder/templates/fleetfinder/partials/header/header-nav-left.html:6
+#, fuzzy
+#| msgid "Available Fleets"
+msgid "Available fleets"
+msgstr "참가 가능한 함대"
+
+#: fleetfinder/views.py:205
+#, fuzzy
+#| msgid "View Fleet Details"
+msgid "View fleet details"
+msgstr "함대 세부 내용 보기"
+
+#: fleetfinder/views.py:211
+#, fuzzy
+#| msgid "Edit Fleet Advert"
+msgid "Edit fleet advert"
+msgstr "함대 광고 수정"
+
+#: fleetfinder/views.py:256
+#, fuzzy, python-brace-format
+#| msgid "<h4>Error!</h4><p>ESI returned the following error: {esi_error_message}</p>"
+msgid "<h4>Error!</h4><p>There was an error creating the fleet: {error_detail}</p>"
+msgstr "<h4>오류!</h4><p>ESI가 다음 오류를 출력함:{esi_error_message}</p>"
+
+#: fleetfinder/views.py:296 fleetfinder/views.py:493
+msgid "<h4>Error!</h4><p>Fleet does not exist or is no longer available.</p>"
+msgstr ""
+
+#: fleetfinder/views.py:454
+#, fuzzy, python-brace-format
+#| msgid "<h4>Error!</h4><p>ESI returned the following error: {esi_error_message}</p>"
+msgid "<h4>Error!</h4><p>ESI returned the following error: {esi_error}</p>"
+msgstr "<h4>오류!</h4><p>ESI가 다음 오류를 출력함:{esi_error_message}</p>"
+
+#: fleetfinder/views.py:465
+#, python-brace-format
+msgid "<h4>Error!</h4><p>There was an error creating the fleet: {ex}</p>"
+msgstr ""
+
+#: fleetfinder/views.py:530
+#, python-brace-format
+msgid "Fleet with ID {fleet_id} does not exist."
+msgstr ""
+
+#: fleetfinder/views.py:541
+#, python-brace-format
+msgid "Error retrieving fleet composition: {ex}"
+msgstr ""
+
+#: fleetfinder/views.py:577
+msgid "Method not allowed"
+msgstr ""
+
+#: fleetfinder/views.py:588
+msgid "Member ID required"
+msgstr ""
+
+#: fleetfinder/views.py:609
+#, fuzzy
+#| msgid "Fleet Invitation"
+msgid "Fleet not found"
+msgstr "함대 초대"
+
+#: fleetfinder/views.py:614
+msgid "Invalid request data"
+msgstr ""
+
+#: fleetfinder/views.py:620
+msgid "Member not found in fleet"
+msgstr ""
+
+#: fleetfinder/views.py:629
+#, python-brace-format
+msgid "An ESI error occurred: {ex}"
+msgstr ""
+
+#, python-brace-format
+#~ msgid "Fleet Finder v{__version__}"
+#~ msgstr "함대 찾기 v{__version__}"
+
+#~ msgid "Details"
+#~ msgstr "세부 내용"
+
+#~ msgid "Edit"
+#~ msgstr "수정"
+
+#~ msgid "Toggle navigation"
+#~ msgstr "토글 메뉴"

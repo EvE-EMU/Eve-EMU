@@ -1,0 +1,223 @@
+# Patched for PostgreSQL: drop UNIQUE CONSTRAINT, not INDEX (eve-emu Docker).
+from __future__ import annotations
+
+from django.db import migrations, models
+
+from .. import migration_utils as mig_utils
+
+UNIQUE_REQUEST_FIELDS = (
+    "type_id",
+    "material_efficiency",
+    "time_efficiency",
+    "requested_by",
+    "fulfilled",
+)
+
+
+def _table_exists(schema_editor, table_name: str) -> bool:
+    with schema_editor.connection.cursor() as cursor:
+        return table_name in schema_editor.connection.introspection.table_names(cursor)
+
+
+def _dedupe_copy_requests(apps, schema_editor):
+    request_model = apps.get_model("indy_hub", "BlueprintCopyRequest")
+    request_table = request_model._meta.db_table
+    request_table_q = schema_editor.quote_name(request_table)
+    columns = [
+        request_model._meta.get_field(name).column for name in UNIQUE_REQUEST_FIELDS
+    ]
+    join_conditions = " AND ".join(
+        [
+            f"r.{schema_editor.quote_name(col)} = k.{schema_editor.quote_name(col)}"
+            for col in columns
+        ]
+    )
+    group_columns = ", ".join([schema_editor.quote_name(col) for col in columns])
+    subquery = (
+        f"(SELECT MIN(id) AS keep_id, {group_columns} "
+        f"FROM {request_table_q} GROUP BY {group_columns})"
+    )
+
+    offer_model = apps.get_model("indy_hub", "BlueprintCopyOffer")
+    offer_table = offer_model._meta.db_table
+
+    if _table_exists(schema_editor, offer_table):
+        offer_table_q = schema_editor.quote_name(offer_table)
+        delete_conflicts_sql = (
+            f"DELETE o FROM {offer_table_q} o "
+            f"JOIN {request_table_q} r ON o.request_id = r.id "
+            f"JOIN {subquery} k ON {join_conditions} "
+            f"JOIN {offer_table_q} ok "
+            f"  ON ok.request_id = k.keep_id AND ok.owner_id = o.owner_id "
+            f"WHERE o.request_id <> k.keep_id"
+        )
+        schema_editor.execute(delete_conflicts_sql)
+        update_sql = (
+            f"UPDATE {offer_table_q} o "
+            f"JOIN {request_table_q} r ON o.request_id = r.id "
+            f"JOIN {subquery} k ON {join_conditions} "
+            f"SET o.request_id = k.keep_id "
+            f"WHERE o.request_id <> k.keep_id"
+        )
+        schema_editor.execute(update_sql)
+
+    delete_sql = (
+        f"DELETE r FROM {request_table_q} r "
+        f"JOIN {subquery} k ON {join_conditions} "
+        f"WHERE r.id <> k.keep_id"
+    )
+    schema_editor.execute(delete_sql)
+
+
+def _drop_unique_together(apps, schema_editor):
+    model = apps.get_model("indy_hub", "BlueprintCopyRequest")
+    table = model._meta.db_table
+    columns = [model._meta.get_field(name).column for name in UNIQUE_REQUEST_FIELDS]
+    with schema_editor.connection.cursor() as cursor:
+        constraints = schema_editor.connection.introspection.get_constraints(
+            cursor, table
+        )
+    for name, info in constraints.items():
+        if not info.get("unique") or info.get("columns") != columns:
+            continue
+        quoted_name = schema_editor.quote_name(name)
+        if schema_editor.connection.vendor == "postgresql":
+            schema_editor.execute(
+                schema_editor.sql_delete_constraint
+                % {
+                    "table": schema_editor.quote_name(table),
+                    "name": quoted_name,
+                }
+            )
+        else:
+            sql = schema_editor.sql_delete_index
+            params = {"name": quoted_name}
+            if "%(table)s" in sql:
+                params["table"] = schema_editor.quote_name(table)
+            schema_editor.execute(sql % params)
+        break
+
+
+def _add_unique_together(apps, schema_editor):
+    _dedupe_copy_requests(apps, schema_editor)
+    model = apps.get_model("indy_hub", "BlueprintCopyRequest")
+    fields = [model._meta.get_field(name) for name in UNIQUE_REQUEST_FIELDS]
+    sql = schema_editor._create_unique_sql(model, fields)
+    if sql is not None:
+        schema_editor.execute(sql)
+
+
+def create_copy_lookup_index(apps, schema_editor):
+    mig_utils.add_index_if_missing(
+        apps,
+        schema_editor,
+        app_label="indy_hub",
+        model_name="BlueprintCopyRequest",
+        index_name="indy_copy_req_lookup",
+        fields=(
+            "type_id",
+            "material_efficiency",
+            "time_efficiency",
+            "fulfilled",
+        ),
+    )
+
+
+def drop_copy_lookup_index(apps, schema_editor):
+    mig_utils.remove_index_if_exists(
+        apps,
+        schema_editor,
+        app_label="indy_hub",
+        model_name="BlueprintCopyRequest",
+        index_name="indy_copy_req_lookup",
+        fields=(
+            "type_id",
+            "material_efficiency",
+            "time_efficiency",
+            "fulfilled",
+        ),
+    )
+
+
+def create_user_state_index(apps, schema_editor):
+    mig_utils.add_index_if_missing(
+        apps,
+        schema_editor,
+        app_label="indy_hub",
+        model_name="BlueprintCopyRequest",
+        index_name="indy_copy_req_user_state",
+        fields=("requested_by", "fulfilled"),
+    )
+
+
+def drop_user_state_index(apps, schema_editor):
+    mig_utils.remove_index_if_exists(
+        apps,
+        schema_editor,
+        app_label="indy_hub",
+        model_name="BlueprintCopyRequest",
+        index_name="indy_copy_req_user_state",
+        fields=("requested_by", "fulfilled"),
+    )
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("indy_hub", "0025_populate_location_names_on_migrate"),
+    ]
+
+    operations = [
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    _drop_unique_together,
+                    reverse_code=_add_unique_together,
+                )
+            ],
+            state_operations=[
+                migrations.AlterUniqueTogether(
+                    name="blueprintcopyrequest",
+                    unique_together=set(),
+                )
+            ],
+        ),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddIndex(
+                    model_name="blueprintcopyrequest",
+                    index=models.Index(
+                        fields=(
+                            "type_id",
+                            "material_efficiency",
+                            "time_efficiency",
+                            "fulfilled",
+                        ),
+                        name="indy_copy_req_lookup",
+                    ),
+                )
+            ],
+            database_operations=[
+                migrations.RunPython(
+                    create_copy_lookup_index,
+                    reverse_code=drop_copy_lookup_index,
+                )
+            ],
+        ),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddIndex(
+                    model_name="blueprintcopyrequest",
+                    index=models.Index(
+                        fields=("requested_by", "fulfilled"),
+                        name="indy_copy_req_user_state",
+                    ),
+                )
+            ],
+            database_operations=[
+                migrations.RunPython(
+                    create_user_state_index,
+                    reverse_code=drop_user_state_index,
+                )
+            ],
+        ),
+    ]

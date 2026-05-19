@@ -1,0 +1,42 @@
+{% load django_bootstrap5 %}
+{% load i18n %}
+
+<div>
+    <p>
+        <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNewCategoryForm" aria-expanded="false" aria-controls="collapseNewCategoryForm">
+            {% translate "Create new category" %}
+        </button>
+    </p>
+</div>
+
+<div class="collapse" id="collapseNewCategoryForm">
+    <div class="card card-default">
+        <div class="card-header">
+            <div class="card-title mb-0">
+                {% translate "New category" %}
+            </div>
+        </div>
+
+        <div class="card-body">
+            <p>
+                {% translate "New categories will be added at the bottom of the category list. You can move them via drag and drop to a position of your liking." %}
+            </p>
+
+            <form id="aa-forum-form-admin-new-category" autocomplete="off" action="{% url 'aa_forum:admin_category_create' %}" method="post">
+                <fieldset>
+                    {% csrf_token %}
+
+                    {% bootstrap_form new_category_form %}
+
+                    {% include "aa_forum/partials/form/required-field-hint.html" %}
+
+                    <div class="form-group aa-forum-form-group aa-forum-form-new-category float-end clearfix">
+                        <button class="btn btn-primary btn-sm" type="submit">
+                            {% translate "Create category" %}
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+    </div>
+</div>

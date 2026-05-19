@@ -1,0 +1,47 @@
+{% extends "standing_fleet_tracker/base_page.html" %}
+{% load i18n %}
+
+{% block sft_title %}{{ profile_user.username }}{% endblock %}
+
+{% block sft_body %}
+<h1>{{ profile_user.username }}</h1>
+{% for status in char_statuses %}
+  {% include "standing_fleet_tracker/partials/character_status.html" %}
+{% endfor %}
+<p>
+  <strong>{% trans "Total points" %}:</strong> {{ agg.total|default:0|floatformat:2 }} |
+  <strong>{% trans "Standing" %}:</strong> {{ agg.standing|default:0|floatformat:1 }} h |
+  <strong>{% trans "Penalty roam" %}:</strong> {{ agg.penalty|default:0|floatformat:1 }} h |
+  <strong>{% trans "Kill bonus" %}:</strong> {{ agg.kills|default:0|floatformat:1 }} |
+  <strong>{% trans "Pulse" %}:</strong> {{ agg.pulse|default:0|floatformat:2 }} {% trans "pts" %}
+</p>
+
+<h2>{% trans "Characters" %}</h2>
+<ul>
+  {% for char in characters %}
+  <li>
+    <a href="{% url 'standing_fleet_tracker:character_detail' character_id=char.pk %}">{{ char.character_name }}</a>
+    {% if char.standing_fleet_score %}
+    — {{ char.standing_fleet_score.total_points|floatformat:2 }} {% trans "pts" %}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<h2>{% trans "Recent ledger" %}</h2>
+<table class="table table-sm">
+  <thead><tr><th>{% trans "When" %}</th><th>{% trans "Type" %}</th><th>{% trans "Points" %}</th><th>{% trans "Note" %}</th></tr></thead>
+  <tbody>
+    {% for e in ledger %}
+    <tr>
+      <td>{{ e.created_at }}</td>
+      <td>{{ e.get_event_type_display }}</td>
+      <td>{{ e.points|floatformat:2 }}</td>
+      <td>{{ e.description }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">{% trans "No entries" %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

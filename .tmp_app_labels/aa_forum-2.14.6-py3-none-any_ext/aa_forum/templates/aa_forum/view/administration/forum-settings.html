@@ -1,0 +1,18 @@
+{% extends "aa_forum/base.html" %}
+
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Administration (Forum settings)" as page_title %}
+    {% translate "Forum" as app_title %}
+
+    {{ page_title|title }} » {{ app_title }}
+{% endblock %}
+
+{% block aa_forum_body %}
+    {% include "aa_forum/partials/administration/settings-form.html" %}
+{% endblock %}
+
+{% block extra_css %}
+    {% include "aa_forum/bundles/aa-forum-css.html" %}
+{% endblock %}

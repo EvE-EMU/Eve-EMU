@@ -61,6 +61,7 @@ The bot sets **`guilds`** only among optional toggles and leaves **`members`**, 
 | **`/settings link`**, **`/settings sync`** | Optional **eve-emu core**: browser SSO to link this Discord user, then sync **False Gods** rank roles from core (needs env on bot + core). |
 | **`/moontaxes summary`** | Mining ledger vs **item_exchange** contracts to the configured tax assignee; ISK hints and payment text from **core** (link + scopes first). |
 | **`/hr guide`**, **`/hr checklist`**, **`/hr member`** | **HR / member audits:** policy text, checklist, and a **member snapshot** (join, account age, roles). Restricted to **Manage Server** or env allowlists. |
+| **`/ticket start`** | **Pre-flight ticket chatbot:** modal for **system**, **ship type**, and **purpose**; posts to **`EVE_TICKET_QUEUE_CHANNEL_ID`** when set (else ephemeral copy/paste block). |
 | **`/srp`**, **`/auth`**, **`/mumble`**, **`/intel`**, **`/buyback`** | Static links / guides (`/mumble` can attach a PTT GIF if configured). |
 
 **`/admin restart`** and **`/admin rebuild`** run **`docker compose`** on the host where the bot process runs (`docker` must be on `PATH`, with access to the compose project in **`EVE_DOCKER_COMPOSE_DIR`**). If the bot is **inside** the container it restarts, the ephemeral reply may not show; check **`docker compose logs`**. See **`example.env`** (`EVE_DOCKER_ADMIN_ENABLED`, `EVE_DOCKER_COMPOSE_SERVICE`, etc.).

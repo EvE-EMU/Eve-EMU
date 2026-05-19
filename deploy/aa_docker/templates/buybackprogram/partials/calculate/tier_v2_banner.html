@@ -1,0 +1,8 @@
+{% load i18n %}
+{% if pricing_ctx %}
+<div class="alert alert-info mb-3">
+  {% trans "Buyback v2 tier" %}: <strong>{{ pricing_ctx.tier_name }}</strong>
+  — {% trans "multiplier" %}: <strong>{{ pricing_ctx.multiplier|floatformat:4 }}×</strong>
+  <a class="ms-2" href="{% url 'buyback_v2:tier_preview' program_pk=program.id %}">{% trans "Details" %}</a>
+</div>
+{% endif %}

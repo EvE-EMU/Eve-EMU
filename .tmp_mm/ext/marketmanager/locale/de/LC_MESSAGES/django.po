@@ -1,0 +1,313 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-09-18 18:15+1000\n"
+"PO-Revision-Date: 2021-11-30 14:39+0000\n"
+"Language-Team: German (https://www.transifex.com/alliance-auth/teams/107430/de/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: auth_hooks.py:16 templates/marketmanager/marketbrowser.html:5
+#: templates/marketmanager/marketwatches.html:5
+msgid "Market Browser"
+msgstr ""
+
+#: auth_hooks.py:35
+msgid "Market Manager"
+msgstr ""
+
+#: models.py:37
+msgid "Order ID"
+msgstr ""
+
+#: models.py:42 models.py:154
+msgid "Type"
+msgstr ""
+
+#: models.py:45
+msgid "Duration"
+msgstr ""
+
+#: models.py:48 models.py:239 models.py:301
+msgid "Buy Order"
+msgstr ""
+
+#: models.py:53
+msgid "Issued"
+msgstr ""
+
+#: models.py:58
+msgid "Location ID"
+msgstr ""
+
+#: models.py:62
+msgid "System"
+msgstr ""
+
+#: models.py:68 models.py:83 models.py:251 models.py:317
+#: templates/marketmanager/marketbrowser/buy_orders.html:11
+#: templates/marketmanager/marketbrowser/sell_orders.html:11
+msgid "Region"
+msgstr ""
+
+#: models.py:71
+msgid "Minimum Volume"
+msgstr ""
+
+#: models.py:76 models.py:333
+#: templates/marketmanager/marketbrowser/buy_orders.html:13
+#: templates/marketmanager/marketbrowser/sell_orders.html:13
+msgid "Price"
+msgstr ""
+
+#: models.py:84 models.py:149 models.py:247 models.py:313
+msgid "Solar System"
+msgstr ""
+
+#: models.py:85
+msgid "Station"
+msgstr ""
+
+#: models.py:87
+msgid "Order Range"
+msgstr ""
+
+#: models.py:92
+msgid "Volume Remaining"
+msgstr ""
+
+#: models.py:95
+msgid "Is Corporation"
+msgstr ""
+
+#: models.py:99
+msgid "Wallet Division"
+msgstr ""
+
+#: models.py:105
+msgid "Character"
+msgstr ""
+
+#: models.py:111
+msgid "Corporation"
+msgstr ""
+
+#: models.py:117
+msgid "Cancelled"
+msgstr ""
+
+#: models.py:118
+msgid "Expired"
+msgstr ""
+
+#: models.py:120
+msgid "Order State"
+msgstr ""
+
+#: models.py:141
+msgid "Structure ID"
+msgstr ""
+
+#: models.py:144 models.py:176 models.py:198
+msgid "Name"
+msgstr ""
+
+#: models.py:146
+msgid "Owner Corporation ID"
+msgstr ""
+
+#: models.py:158
+msgid "Pull Market Orders"
+msgstr ""
+
+#: models.py:179
+msgid "URL"
+msgstr ""
+
+#: models.py:216
+msgid "Managed By App"
+msgstr ""
+
+#: models.py:222
+msgid "Managed App-Identifier"
+msgstr ""
+
+#: models.py:228
+msgid "Managed App Reason"
+msgstr ""
+
+#: models.py:234
+msgid "quantity"
+msgstr ""
+
+#: models.py:243 models.py:309
+msgid "Structure"
+msgstr ""
+
+#: models.py:257 models.py:323
+msgid "Structure Type Filter"
+msgstr ""
+
+#: models.py:262 models.py:340
+msgid "Jita Comparison %"
+msgstr ""
+
+#: models.py:271 models.py:364
+msgid "Webhooks"
+msgstr ""
+
+#: models.py:275 models.py:368
+msgid "Channels"
+msgstr ""
+
+#: models.py:279 models.py:372
+msgid "Debug Webhook"
+msgstr ""
+
+#: models.py:285 models.py:378
+msgid "Debug Channels"
+msgstr ""
+
+#: models.py:304 templates/marketmanager/marketwatches.html:16
+msgid "EVE Type"
+msgstr ""
+
+#: models.py:328
+msgid "Volume"
+msgstr ""
+
+#: models.py:347
+msgid "Supply Check"
+msgstr ""
+
+#: models.py:348
+msgid "Bargain Finder"
+msgstr ""
+
+#: models.py:349
+msgid "Scalp Finder"
+msgstr ""
+
+#: models.py:355
+msgid "Config Type"
+msgstr ""
+
+#: models.py:384
+msgid "Managed Watch Configs"
+msgstr ""
+
+#: models.py:391
+msgid "Last Task Runtime"
+msgstr ""
+
+#: models.py:395
+msgid "Last Result Volume"
+msgstr ""
+
+#: models.py:410
+msgid "Fetch Regions"
+msgstr ""
+
+#: models.py:427
+msgid "TypeStatistics Calculation Regions"
+msgstr ""
+
+#: models.py:444
+msgid "ESI Token"
+msgstr ""
+
+#: models.py:449
+msgid "Valid Corporation Markets for this Token"
+msgstr ""
+
+#: models.py:454
+msgid "Valid Structure Markets for this Token"
+msgstr ""
+
+#: models.py:457
+msgid "Disabled due to Failure, Check reason, adjust config and re-enable"
+msgstr ""
+
+#: models.py:459
+msgid "Failure Reason"
+msgstr ""
+
+#: models.py:484
+msgid "Buy 5th Percentile"
+msgstr ""
+
+#: models.py:489
+msgid "Sell 5th Percentile"
+msgstr ""
+
+#: models.py:494
+msgid "Buy Weighted Average"
+msgstr ""
+
+#: models.py:499
+msgid "Sell Weighted Average"
+msgstr ""
+
+#: models.py:504
+msgid "Buy Median"
+msgstr ""
+
+#: models.py:509
+msgid "Sell Median"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:5
+msgid "Buy Orders"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:12
+#: templates/marketmanager/marketbrowser/sell_orders.html:12
+msgid "Quantity"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:14
+#: templates/marketmanager/marketbrowser/sell_orders.html:14
+msgid "Location"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:15
+#: templates/marketmanager/marketbrowser/sell_orders.html:15
+msgid "Expires"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:16
+#: templates/marketmanager/marketbrowser/sell_orders.html:16
+msgid "Last Updated"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:21
+#: templates/marketmanager/marketbrowser/sell_orders.html:21
+msgid "Owned Character Orders"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/buy_orders.html:24
+#: templates/marketmanager/marketbrowser/sell_orders.html:24
+msgid "Owned Corporation Orders"
+msgstr ""
+
+#: templates/marketmanager/marketbrowser/sell_orders.html:5
+msgid "Sell Orders"
+msgstr ""
+
+#: templates/marketmanager/marketwatches.html:10
+msgid "Market Watches"
+msgstr ""
+
+#: templates/marketmanager/marketwatches.html:17
+msgid "Missing Quantity"
+msgstr ""

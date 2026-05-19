@@ -1,0 +1,109 @@
+{% extends "standing_fleet_tracker/base_page.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block sft_title %}{{ character.character_name }}{% endblock %}
+
+{% block sft_body %}
+<h1>{{ character.character_name }}</h1>
+{% include "standing_fleet_tracker/partials/character_status.html" with status=live %}
+{% if owner %}
+<p>{% trans "Owner" %}: <a href="{% url 'standing_fleet_tracker:user_detail' user_id=owner.user.pk %}">{{ owner.user.username }}</a></p>
+{% endif %}
+{% if score %}
+<p>
+  {% trans "Points" %}: {{ score.total_points|floatformat:2 }} |
+  {% trans "Standing" %}: {{ score.standing_fleet_hours|floatformat:1 }} h |
+  {% trans "Penalty" %}: {{ score.penalty_hours|floatformat:1 }} h
+</p>
+{% endif %}
+<p>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'standing_fleet_tracker:character_monthly_kpi' character_id=character.pk %}">
+    {% trans "Monthly KPI" %}
+  </a>
+</p>
+
+<h2>{% trans "Top ships in fleet" %}</h2>
+<table class="table table-sm">
+  <thead><tr><th>{% trans "Hull type" %}</th><th>{% trans "Ship name" %}</th><th>{% trans "Time" %}</th><th></th></tr></thead>
+  <tbody>
+    {% for s in ships %}
+    <tr>
+      <td>{{ s.ship_type_name }}</td>
+      <td>{{ s.ship_name|default:"—" }}</td>
+      <td>{{ s.stat.seconds_flown|floatformat:0 }} s</td>
+      <td>
+        <button type="button" class="btn btn-sm btn-outline-primary sft-view-fit"
+          data-fit-url="{% url 'standing_fleet_tracker:ship_fit_json' ship_type_id=s.stat.ship_type_id %}?character_id={{ character.character_id }}{% if s.snapshot_id %}&snapshot_id={{ s.snapshot_id }}{% endif %}"
+          data-ship-label="{{ s.ship_name|default:s.ship_type_name }}">
+          {% trans "View fit" %}
+        </button>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">{% trans "No ship data yet" %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>{% trans "Recent fleets" %}</h2>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>{% trans "Fleet ID" %}</th>
+      <th>{% trans "Standing?" %}</th>
+      <th>{% trans "Started" %}</th>
+      <th>{% trans "Ended" %}</th>
+      <th>{% trans "Details" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in sessions %}
+    <tr>
+      <td>{{ s.fleet_id }}</td>
+      <td>{% if s.is_standing_fleet %}✓ {{ s.classification }}{% else %}—{% endif %}</td>
+      <td>{{ s.started_at }}</td>
+      <td>{{ s.ended_at|default:"—" }}</td>
+      <td>
+        <a class="btn btn-sm btn-primary" href="{% url 'standing_fleet_tracker:session_detail' session_id=s.pk %}">
+          {% trans "Systems & ships" %}
+        </a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">{% trans "No sessions recorded" %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>{% trans "Recent ledger" %}</h2>
+<table class="table table-sm">
+  <thead><tr><th>{% trans "When" %}</th><th>{% trans "Type" %}</th><th>{% trans "Points" %}</th><th>{% trans "Note" %}</th></tr></thead>
+  <tbody>
+    {% for e in ledger %}
+    <tr>
+      <td>{{ e.created_at }}</td>
+      <td>{{ e.get_event_type_display }}</td>
+      <td>{{ e.points|floatformat:2 }}</td>
+      <td>{{ e.description }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">{% trans "No entries" %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
+
+{% block sft_fit_modal %}
+{% include "standing_fleet_tracker/partials/ship_fit_modal.html" %}
+{% endblock %}
+
+{% block sft_fit_css %}
+{% include "fittings/bundles/view-fit-css.html" %}
+<link rel="stylesheet" href="{% static 'standing_fleet_tracker/css/sft-fit-modal.css' %}">
+{% endblock %}
+
+{% block sft_fit_js %}
+{% include "standing_fleet_tracker/partials/ship_fit_script.html" %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% load i18n %}
+
+<div class="mb-3">
+    <p>
+        {% translate "Here you can create, modify and delete categories and boards. You also can change their order via drag and drop." %}
+    </p>
+</div>
+
+<div class="row">
+    <div class="col-md-6 order-sm-last">
+        {% include "aa_forum/partials/administration/new-category.html" %}
+    </div>
+
+    {% if category_loop %}
+        <div class="col-md-6 order-sm-first">
+            <script>
+                aaForumJsSettingsOverride.url = {
+                    categoryOrder: '{% url "aa_forum:admin_ajax_category_order" %}',
+                    boardOrder: '{% url "aa_forum:admin_ajax_board_order" %}'
+                };
+
+                aaForumJsSettingsOverride.form = {
+                    csrfToken: '{{ csrf_token }}'
+                };
+
+                aaForumJsSettingsOverride.categoriesWithBoards = [];
+                aaForumJsSettingsOverride.boardsWithChildren = [];
+            </script>
+
+            <ul id="categories-sortable" class="categories-sortable p-0">
+                {% for category in category_loop %}
+                    {% include "aa_forum/partials/administration/category-loop.html" %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</div>

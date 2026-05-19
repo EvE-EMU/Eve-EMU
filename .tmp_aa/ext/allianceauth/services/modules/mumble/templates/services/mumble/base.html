@@ -1,0 +1,19 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Mumble Temporary Links" %}
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    {% translate "Mumble Temporary Links" %}
+{% endblock header_nav_brand %}
+
+{% block content %}
+    <div class="allianceauth-mumble">
+        <div class="row">
+            {% block mumble %}{% endblock mumble %}
+        </div>
+    </div>
+{% endblock content %}

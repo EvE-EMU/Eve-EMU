@@ -5,7 +5,7 @@ Discord mining timer bot for EVE Online anomaly respawns.
 **Timer semantics:** ``eve_time`` is when the belt was **popped** (cleared). Respawn = pop + duration; band lengths
 follow env ``EVE_T1_RESPAWN_HOURS``, ``EVE_T2_RESPAWN_HOURS``, ``EVE_T3_RESPAWN_HOURS`` (float or ``H:MM``).
 
-**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/hr`` (``guide`` / ``checklist`` / ``member``), ``/settings link``, ``/settings sync``, ``/moontaxes summary``, ``/finance`` (``lookup`` / ``sells`` / ``contribute`` / ``structures``), ``/srp``, ``/auth``, ``/mumble``,
+**Slash only:** ``/help``, ``/about``, ``/admin`` (``notes`` / optional ``restart`` & ``rebuild`` via Docker Compose), ``/miner timer``, ``/miner respawns``, ``/hr`` (``guide`` / ``checklist`` / ``member``), ``/ticket start`` (pre-flight modal → optional ticket queue channel), ``/settings link``, ``/settings sync``, ``/moontaxes summary``, ``/finance`` (``lookup`` / ``sells`` / ``contribute`` / ``structures``), ``/srp``, ``/auth``, ``/mumble``,
 ``/intel``, ``/buyback``. Command output uses **ephemeral** replies (visible only to you in the channel where you ran the command).
 
 **Moon timers:** optional Google Sheet CSV (``EVE_MOON_TIMERS_*``). Use ``EVE_MOON_TIMERS_CHANNEL_ID`` for **@here**
@@ -613,6 +613,7 @@ class BotConfig:
     hr_audit_guide: str
     hr_audit_guide_url: str | None
     hr_checklist_env: str
+    ticket_queue_channel_id: int | None
 
     @classmethod
     def from_env(cls) -> "BotConfig":
@@ -711,6 +712,9 @@ class BotConfig:
         hr_audit_guide_url = os.getenv("EVE_HR_AUDIT_GUIDE_URL", "").strip() or None
         hr_checklist_env = os.getenv("EVE_HR_CHECKLIST", "").strip()
 
+        ticket_ch = os.getenv("EVE_TICKET_QUEUE_CHANNEL_ID", "").strip()
+        ticket_queue_channel_id = int(ticket_ch) if ticket_ch.isdigit() else None
+
         docker_en = os.getenv("EVE_DOCKER_ADMIN_ENABLED", "").strip().lower()
         docker_admin_enabled = docker_en in ("1", "true", "yes", "on")
         dc_dir_raw = os.getenv("EVE_DOCKER_COMPOSE_DIR", "").strip()
@@ -777,6 +781,7 @@ class BotConfig:
             hr_audit_guide=hr_audit_guide,
             hr_audit_guide_url=hr_audit_guide_url,
             hr_checklist_env=hr_checklist_env,
+            ticket_queue_channel_id=ticket_queue_channel_id,
         )
 
 
@@ -2271,6 +2276,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
             "`/hr guide` — member audit policy (restricted)\n"
             "`/hr checklist` — repeatable audit steps\n"
             "`/hr member` — snapshot join / roles for one member\n"
+            "`/ticket start` — pre-flight prompts (system, ship, purpose); posts to **`EVE_TICKET_QUEUE_CHANNEL_ID`** if set\n"
             "`/srp` `/auth` `/mumble` `/intel` `/buyback` — quick links / guides\n\n"
             "_Slash replies are **ephemeral** (only you see them in this channel)._"
         )
@@ -2580,6 +2586,10 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     hr_group = app_commands.Group(
         name="hr",
         description="Member audits and HR workflow (restricted to auditors).",
+    )
+    ticket_group = app_commands.Group(
+        name="ticket",
+        description="Support ticket pre-flight before opening a formal ticket (Emu-Bot).",
     )
 
     async def autocomplete_eve_time(
@@ -3067,6 +3077,91 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
         )
         await interaction.followup.send(msg[:2000], ephemeral=True)
 
+    class TicketPreflightModal(discord.ui.Modal, title="Ticket pre-flight"):
+        solar_system = discord.ui.TextInput(
+            label="Solar system",
+            max_length=100,
+            required=True,
+            placeholder="Where does this apply?",
+        )
+        ship_type = discord.ui.TextInput(
+            label="Ship type",
+            max_length=120,
+            required=True,
+            placeholder="Hull or doctrine ship name",
+        )
+        purpose = discord.ui.TextInput(
+            label="Purpose",
+            style=discord.TextStyle.paragraph,
+            max_length=1000,
+            required=True,
+            placeholder="What do you need from leadership / logistics?",
+        )
+
+        async def on_submit(self, interaction: discord.Interaction) -> None:
+            if interaction.guild is None:
+                await interaction.response.send_message(
+                    "Run this from a server channel so staff can route your ticket.",
+                    ephemeral=True,
+                )
+                return
+            sys_v = str(self.solar_system.value).strip()
+            ship_v = str(self.ship_type.value).strip()
+            pur_v = str(self.purpose.value).strip()
+            actor = interaction.user.mention
+            uid = interaction.user.id
+            ch_id = cfg.ticket_queue_channel_id
+            if ch_id is None:
+                blob = (
+                    "**Pre-flight answers** (copy into your ticket — queue channel not configured)\n\n"
+                    f"• **System:** {sys_v}\n"
+                    f"• **Ship type:** {ship_v}\n"
+                    f"• **Purpose:** {pur_v}"
+                )
+                await interaction.response.send_message(blob[:2000], ephemeral=True)
+                return
+            ch = interaction.client.get_channel(ch_id)
+            if ch is None or not isinstance(ch, discord.abc.Messageable):
+                await interaction.response.send_message(
+                    f"Ticket queue channel id **`{ch_id}`** was not found. Ask an admin to fix **`EVE_TICKET_QUEUE_CHANNEL_ID`**.",
+                    ephemeral=True,
+                )
+                return
+            guild = getattr(ch, "guild", None)
+            if guild is None or guild.id != interaction.guild.id:
+                await interaction.response.send_message(
+                    "Ticket queue channel is not in this server. Fix **`EVE_TICKET_QUEUE_CHANNEL_ID`**.",
+                    ephemeral=True,
+                )
+                return
+            await interaction.response.defer(ephemeral=True)
+            body = (
+                f"**New ticket pre-flight** from {actor} (`{uid}`)\n"
+                f"• **System:** {sys_v}\n"
+                f"• **Ship type:** {ship_v}\n"
+                f"• **Purpose:** {pur_v}"
+            )
+            try:
+                await ch.send(body[:2000], allowed_mentions=discord.AllowedMentions.none())
+            except Exception as exc:
+                await interaction.followup.send(
+                    f"Could not post to the ticket queue channel: `{exc!r}`",
+                    ephemeral=True,
+                )
+                return
+            await interaction.followup.send(
+                "Posted to the ticket queue. Staff can open a thread or formal ticket from there.",
+                ephemeral=True,
+            )
+
+    @ticket_group.command(
+        name="start",
+        description="Answer system, ship, and purpose before a ticket opens (posts to queue channel if configured).",
+    )
+    @app_commands.guild_only()
+    async def ticket_start(interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(TicketPreflightModal())
+
     miner_timer.autocomplete("eve_time")(autocomplete_eve_time)
     miner_timer.autocomplete("system_name")(autocomplete_system_name)
     miner_timer.autocomplete("belt_type")(autocomplete_anom_type)
@@ -3077,6 +3172,7 @@ def build_bot(cfg: BotConfig) -> commands.Bot:
     bot.tree.add_command(moontaxes_group)
     bot.tree.add_command(finance_group)
     bot.tree.add_command(hr_group)
+    bot.tree.add_command(ticket_group)
 
     return bot
 

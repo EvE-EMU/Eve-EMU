@@ -1,0 +1,178 @@
+{% load theme_tags %}
+{% load i18n %}
+{% load scope_tags %}
+{% load sri %}
+{% load static %}
+
+<!--
+This is an intentional template override to match the users' selected theme for Alliance Auth.
+
+Template Location: allianceauth/templates/esi/select_token.html
+Original Template: https://gitlab.com/allianceauth/django-esi/-/blob/master/esi/templates/esi/select_token.html
+-->
+
+<html lang="en" {% theme_html_tags %}>
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- End Required meta tags -->
+
+        <!-- Meta tags -->
+        {% include 'allianceauth/opengraph.html' %}
+        {% include 'allianceauth/icons.html' %}
+        <!-- Meta tags -->
+
+        <title>{% translate "ESI Token Selection" %} - {{ SITE_NAME }}</title>
+
+        {% include 'bundles/auth-framework-css.html' %}
+
+        {% theme_css %}
+
+        {% include 'bundles/fontawesome.html' %}
+
+        {% include 'bundles/jquery-js.html' %}
+        {% include 'bundles/auth-framework-js.html' %}
+
+        <style>
+            .character-image {
+                max-width: 100%;
+                height: auto;
+            }
+        </style>
+
+        {% include 'custom_css/bundles/custom-css.html' %}
+    </head>
+
+    <body class="bg-dark">
+        <div class="container-fluid mt-3">
+            <div class="card card-default mb-3">
+                <div class="card-header">
+                    <h3 class="card-title font-weight-light text-center">{% translate "Select Character" %}</h3>
+                </div>
+
+                <div class="card-body">
+                    <div class="col-lg-10 offset-lg-1 col-md-12 mb-2">
+                        <div class="card text-bg-default">
+                            <div class="card-header text-center">
+                                {% translate "Scopes Requested" %}
+                            </div>
+
+                            <div class="card-body align-middle text-center">
+                                {% for scope in scopes %}<span class="badge text-bg-primary">{{ scope|scope_friendly_name }}</span> {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-10 offset-lg-1 col-md-12">
+                        <div class="d-flex flex-wrap justify-content-center">
+                            {% if tokens|length > 14 %}
+                                <form class="mb-0" method="post">
+                                    <div class="card text-bg-default m-2 sso-card">
+                                        <div class="card-header text-center">
+                                            {% translate "New Character" %}
+                                        </div>
+
+                                        <div class="card-body text-center">
+                                            <input
+                                                type="image"
+                                                formmethod="post"
+                                                class="img character-image rounded"
+                                                src="https://images.evetech.net/characters/1/portrait?size=256"
+                                                alt="{% translate "Add Token" %}"
+                                            >
+                                        </div>
+
+                                        <div class="card-footer">
+                                            {% csrf_token %}
+
+                                            <input type="hidden" name="_add" value="True">
+
+                                            <div class="text-center">
+                                                <a href="#" type="submit" class="m-1">
+                                                    <input
+                                                        type="image"
+                                                        name="go"
+                                                        src="{% static 'esi/img/EVE_SSO_Login_Buttons_Small_Black.png'%}"
+                                                        alt="{% translate "Add Token" %}"
+                                                    >
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            {% endif %}
+
+                            {% for token in tokens|dictsort:"character_name" %}
+                                <form class="mb-0" method="post">
+                                    {% csrf_token %}
+
+                                    <div class="card text-bg-default m-2 mw-50">
+                                        <div class="card-header text-center">
+                                            {{ token.character_name }}
+                                        </div>
+
+                                        <div class="card-body text-center ">
+                                            <input
+                                                type="image"
+                                                formmethod="post"
+                                                class="img character-image rounded"
+                                                src="https://images.evetech.net/characters/{{ token.character_id }}/portrait?size=256"
+                                                alt="{{ token.character_name }}"
+                                            >
+                                        </div>
+
+                                        <div class="card-footer">
+                                            <input type="hidden" name="_token" value="{{ token.pk }}">
+
+                                            <button class="btn btn-success w-100" type="submit" title="{% translate "Select" %}" formmethod="post">
+                                                {% translate "Select" %}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            {% endfor %}
+
+                            <form method="post">
+                                <div class="card text-bg-default m-2 sso-card">
+                                    <div class="card-header text-center">
+                                        {% translate "New Character" %}
+                                    </div>
+
+                                    <div class="card-body text-center">
+                                        <input
+                                            type="image"
+                                            formmethod="post"
+                                            class="img character-image rounded"
+                                            src="https://images.evetech.net/characters/1/portrait?size=256"
+                                            alt="{% translate "Add Token" %}"
+                                        >
+                                    </div>
+
+                                    <div class="card-footer">
+                                        {% csrf_token %}
+
+                                        <input type="hidden" name="_add" value="True">
+
+                                        <div class="text-center">
+                                            <a href="#" type="submit" class="m-1">
+                                                <input
+                                                    type="image"
+                                                    name="go"
+                                                    src="{% static 'esi/img/EVE_SSO_Login_Buttons_Small_Black.png'%}"
+                                                    alt="{% translate "Add Token" %}"
+                                                >
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% theme_js %}
+    </body>
+</html>

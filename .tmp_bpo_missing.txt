@@ -1,0 +1,8 @@
+﻿Fetching invTypes.csv.bz2...
+Owned (unique): 126
+Missing from all NPC-seedable BPOs/reactions: 107
+Missing in same product families as Sevey already owns: 3
+
+    10000000  Carbon Polymers Reaction Formula
+    10000000  Titanium Chromide Reaction Formula
+    20000000  Titanium Carbide Reaction Formula

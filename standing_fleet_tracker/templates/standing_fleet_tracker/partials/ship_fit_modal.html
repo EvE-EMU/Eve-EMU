@@ -1,0 +1,22 @@
+{% load i18n %}
+<div class="modal fade" id="sftFitModal" tabindex="-1" aria-labelledby="sftFitModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="sftFitModalLabel">{% trans "Ship fit" %}</h5>
+        <button type="button" class="btn-close sft-fit-close" aria-label="{% trans 'Close' %}"></button>
+      </div>
+      <div class="modal-body">
+        <p id="sft-fit-loading" class="text-muted">{% trans "Loading…" %}</p>
+        <p id="sft-fit-meta" class="d-none small text-muted mb-2"></p>
+        <div id="sft-fit-visual" class="d-none mb-3"></div>
+        <details id="sft-fit-eft-wrap" class="d-none mb-2">
+          <summary class="small text-muted mb-2">{% trans "EFT export" %}</summary>
+          <pre id="sft-fit-eft" class="bg-dark text-light p-3 rounded small mb-0" style="white-space: pre-wrap;"></pre>
+        </details>
+        <p id="sft-fit-missing" class="d-none text-muted"></p>
+        <p class="mt-2 mb-0"><a id="sft-fit-everef" href="#" target="_blank" rel="noopener">{% trans "View type on EVE Ref" %}</a></p>
+      </div>
+    </div>
+  </div>
+</div>

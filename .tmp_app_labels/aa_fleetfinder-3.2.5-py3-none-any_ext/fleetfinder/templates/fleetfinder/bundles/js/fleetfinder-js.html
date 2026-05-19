@@ -1,0 +1,9 @@
+{% load sri %}
+
+{% sri_static "fleetfinder/js/fleetfinder.min.js" %}
+
+{% if view %}
+    {% with "fleetfinder/js/fleetfinder-"|add:view|add:".min.js" as script_path %}
+        {% sri_static script_path %}
+    {% endwith %}
+{% endif %}

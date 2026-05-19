@@ -1,0 +1,34 @@
+{% load i18n %}
+
+{% if perms.opcalendar.see_signups %}
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th style="width: 10px">{% trans "#" %}</th>
+        <th>{% trans "Main Character" %}</th>
+        <th>{% trans "Status" %}</th>
+        <th>{% trans "Comment" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for member in eventmember %}
+      <tr role="row">
+          <td>{{ forloop.counter }}</td>
+          <td>{{ member.character }}</td>
+          <td>
+            {% if member.status == "A" %}
+              {% trans "Attending" %}
+            {% elif member.status == "M" %}
+              {% trans "Maybe" %}
+            {% elif member.status == "D" %}
+              {% trans "Declined" %}
+            {% else %}
+              {% trans "Unknown" %}
+            {% endif %}
+          </td>
+          <td>{{ member.comment|default:"-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}

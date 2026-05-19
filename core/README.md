@@ -1,8 +1,8 @@
 # EVE-EMU **Core**
 
-Central platform service: **authentication** (EVE SSO + eve-emu sessions), **SDE** access, **EVE image URLs**, **Postgres**, and a **stable OpenAPI** surface for other apps (`fleet-tracker`, bots, etc.).
+Central platform service: **authentication** (EVE SSO + eve-emu sessions), **SDE** access, **EVE image URLs**, **Postgres**, and a **stable OpenAPI** surface for other apps (`fleet-tracker`, bots, etc.). **Industrial Command** helpers live under **`POST /v1/plugins/industrial/plan/split`** (bot secret) and the Django **`industry_suite`** app for persisted projects / sub-orders / BPC rows.
 
-**Alliance-style main web portal:** use **[Alliance Auth v5](https://allianceauth.readthedocs.io/en/v5.0.1/)** from the **`allianceauth/`** Git submodule (Django). See **`docs/ALLIANCE_AUTH.md`**. **`core-web/`** (Next.js) is optional for custom pages that call this API; **`core/`** remains the **FastAPI backend** for SDE, Discord bot plugins, and related services.
+**Alliance-style main web portal:** use **[Alliance Auth v5](https://allianceauth.readthedocs.io/en/v5.0.1/)** from the **`allianceauth/`** Git submodule (Django). See **`docs/ALLIANCE_AUTH.md`** for submodule layout vs an **`eve_emu`** Django **project** package name. **`core-web/`** (Next.js) is optional for industrial dashboards; **`core/`** remains the **FastAPI backend** for SDE, Discord bot plugins, and related services.
 
 - **OpenAPI**: served at `/openapi.json`, interactive docs at `/docs` (disable in production if desired).
 - **Plugin API**: versioned under **`/v1/...`** — keep compatibility; extend with new routes or `/v2` when breaking.

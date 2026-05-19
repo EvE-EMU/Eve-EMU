@@ -1,0 +1,185 @@
+{% extends 'evewiki/base.html' %}
+{% load i18n %}
+{% load django_bootstrap5 %}
+{% load static %}
+{% load humanize %}
+
+{% block details %}
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-2">
+			<div class="card card-primary">
+				<div class="card-body" style="min-height: 100px;">
+					{% if is_editor %}
+					<a href="/evewiki/page?parent_id={{ page.parent.pk }}" class="btn btn-primary new-page">
+						+
+					</a>
+					{% endif %}
+					<div class="wiki_menu">
+						{% include 'evewiki/sidebar.html' %}
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-md-10">
+			<div class="panel panel-primary">
+				<div class="panel-heading clearfix">
+					<h1 class="panel-title" style="display: inline;">{{ page.title }}</h1>
+					{% if is_editor %}
+						<div class="pull-right d-flex" style="gap:.5em;">
+							<div class="btn-group" role="toolbar" aria-label="Edit mode for content">
+								<button class="btn btn-primary" id="mode_view">
+									{% translate "View" %}
+								</button>
+								<button class="btn btn-secondary" id="mode_edit">
+									{% translate "Edit" %}
+								</button>
+								<button class="btn btn-secondary" id="mode_raw">
+									{% translate "Raw" %}
+								</button>
+							</div>
+							{% if page.is_public %}
+								<div class="btn-group" role="toolbar" aria-label="Link to Publicly accessible version">
+									<a class="btn btn-success" title="Publicly Accessible via this link" href="/evewiki/public/{{ page.path|cut:'/evewiki' }}" target="_blank">
+										<i class="fa-solid fa-p"></i>
+									</a>
+								</div>
+							{% endif %}
+							{% if page.id %}
+								<div class="btn-group" role="toolbar" aria-label="Page settings">
+									<a href="/evewiki/page?id={{ page.id }}" class="btn btn-secondary" title="Manage Page">
+										<i class="fas fa-cog"></i>
+									</a>
+								</div>
+							{% endif %}
+						</div>
+					{% endif %}
+				</div>
+				<div class="panel-body" style="min-height: 100px;">
+					<div class="container-fluid">
+						<div class="row">
+							<div class="col">
+								{% if page.id %}
+									<div id="the_output"></div>
+									{% if is_editor %}
+										<form method="POST" action="/evewiki/{{ page.path }}">
+											{% csrf_token %}
+											<textarea name="content" id="id_content" style="visibility:hidden">{{ page.content }}</textarea>
+											<button type="submit" class="btn btn-primary" id="save_content">
+												{% translate "Save" %}
+											</button>
+										</form>
+									{% else %}
+										<textarea name="content" id="id_content">{{ page.content }}</textarea>
+									{% endif %}
+								{% else %}
+									{% include 'evewiki/help.html' %}
+								{% endif %}
+							</div>
+							{% if page.summary %}
+								<div class="col" style="max-width: 25%;">
+									<div class="card card-primary">
+										<div class="card-body wiki-summary">
+											<strong>Table of contents</strong>
+											{{ page.summary|safe }}
+										</div>
+									</div>
+								</div>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+
+<script type="application/javascript" src="{% static 'js/easymde.min.js' %}"></script>
+<script type="application/javascript" src="{% static 'js/evewiki.js' %}"></script>
+
+{% endblock %}
+
+{% block extra_css %}
+
+<link rel="stylesheet" href="{% static 'css/easymde.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/evewiki.css' %}">
+
+{% if dark_mode %}
+<style>
+/* EasyMDE Dark Mode Bootstrap Style */
+.easy-mde-wrapper,
+.editor-toolbar,
+.CodeMirror,
+.CodeMirror-scroll,
+.editor-preview,
+.editor-preview-side {
+  background-color: #212529 !important; /* Bootstrap dark bg */
+  color: #f8f9fa !important;           /* Bootstrap light text */
+  border-color: #343a40 !important;    /* Bootstrap dark border */
+}
+
+/* Toolbar buttons */
+.editor-toolbar button,
+.editor-toolbar button:active,
+.editor-toolbar button:hover {
+  background: #343a40 !important;
+  color: #f8f9fa !important;
+}
+
+/* Toolbar divider */
+.editor-toolbar i.separator {
+  border-left: 1px solid #495057 !important;
+}
+
+/* Active/selected toolbar button */
+.editor-toolbar button.active,
+.editor-toolbar button:focus {
+  background: #495057 !important;
+  color: #fff !important;
+}
+
+/* CodeMirror Editor */
+.CodeMirror {
+  background-color: #212529 !important;
+  color: #f8f9fa !important;
+}
+
+/* Editor cursor */
+.CodeMirror-cursor {
+  border-left: 1px solid #f8f9fa !important;
+}
+
+/* Gutter (line numbers, etc) */
+.CodeMirror-gutters {
+  background: #212529 !important;
+  border-right: 1px solid #343a40 !important;
+  color: #adb5bd !important;
+}
+
+/* Editor preview */
+.editor-preview,
+.editor-preview-side {
+  background: #212529 !important;
+  color: #f8f9fa !important;
+}
+
+/* Scrollbar */
+.CodeMirror-scrollbar-filler,
+.CodeMirror-gutter-filler {
+  background-color: #212529 !important;
+}
+
+/* Placeholder text */
+.CodeMirror-placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+}
+</style>
+{% endif %}
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

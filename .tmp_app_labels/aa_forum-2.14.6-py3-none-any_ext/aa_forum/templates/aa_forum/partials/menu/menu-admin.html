@@ -1,0 +1,23 @@
+{% load i18n %}
+{% load navactive %}
+{% load aa_forum %}
+
+<li class="nav-item dropdown aa-forum-admin-menu">
+    <a class="nav-link dropdown-toggle {% renavactive request "^/forum/-/admin/" %}" data-bs-toggle="dropdown" href="#">
+        {% translate "Administration" %}
+    </a>
+
+    <ul id="aa-forum-admin-menu" class="dropdown-menu clearfix mb-sm-2 mb-lg-0" role="menu">
+        <li class="aa-forum-admin-menu-item">
+            <a class="dropdown-item {% navactive request 'aa_forum:admin_categories_and_boards' %}" href="{% url 'aa_forum:admin_categories_and_boards' %}">
+                {% translate "Categories and boards" %}
+            </a>
+        </li>
+
+        <li class="aa-forum-admin-menu-item">
+            <a class="dropdown-item {% navactive request 'aa_forum:admin_forum_settings' %}" href="{% url 'aa_forum:admin_forum_settings' %}">
+                {% translate "Forum settings" %}
+            </a>
+        </li>
+    </ul>
+</li>

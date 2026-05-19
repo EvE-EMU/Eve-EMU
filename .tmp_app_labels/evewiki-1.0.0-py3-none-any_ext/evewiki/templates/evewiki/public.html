@@ -1,0 +1,80 @@
+{% extends 'evewiki/base.html' %}
+{% load i18n %}
+{% load django_bootstrap5 %}
+{% load static %}
+{% load humanize %}
+
+{% block details %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+
+<div class="container-fluid">
+	<div class="row">
+		<h1 class="panel-title" style="display: inline;">{{ page.title }}</h1>
+		<div class="{% if page.summary %}col-md-10{% else %}col-md-12{% endif %}">
+			<div id="the_output"></div>
+			<textarea name="content" id="id_content" style="visibility:hidden">{{ page.content }}</textarea>
+		</div>
+
+		{% if page.summary %}
+			<div class="col-md-2">
+				<div class="card card-primary">
+					<div class="card-body wiki-summary">
+						<strong>Table of contents</strong>
+						{{ page.summary|safe }}
+					</div>
+				</div>
+			</div>
+		{% endif %}
+	</div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+	/*
+	// Start in preview mode
+	var easyMDE = new EasyMDE({
+		element: document.getElementById('id_content'),
+		theme: 'bootstrap-dark',
+		readOnly: true,
+		toolbar: false,
+		status: false,
+		codemirror: {
+			viewportMargin: Infinity, // This makes the editor expand with content
+		}
+	});
+
+	// Wait until the DOM is ready, then toggle preview
+	easyMDE.codemirror.on('refresh', function() {
+		// Check if not already in preview mode
+		if (!easyMDE.isPreviewActive()) {
+			easyMDE.togglePreview();
+		}
+	});
+
+	// Ensure the input is disabled (in case someone tries to edit via JS)
+	easyMDE.codemirror.getInputField().disabled = true;
+	easyMDE.codemirror.getWrapperElement().closest('.EasyMDEContainer').style.display = 'none';
+	window.easyMDE = easyMDE;
+
+	// Get the content of the preview
+	var output_pane = document.getElementById('the_output')
+	var markdown = easyMDE.value();
+	var previewHTML = easyMDE.options.previewRender(markdown);
+	output_pane.innerHTML = previewHTML;
+	*/
+</script>
+
+<script type="application/javascript" src="{% static 'js/easymde.min.js' %}"></script>
+<script type="application/javascript" src="{% static 'js/evewiki.js' %}"></script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/evewiki.css' %}">
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

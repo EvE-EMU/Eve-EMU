@@ -1,0 +1,15 @@
+{% extends "buybackprogram/page.html" %}
+{% load i18n %}
+
+{% block body %}
+<div class="alert alert-info">
+  {% trans "Your pricing tier for this program" %}:
+  <strong>{{ pricing_ctx.tier_name }}</strong>
+  ({{ pricing_ctx.multiplier|floatformat:4 }}&times; {% trans "of calculated value" %})
+</div>
+<p>
+  <a class="btn btn-primary" href="{% url 'buybackprogram:program_calculate' program_pk=program.pk %}">
+    {% trans "Open calculator" %}
+  </a>
+</p>
+{% endblock %}

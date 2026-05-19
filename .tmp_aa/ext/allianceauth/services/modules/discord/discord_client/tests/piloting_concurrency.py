@@ -1,0 +1,83 @@
+"""This is script is for concurrency testing the Discord client with a Discord server.
+
+It will run multiple requests against Discord with multiple workers in parallel.
+The results can be analysed in a special log file.
+
+This script is design to be run manually as unit test, e.g. by running the following:
+
+python manage.py test
+allianceauth.services.modules.discord.discord_client.tests.piloting_concurrency
+
+To make it work please set the below mentioned environment variables for your server.
+Since this may cause lots of 429s we'd recommend NOT to use your
+alliance Discord server for this.
+"""
+
+import os
+import threading
+from random import random
+from time import sleep
+
+from django.test import TestCase
+
+from ...utils import set_logger_to_file
+from .. import DiscordApiBackoff, DiscordClient
+
+logger = set_logger_to_file(
+    'allianceauth.services.modules.discord.discord_client.client', __file__
+)
+
+# Make sure to set these environnement variables for your Discord server and user
+DISCORD_GUILD_ID = os.environ['DISCORD_GUILD_ID']
+DISCORD_BOT_TOKEN = os.environ['DISCORD_BOT_TOKEN']
+DISCORD_USER_ID = os.environ['DISCORD_USER_ID']
+NICK = 'Dummy'
+
+# Configure these settings to adjust the load profile
+NUMBER_OF_WORKERS = 5
+NUMBER_OF_RUNS = 10
+
+# max seconds a worker waits before starting a new run
+# set to near 0 for max load preassure
+MAX_JITTER_PER_RUN_SECS = 1.0
+
+
+def worker(num: int):
+    """worker function"""
+    worker_info = f'worker {num}'
+    logger.info(f'{worker_info}: started')
+    client = DiscordClient(DISCORD_BOT_TOKEN)
+    try:
+        runs = 0
+        while runs < NUMBER_OF_RUNS:
+            run_info = f'{worker_info}: run {runs + 1}'
+            my_jitter_secs = random() * MAX_JITTER_PER_RUN_SECS
+            logger.info(f'{run_info} - waiting {my_jitter_secs:.3f} secs')
+            sleep(my_jitter_secs)
+            logger.info(f'{run_info} - started')
+            try:
+                client.modify_guild_member(
+                    DISCORD_GUILD_ID, DISCORD_USER_ID, nick=NICK
+                )
+                runs += 1
+            except DiscordApiBackoff as bo:
+                message = f'{run_info} - waiting out API backoff for {bo.retry_after} ms'
+                logger.info(message)
+                print()
+                print(message)
+                sleep(bo.retry_after / 1000)
+
+    except Exception as ex:
+        logger.exception('%s: Processing aborted: %s', worker_info, ex)
+
+    logger.info('%s: finished', worker_info)
+    return
+
+
+class TestMulti(TestCase):
+
+    def test_multi(self):
+        logger.info('Starting multi test')
+        for num in range(NUMBER_OF_WORKERS):
+            x = threading.Thread(target=worker, args=(num + 1,))
+            x.start()

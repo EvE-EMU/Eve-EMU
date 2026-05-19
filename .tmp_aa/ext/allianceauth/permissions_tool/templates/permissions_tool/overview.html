@@ -1,0 +1,138 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load aa_i18n %}
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Permissions Overview" %}
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    {% translate "Permissions Audit" %}
+{% endblock header_nav_brand %}
+
+{% block content %}
+    <div>
+        <p>
+            {% if request.GET.all != 'yes' %}
+                {% translate "Showing only applied permissions" %}
+                <a href="{% url 'permissions_tool:overview' %}?all=yes" class="btn btn-primary">{% translate "Show All" %}</a>
+            {% else %}
+                {% translate "Showing all permissions" %}
+                <a href="{% url 'permissions_tool:overview' %}?all=no" class="btn btn-primary">{% translate "Show Applied" %}</a>
+            {% endif %}
+        </p>
+
+        <div class="table-responsive">
+            <table class="table table-striped w-100" id="tab_permissions_overview">
+                <thead>
+                    <tr>
+                        <th scope="col">{% translate "App" %}</th>
+                        <th scope="col">{% translate "Model" %}</th>
+                        <th scope="col">{% translate "Code Name" %}</th>
+                        <th scope="col">{% translate "Name" %}</th>
+                        <th scope="col">{% translate "Users" %}</th>
+                        <th scope="col">{% translate "Groups" %}</th>
+                        <th scope="col">{% translate "States" %}</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for perm in permissions %}
+                        <tr>
+                            <td>{{ perm.permission.content_type.app_label }}</td>
+                            <td>{{ perm.permission.content_type.model }}</td>
+                            <td>
+                                <a href="{% url "permissions_tool:audit" app_label=perm.permission.content_type.app_label model=perm.permission.content_type.model codename=perm.permission.codename %}">
+                                    {{ perm.permission.codename }}
+                                </a>
+                            </td>
+                            <td>{{ perm.permission.name }}</td>
+                            <td class="{% if perm.users > 0 %}info{% endif %}text-end">{{ perm.users }}</td>
+                            <td class="{% if perm.groups > 0 %}info{% endif %}text-end">{{ perm.groups }} ({{ perm.group_users }})</td>
+                            <td class="{% if perm.states > 0 %}info{% endif %}text-end">{{ perm.states }} ({{ perm.state_users }})</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include "bundles/datatables-2-js-bs5.html" %}
+    {% include "bundles/datatables-2-responsive-js.html" %}
+    {% include "bundles/filterdropdown-js.html" %}
+
+    {% get_datatables_language_static LANGUAGE_CODE as DT_LANG_PATH %}
+
+    {% comment %}Translations need to be here, so we can escape them in JS properly though the `escapejs` filter{% endcomment %}
+    {% translate "Filter permissions by" as l10nLabelFilter %}
+    {% translate "Application" as l10nLabelDropdownApplicationFilter %}
+    {% translate "All applications" as l10nLabelDropdownAllApplications %}
+    {% translate "All models" as l10nLabelDropdownAllModels %}
+
+    <script>
+        $(document).ready(() => {
+            /* global DataTable */
+
+            'use strict';
+
+            const groupColumn = 0;
+
+            const table_permissions_overview = new DataTable($('#tab_permissions_overview'), {
+                language: {
+                    url: '{{ DT_LANG_PATH }}'
+                },
+                responsive: true,
+                columnDefs: [
+                    {
+                        target: groupColumn,
+                        visible: false
+                    }
+                ],
+                order: [
+                    [groupColumn, 'asc'],
+                    [1, 'asc'],
+                    [2, 'asc']
+                ],
+                filterDropDown: {
+                    label_filter: '{{ l10nLabelFilter|escapejs }}',
+                    columns: [
+                        {
+                            idx: 0,
+                            title: '{{ l10nLabelDropdownApplicationFilter|escapejs }}',
+                            label_dropdown_all: '{{ l10nLabelDropdownAllApplications|escapejs }}'
+                        },
+                        {
+                            idx: 1,
+                            label_dropdown_all: '{{ l10nLabelDropdownAllModels|escapejs }}'
+                        }
+                    ],
+                },
+                stateSave: true,
+                stateDuration: 0,
+                drawCallback: (settings) => {
+                    const api = new $.fn.dataTable.Api(settings);
+                    const rows = api.rows({page: 'current'}).nodes();
+                    let last = null;
+
+                    api.column(groupColumn, {page: 'current'})
+                        .data()
+                        .each((group, i) => {
+                            if (last !== group) {
+                                $(rows).eq(i).before(`<tr class="h5 table-primary"><td colspan="6">${group}</td></tr>`);
+
+                                last = group;
+                            }
+                        });
+                }
+            });
+        });
+    </script>
+{% endblock extra_javascript %}
+
+{% block extra_css %}
+    {% include "bundles/datatables-2-css-bs5.html" %}
+    {% include "bundles/datatables-2-responsive-css.html" %}
+{% endblock extra_css %}

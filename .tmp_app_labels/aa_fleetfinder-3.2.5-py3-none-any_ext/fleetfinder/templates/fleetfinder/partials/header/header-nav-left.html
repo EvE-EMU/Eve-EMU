@@ -1,0 +1,9 @@
+{% load navactive %}
+{% load i18n %}
+
+<li class="nav-item">
+    <a class="nav-link {% navactive request 'fleetfinder:dashboard' %}" href="{% url 'fleetfinder:dashboard' %}">
+        {% translate "Available fleets" as navigation_item %}
+        {{ navigation_item|title }}
+    </a>
+</li>

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     sso_default_scopes: str = (
         "esi-fleets.read_fleet.v1 "
         "esi-location.read_location.v1 "
-        "esi-ships.read_ships.v1 "
+        "esi-location.read_ship_type.v1 "
         "esi-killmails.read_killmails.v1"
     )
     # Optional FC account scopes (separate client or override scopes in UI).

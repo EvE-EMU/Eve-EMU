@@ -1,0 +1,41 @@
+{% extends "aa_bulletin_board/base.html" %}
+
+{% load i18n %}
+
+{% block page_title %}{{ bulletin.title }} » {% translate "Bulletin Board" %}{% endblock %}
+
+{% block aabulletinboard_header %}
+    {% include "framework/header/page-header.html" with title=bulletin.title %}
+{% endblock %}
+
+{% block aabulletinboard_body %}
+    {% if bulletin %}
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title mb-0">
+                    <a class="btn btn-secondary btn-sm" href="{% url 'aa_bulletin_board:dashboard' %}">{% translate "Back" %}</a>
+
+                    {% if perms.aa_bulletin_board.manage_bulletins %}
+                        <a class="btn btn-warning btn-sm btn-read-more" href="{% url 'aa_bulletin_board:edit_bulletin' bulletin.slug %}">{% translate "Edit" %}</a>
+                        <a class="btn btn-danger btn-sm btn-read-more" href="{% url 'aa_bulletin_board:remove_bulletin' bulletin.slug %}">{% translate "Delete" %}</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="ck ck-content">
+                    {{ bulletin.content|safe }}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+    {% include "aa_bulletin_board/bundles/ckeditor5-css.html" %}
+    {% include "aa_bulletin_board/bundles/aa-bulletin-board-css.html" %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include "aa_bulletin_board/bundles/aa-bulletin-board-oembed-js.html" %}
+{% endblock %}

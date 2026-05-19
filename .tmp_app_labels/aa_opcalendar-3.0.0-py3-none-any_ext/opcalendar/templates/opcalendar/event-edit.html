@@ -1,0 +1,47 @@
+{% extends 'opcalendar/base.html' %}
+{% load bootstrap %}
+{% load static %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block page_title %}{% trans "Create Operation" %}{% endblock page_title %}
+{% block extra_css %}
+    {% include 'bundles/jquery-datetimepicker-css.html' %}
+{% endblock extra_css %}
+
+{% block content %}
+<div class="card">
+      <div class="card-header">{% trans "Edit Event" %}</div>
+      <div class="card-body">
+            <form class="form-signin" role="form" action="" method="POST">
+                {% csrf_token %}
+                {{ form|bootstrap }}
+                <br/>
+                <button class="btn btn-lg btn-primary btn-block" type="submit">{% trans "Edit Event" %}</button>
+            </form>
+      </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_javascript %}
+  {% include 'bundles/jquery-datetimepicker-js.html' %}
+  <script>
+    $(document).ready(() => {
+      $('#id_start_time').datetimepicker({
+        setlocale: '{{ LANGUAGE_CODE }}',
+        mask: true,
+        format: 'Y-m-d H:i',
+        minDate: 0
+      });
+    });
+    $(document).ready(() => {
+      $('#id_end_time').datetimepicker({
+        setlocale: '{{ LANGUAGE_CODE }}',
+        mask: true,
+        format: 'Y-m-d H:i',
+        minDate: 0
+      });
+    });
+  </script>
+{% endblock %}

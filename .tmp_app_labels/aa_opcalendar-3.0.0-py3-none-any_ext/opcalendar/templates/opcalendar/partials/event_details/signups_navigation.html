@@ -1,0 +1,30 @@
+{% load i18n %}
+
+<div class="d-grid gap-2 d-md-flex justify-content-md-start align-items-center w-100">
+    <form method="post" action="{% url 'opcalendar:event_member_signup_attending' event.id %}" class="d-inline" id="attendingForm">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="A">
+        <button class="btn btn-success me-md-2" type="submit"><i class="fa-solid fa-check"></i> {% trans "Attending" %}</button>
+    </form>
+
+    <form method="post" action="{% url 'opcalendar:event_member_signup_maybe' event.id %}" class="d-inline" id="maybeForm">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="M">
+        <button class="btn btn-warning me-md-2" type="submit"><i class="fa-solid fa-question"></i> {% trans "Maybe" %}</button>
+    </form>
+
+    <form method="post" action="{% url 'opcalendar:event_member_signup_declined' event.id %}" class="d-inline" id="declinedForm">
+        {% csrf_token %}
+        <input type="hidden" name="status" value="D">
+        <button class="btn btn-secondary me-md-2" type="submit"><i class="fa-solid fa-hand"></i> {% trans "Declined" %}</button>
+    </form>
+
+    {% if request.user.profile.main_character.character_name in memberlist %}
+        <form method="post" action="{% url 'opcalendar:event_member_remove' event.id %}" class="d-inline" id="removeForm">
+            {% csrf_token %}
+            <button class="btn btn-danger me-md-2" type="submit"><i class="fa-solid fa-trash"></i> {% trans "Remove my event signup" %}</button>
+        </form>
+    {% endif %}
+
+    <input type="text" name="comment" class="ml-auto comment-input" placeholder="{% trans 'Optional comment' %}" maxlength="100" form="attendingForm">
+</div>

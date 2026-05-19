@@ -1,0 +1,92 @@
+{% extends "standing_fleet_tracker/base_page.html" %}
+{% load i18n %}
+
+{% block sft_title %}{{ character.character_name }} — {% trans "Monthly KPI" %}{% endblock %}
+
+{% block sft_body %}
+<h1>{{ character.character_name }} — {% trans "Monthly KPI" %}</h1>
+<p>
+  <a href="{% url 'standing_fleet_tracker:character_detail' character_id=character.pk %}">{% trans "Back to character" %}</a>
+</p>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+  <div class="col-auto">
+    <label class="form-label" for="kpi-year">{% trans "Year" %}</label>
+    <input class="form-control" id="kpi-year" type="number" name="year" value="{{ year }}" min="2020" max="2100">
+  </div>
+  <div class="col-auto">
+    <label class="form-label" for="kpi-month">{% trans "Month" %}</label>
+    <input class="form-control" id="kpi-month" type="number" name="month" value="{{ month }}" min="1" max="12">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary">{% trans "Show" %}</button>
+  </div>
+  <div class="col-auto">
+    <button type="submit" name="refresh" value="1" class="btn btn-outline-secondary">{% trans "Recompute" %}</button>
+  </div>
+</form>
+
+{% if kpi %}
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">{% trans "Fleet & location" %}</h5>
+        <dl class="mb-0">
+          <dt>{% trans "Typical ship class" %}</dt>
+          <dd>{{ kpi.avg_ship_group_name|default:"—" }}</dd>
+          <dt>{% trans "Typical region" %}</dt>
+          <dd>{{ kpi.avg_region_name|default:"—" }}</dd>
+          <dt>{% trans "% time in standing fleet" %}</dt>
+          <dd>{{ kpi.pct_standing_fleet|floatformat:1 }}%</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">{% trans "Ratting ISK (wallet journal)" %}</h5>
+        <dl class="mb-0">
+          <dt>{% trans "ISK in fleet" %}</dt>
+          <dd>{{ kpi.isk_ratting_in_fleet|floatformat:0 }}</dd>
+          <dt>{% trans "ISK outside fleet" %}</dt>
+          <dd>{{ kpi.isk_ratting_out_fleet|floatformat:0 }}</dd>
+          <dt>{% trans "% diff (in vs out)" %}</dt>
+          <dd>{{ kpi.ratting_isk_pct_diff|floatformat:1 }}%</dd>
+        </dl>
+        <p class="small text-muted mb-0">{% trans "Requires esi-wallet.read_character_wallet.v1 on Charlink." %}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h5 class="card-title">{% trans "Mining volume (ledger qty)" %}</h5>
+        <dl class="mb-0">
+          <dt>{% trans "Qty in standing fleet" %}</dt>
+          <dd>{{ kpi.mining_m3_standing_fleet|floatformat:0 }}</dd>
+          <dt>{% trans "Qty outside standing fleet" %}</dt>
+          <dd>{{ kpi.mining_m3_outside_fleet|floatformat:0 }}</dd>
+        </dl>
+        <p class="small text-muted mb-0">{% trans "Requires esi-industry.read_character_mining.v1. Quantities summed from mining ledger." %}</p>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="text-muted small">{% trans "Last computed" %}: {{ kpi.computed_at }}</p>
+{% else %}
+<p class="text-muted">{% trans "No KPI data for this month yet." %}</p>
+{% endif %}
+
+{% if kpis %}
+<h2 class="h5 mt-4">{% trans "Recent months" %}</h2>
+<ul>
+  {% for row in kpis %}
+  <li>
+    <a href="?year={{ row.year }}&month={{ row.month }}">{{ row.year }}-{{ row.month|stringformat:"02d" }}</a>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

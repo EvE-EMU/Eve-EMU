@@ -1,0 +1,314 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# erka Ekanon <M6musicT@hotmail.fr>, 2024.
+# Peter Pfeufer <info@ppfeufer.de>, 2024, 2025.
+# Matthias P <randomusernetcom@gmail.com>, 2024, 2025, 2026.
+# Hexo <ghostcig@free.fr>, 2024.
+# Houbi_Houba <paul.lacape@live.fr>, 2024.
+# balbozorre <loic.petiot2002@gmail.com>, 2024, 2025.
+msgid ""
+msgstr ""
+"Project-Id-Version: AA Fleet Finder 2.2.1\n"
+"Report-Msgid-Bugs-To: https://github.com/ppfeufer/aa-fleetfinder/issues\n"
+"POT-Creation-Date: 2026-05-05 14:27+0200\n"
+"PO-Revision-Date: 2026-01-09 17:17+0000\n"
+"Last-Translator: Matthias P <randomusernetcom@gmail.com>\n"
+"Language-Team: French <https://weblate.ppfeufer.de/projects/alliance-auth-apps/aa-fleetfinder/fr/>\n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+"X-Generator: Weblate 5.15.1\n"
+
+#: fleetfinder/__init__.py:10 fleetfinder/models.py:24
+#: fleetfinder/templates/fleetfinder/base.html:7
+#: fleetfinder/templates/fleetfinder/base.html:11
+#: fleetfinder/templates/fleetfinder/create-fleet.html:7
+#: fleetfinder/templates/fleetfinder/edit-fleet.html:7
+#: fleetfinder/templates/fleetfinder/fleet-details.html:7
+#: fleetfinder/templates/fleetfinder/join-fleet.html:7
+msgid "Fleet Finder"
+msgstr "Recherche de Flotte"
+
+#: fleetfinder/models.py:28
+msgid "Can access the Fleet Finder app"
+msgstr "Peut accéder à l'application Recherche de Flotte"
+
+#: fleetfinder/models.py:44
+msgid "FC is not in the registered fleet anymore or fleet is no longer available."
+msgstr "Le FC n'est plus dans la flotte enregistré ou cette flotte n'est plus disponible."
+
+#: fleetfinder/models.py:46
+msgid "Registered fleet seems to be no longer available."
+msgstr "La flotte enregistrée ne semble plus disponible."
+
+#: fleetfinder/models.py:47
+msgid "FC is no longer the fleet boss."
+msgstr "Le FC n'est plus à la tête de la flotte."
+
+#: fleetfinder/models.py:48
+msgid "FC switched to another fleet."
+msgstr "Le FC a changé de flotte."
+
+#: fleetfinder/models.py:51 fleetfinder/templates/fleetfinder/dashboard.html:20
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:10
+msgid "Fleet name"
+msgstr "Nom de la flotte"
+
+#: fleetfinder/models.py:59 fleetfinder/templates/fleetfinder/dashboard.html:19
+msgid "Fleet commander"
+msgstr "Commandant de flotte"
+
+#: fleetfinder/models.py:61
+msgid "Creation date and time"
+msgstr "Date et heure de création"
+
+#: fleetfinder/models.py:62
+msgid "Fleet MOTD"
+msgstr "MOTD de la flotte"
+
+#: fleetfinder/models.py:63
+msgid "Free move"
+msgstr "Mouvement libre"
+
+#: fleetfinder/models.py:69
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:32
+msgid "Only selected groups will have access to the fleet. If no groups are selected the fleet will be available to all who have access to this module."
+msgstr "Seuls les groupes sélectionnés auront accès à la flotte. Si aucun groupe n'est sélectionné, la flotte sera accessible à tous ceux qui ont accès à ce module."
+
+#: fleetfinder/models.py:73
+msgid "Group restrictions"
+msgstr "Restrictions de groupe"
+
+#: fleetfinder/models.py:81
+msgid "Last ESI error"
+msgstr "Dernière erreur ESI"
+
+#: fleetfinder/models.py:85
+#, fuzzy
+msgid "Last ESI error time"
+msgstr "Temps de la dernière erreur ESI"
+
+#: fleetfinder/models.py:88
+msgid "ESI error count"
+msgstr "Nombre d'erreurs ESi"
+
+#: fleetfinder/templates/fleetfinder/create-fleet.html:6
+#: fleetfinder/templates/fleetfinder/create-fleet.html:14
+#: fleetfinder/templates/fleetfinder/partials/header/header-nav-right.html:4
+msgid "Create fleet"
+msgstr "Créer une flotte"
+
+#: fleetfinder/templates/fleetfinder/dashboard.html:10
+msgid "Fleets available to you"
+msgstr "Flottes disponibles pour vous"
+
+#: fleetfinder/templates/fleetfinder/dashboard.html:21
+msgid "Created at"
+msgstr "Crée le"
+
+#: fleetfinder/templates/fleetfinder/dashboard.html:22
+msgid "Join"
+msgstr "Rejoindre"
+
+#: fleetfinder/templates/fleetfinder/edit-fleet.html:6
+#: fleetfinder/templates/fleetfinder/edit-fleet.html:14
+msgid "Edit fleet"
+msgstr "Editer la flotte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:7
+msgid "Fleet details"
+msgstr "Details de la flotte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:20
+msgid "Fleet composition"
+msgstr "Composition de flotte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:29
+#: fleetfinder/templates/fleetfinder/fleet-details.html:55
+msgid "Ship class"
+msgstr "Classe de vaisseaux"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:30
+msgid "Count"
+msgstr "Compte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:45
+msgid "Fleet members"
+msgstr "Membres de la flotte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:54
+msgid "Name"
+msgstr "Nom"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:56
+msgid "System"
+msgstr "Système"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:57
+msgid "Action"
+msgstr "Action"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:82
+#, fuzzy
+#| msgid "Fleet details"
+msgid "Fleet boss"
+msgstr "Details de la flotte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:83
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:9
+msgid "Kick member from fleet"
+msgstr "Exclure le membre de la flotte"
+
+#: fleetfinder/templates/fleetfinder/fleet-details.html:84
+msgid "An unknown error occurred."
+msgstr "Une erreur inconnue s'est produite."
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:6 fleetfinder/views.py:194
+msgid "Join fleet"
+msgstr "Rejoindre la flotte"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:14
+#, fuzzy
+msgid "Fleet invitation"
+msgstr "Invitation de flotte"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:22
+msgid "Please ensure you don't have any CSPA charges set on your characters, as this will prevent fleet invites from being sent."
+msgstr "Assurez vous de ne pas avoir de charges CSPA sur vos personnages, cela empêche les invitations de flotte d'être envoyées."
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:24
+#, fuzzy
+msgid "You can select multiple characters to invite them all at once."
+msgstr "Vous pouvez sélectionner plusieurs personnages a inviter en même temps."
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:28
+msgid "The selected characters will receive a fleet invite in-game, which they can accept to join the fleet."
+msgstr "Les personnages sélectionnés vont recevoir une invitation de flotte en jeu, qu'ils peuvent accepter pour rejoindre la flotte."
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:35
+msgid "Please select the characters you want to invite:"
+msgstr "Veuillez sélectionner les personnages a inviter:"
+
+#: fleetfinder/templates/fleetfinder/join-fleet.html:45
+msgid "Send fleet invites"
+msgstr "Envoyer les invitations de flotte"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:12
+msgid "Close"
+msgstr "Fermer"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:17
+msgid "Are you sure you want to kick this member from the fleet?"
+msgstr "Êtes vous sûr de vouloir exclure ce membre de la flotte ?"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:26
+msgid "Error"
+msgstr "Erreur"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:35
+msgid "Cancel"
+msgstr "Annuler"
+
+#: fleetfinder/templates/fleetfinder/modals/kick-fleet-member.html:40
+msgid "Confirm"
+msgstr "Confirmer"
+
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:15
+msgid "Select groups"
+msgstr "Choisir les groupes"
+
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:46
+#, fuzzy
+msgid "Enable free move"
+msgstr "Activer le mouvement libre"
+
+#: fleetfinder/templates/fleetfinder/partials/body/form-fleet-details.html:49
+msgid "Submit"
+msgstr "Soumettre"
+
+#: fleetfinder/templates/fleetfinder/partials/footer/app-translation-footer.html:5
+msgid "Do you want to help translate this app into your language or improve the existing translation?"
+msgstr "Voulez-vous aider à traduire cette application dans votre langue ou améliorer la traduction existante ?"
+
+#: fleetfinder/templates/fleetfinder/partials/footer/app-translation-footer.html:8
+msgid "Join our team of translators!"
+msgstr "Rejoignez notre équipe de traducteurs !"
+
+#: fleetfinder/templates/fleetfinder/partials/header/header-nav-left.html:6
+msgid "Available fleets"
+msgstr "Flottes disponible"
+
+#: fleetfinder/views.py:205
+msgid "View fleet details"
+msgstr "Voir les détails de la flotte"
+
+#: fleetfinder/views.py:211
+msgid "Edit fleet advert"
+msgstr "Editer l'annonce de flotte"
+
+#: fleetfinder/views.py:256
+#, python-brace-format
+msgid "<h4>Error!</h4><p>There was an error creating the fleet: {error_detail}</p>"
+msgstr ""
+
+#: fleetfinder/views.py:296 fleetfinder/views.py:493
+msgid "<h4>Error!</h4><p>Fleet does not exist or is no longer available.</p>"
+msgstr ""
+
+#: fleetfinder/views.py:454
+#, python-brace-format
+msgid "<h4>Error!</h4><p>ESI returned the following error: {esi_error}</p>"
+msgstr ""
+
+#: fleetfinder/views.py:465
+#, python-brace-format
+msgid "<h4>Error!</h4><p>There was an error creating the fleet: {ex}</p>"
+msgstr ""
+
+#: fleetfinder/views.py:530
+#, python-brace-format
+msgid "Fleet with ID {fleet_id} does not exist."
+msgstr "La flotte d'ID {fleet_id} n'existe pas."
+
+#: fleetfinder/views.py:541
+#, python-brace-format
+msgid "Error retrieving fleet composition: {ex}"
+msgstr "Erreur de récupération de la composition de la flotte : {ex}"
+
+#: fleetfinder/views.py:577
+msgid "Method not allowed"
+msgstr "Méthode non autorisée"
+
+#: fleetfinder/views.py:588
+msgid "Member ID required"
+msgstr "ID de membre requis"
+
+#: fleetfinder/views.py:609
+#, fuzzy
+#| msgid "Fleet composition"
+msgid "Fleet not found"
+msgstr "Composition de flotte"
+
+#: fleetfinder/views.py:614
+msgid "Invalid request data"
+msgstr "Demande de données invalide"
+
+#: fleetfinder/views.py:620
+msgid "Member not found in fleet"
+msgstr "Membre non trouvé dans la flotte"
+
+#: fleetfinder/views.py:629
+#, fuzzy, python-brace-format
+#| msgid "An unknown error occurred."
+msgid "An ESI error occurred: {ex}"
+msgstr "Une erreur inconnue s'est produite."
+
+#, python-brace-format
+#~ msgid "Fleet Finder v{__version__}"
+#~ msgstr "Recherche de Flotte v{__version__}"
+
+#~ msgid "Edit"
+#~ msgstr "Editer"

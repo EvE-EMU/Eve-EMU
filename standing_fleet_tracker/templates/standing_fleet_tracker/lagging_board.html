@@ -1,0 +1,31 @@
+{% extends "standing_fleet_tracker/base_page.html" %}
+{% load i18n %}
+
+{% block sft_title %}{{ title }}{% endblock %}
+
+{% block sft_body %}
+<h1>{{ title }}</h1>
+<p class="text-muted">{% trans "Pilots with sov roam penalties or low participation — encourage standing fleet attendance." %}</p>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>{% trans "Pilot" %}</th>
+      <th>{% trans "Points" %}</th>
+      <th>{% trans "Penalty hours" %}</th>
+      <th>{% trans "Standing hours" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td><a href="{% url 'standing_fleet_tracker:user_detail' user_id=row.user.pk %}">{{ row.user.username }}</a></td>
+      <td>{{ row.total_points|floatformat:2 }}</td>
+      <td>{{ row.penalty_hours|floatformat:1 }}</td>
+      <td>{{ row.standing_hours|floatformat:1 }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">{% trans "Nobody on the lagging board yet." %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

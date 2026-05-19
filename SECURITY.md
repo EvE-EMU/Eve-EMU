@@ -1,24 +1,32 @@
-# Security notes (EVE-EMU)
+# Security policy — EvE-EMU
 
-## Bot tokens and `.env`
+## Reporting a vulnerability
 
-- **Never commit** `discord-bot/bot/.env` (or any file named `.env` containing secrets). The repo root `.gitignore` ignores `.env` everywhere so this cannot happen again from normal `git add .` flows.
-- Use **`discord-bot/bot/example.env`** / **`.env.example`** as templates only (no real tokens).
+Please report sensitive issues **privately** (for example GitHub Security Advisories for this repository, or maintainer DM/email if published). Do not post working exploits, dumps of tokens, or live webhook URLs in public issues.
 
-## If a Discord bot token was committed
+## Priority topics for this project
 
-1. **Discord** may reset the token automatically (e.g. Safety Jim). Treat the token as compromised even if reset.
-2. **Removing the file from the latest commit is not enough** — the token still exists in **Git history** until you rewrite history or use GitHub secret scanning / support to purge the blob.
-3. To purge locally then force-push (coordinate with your team; rewrites history):
+### ESI refresh tokens and access tokens
 
-   ```bash
-   # Example: install git-filter-repo, then remove path from all commits
-   pip install git-filter-repo
-   git filter-repo --path discord-bot/bot/.env --invert-paths
-   ```
+- **At rest:** `core/` stores refresh material encrypted (Fernet + `CORE_TOKEN_ENCRYPTION_KEY`). Protect that key like a production secret; rotation invalidates existing ciphertext—plan migrations or forced re-link.
+- **In transit:** use HTTPS everywhere between users, reverse proxies, `core/`, and AA.
+- **In logs:** never log `Authorization` headers, OAuth codes, refresh tokens, or decrypted payloads. Redact query strings that contain OAuth `code` or `state` if you capture HTTP logs.
+- **Scopes:** request the **minimum** ESI scopes required for each feature; document scopes in your operator runbook (see also **ESI Scoping** in `PRIVACY.md`).
 
-   Alternatively use [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/). After rewriting, **rotate all secrets** that ever lived in that file.
+### Discord webhooks
 
-## Reporting
+- **Treat URLs as secrets.** A leaked webhook URL allows arbitrary message injection into your server until you rotate the webhook in Discord.
+- **Sanitize outbound content** before POSTing to webhooks (strip control characters, cap length, avoid `@everyone` unless explicitly intended and allowed by your mention policy).
+- **Validate inbound** webhook-like HTTP callbacks (shared secrets, timing-safe comparison, replay protection) if you add HTTP receivers for zKill or other feeds—never trust unauthenticated payloads.
 
-Report security issues to your org’s maintainers privately (do not open a public issue with secrets).
+### Discord bot token
+
+- The bot token grants full bot identity. Keep `.env` out of git (see `.gitignore`); rotate immediately if leaked.
+
+### Character audits (HR)
+
+- Audits must comply with the **EVE Developer License Agreement** and CCP guidance on personal data. Use ESI data only for the stated org purpose, retain only what you need, restrict access to authorized staff, and document your corp/alliance policy (see **Corp-Level Data Audits** in `PRIVACY.md` / `TERMS.md` placeholders).
+
+## Supported versions
+
+Security fixes are applied to the **default branch** of this repository. Self-hosted deployments should track that branch or tagged releases when available.

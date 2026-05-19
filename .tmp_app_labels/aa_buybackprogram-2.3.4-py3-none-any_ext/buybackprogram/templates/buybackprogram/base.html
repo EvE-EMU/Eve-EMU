@@ -1,0 +1,28 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+{% load static %}
+{% load navactive %}
+
+{% block page_title %}
+    {% translate "Buyback Program" %}
+{% endblock page_title %}
+
+{% block header_nav_collapse_left %}
+    {% include "buybackprogram/partials/base/menu.html" %}
+{% endblock %}
+
+{% block header_nav_brand %}
+    {% translate "Buyback Program" %}
+{% endblock %}
+
+{% if perms.buybackprogram.manage_programs %}
+    {% block header_nav_collapse_right %}
+        {% include "buybackprogram/partials/base/menu-management.html" %}
+    {% endblock %}
+{% endif %}
+
+{% block content %}
+    <div class="allianceauth-buyback-program-plugin">
+        {% block details %}{% endblock %}
+    </div>
+{% endblock %}

@@ -1,0 +1,274 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load static %}
+{% load i18n %}
+{% load evelinks %}
+
+{% block page_title %}{% translate "Secure Group Audit" %}{% endblock page_title %}
+
+{% block header_nav_brand %}{% translate "Secure Group Audit" %}{% endblock %}
+
+{% block extra_css %}
+    {% include 'bundles/datatables-css-bs5.html' %}
+
+    <style>
+        .lds-ellipsis {
+            display: inline-block;
+            position: relative;
+            width: 25px;
+            height: 10px;
+        }
+
+        .lds-ellipsis div {
+            position: absolute;
+            top: 3px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgb(170 170 170);
+            animation-timing-function: cubic-bezier(0, 1, 1, 0);
+        }
+
+        .lds-ellipsis div:nth-child(1) {
+            left: 0;
+            animation: lds-ellipsis1 0.6s infinite;
+        }
+
+        .lds-ellipsis div:nth-child(2) {
+            left: 0;
+            animation: lds-ellipsis2 0.6s infinite;
+        }
+
+        .lds-ellipsis div:nth-child(3) {
+            left: 10px;
+            animation: lds-ellipsis2 0.6s infinite;
+        }
+
+        .lds-ellipsis div:nth-child(4) {
+            left: 20px;
+            animation: lds-ellipsis3 0.6s infinite;
+        }
+
+        @keyframes lds-ellipsis1 {
+            0% {
+                transform: scale(0);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes lds-ellipsis3 {
+            0% {
+                transform: scale(1);
+            }
+
+            100% {
+                transform: scale(0);
+            }
+        }
+
+        @keyframes lds-ellipsis2 {
+            0% {
+                transform: translate(0, 0);
+            }
+
+            100% {
+                transform: translate(10px, 0);
+            }
+        }
+
+        table.dataTable tbody td {
+            vertical-align: middle;
+        }
+    </style>
+{% endblock extra_css %}
+
+{% block content %}
+    {% csrf_token %}
+
+    <div class="allianceauth-secure-groups">
+        <div class="card card-default">
+            <div class="card-header mb-0">
+                <div class="card-title">{{ sg.group.name }}</div>
+            </div>
+
+            <div class="card-body">
+                <table class="table table-striped table-hover datatables" id="audit-table">
+                    <thead>
+                        <tr>
+                            <th>{% translate "User" %}</th>
+                            <th>{% translate "Organization" %}</th>
+
+                            <th>
+                                <!-- {% translate "Pending Removal" %} -->
+                            </th>
+
+                            {% for fl in filters %}
+                                <th class="text-center">{{fl.filter_object.description}}</th>
+                            {% endfor %}
+
+                            <th class="text-end">{% translate "Actions" %}</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for u, vals in characters.items %}
+                            <tr id="uid_{{u}}">
+                                <td class="">
+                                    {{ vals }}
+
+                                    {% if u in graces %}
+                                        <span class="label label-warning text-center"><i class="fa-solid fa-clock"></i></span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                  {% if vals %}
+                                      <a href="{{ vals|dotlan_corporation_url }}" target="_blank">
+                                          {{ vals.corporation_name }}
+                                      </a><br>
+
+                                      <a href="{{ vals|dotlan_alliance_url }}" target="_blank">
+                                          {{ vals.alliance_name|default_if_none:"" }}
+                                      </a>
+                                  {% else %}
+                                      {% trans "(unknown)" %}
+                                  {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if u in graces %}
+                                      {% translate "Yes" %}
+                                    {% else %}
+                                      {% translate "No" %}
+                                    {% endif %}
+                                </td>
+
+                                {% for fv in filters %}
+                                    <td class="text-center" id="{{ u }}_{{ fv.id }}">
+                                        <div class="label label-default text-center">
+                                            <div class="lds-ellipsis">
+                                                <div></div>
+                                                <div></div>
+                                                <div></div>
+                                                <div></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                {% endfor %}
+
+                                <td class="text-end">
+                                    <a href="#" id="{{ u }}" class="btn btn-warning rem-user-button" title="{% translate "Kick Member" %}">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include 'bundles/datatables-js-bs5.html' %}
+    {% include 'bundles/filterdropdown-js.html' %}
+
+    {% translate "Pending Removal" as l10nPendingRemoval %}
+
+    <script>
+        $(document).ready(function () {
+            'use strict';
+
+            const load_filter = (filter_id) => {
+                let url = '{% url "securegroups:audit_check" sg.id 1234567890 %}';
+                url = url.replace('1234567890', filter_id);
+
+                let token = document.getElementsByName('csrfmiddlewaretoken');
+                token = token[1].value;
+
+                $.ajax({
+                    headers: {'X-CSRFToken': token},
+                    method: 'POST',
+                    url: url,
+                    data: {},
+                    success: filter_post
+                });
+            };
+
+            const update_cell = (data) => {
+                const uid = data.uid;
+                const fid = data.fid;
+                const result = data.result;
+                const message = data.message;
+                const tag = '#' + uid + '_' + fid;
+                const cell_body = $(tag)[0];
+
+                if (result == null) {
+                    cell_body.innerHTML = `<a class="badge bg-default" type="button" data-bs-tooltip="allianceauth-secure-groups" title="${message}"><i class="fa-solid fa-question"></i></a>`;
+                } else if (result === true) {
+                    cell_body.innerHTML = `<a class="badge bg-success" type="button" data-bs-tooltip="allianceauth-secure-groups" title="${message}" data-html="true"><i class="fa-solid fa-check-circle"></i></a>`;
+                } else {
+                    cell_body.innerHTML = `<a class="badge bg-danger" type="button" data-bs-tooltip="allianceauth-secure-groups" title="${message}" data-html="true"><i class="fa-solid fa-times-circle"></i></a>`;
+                }
+
+                // Bootstrap 5 Tooltip
+                [].slice.call(document.querySelectorAll(`[data-bs-tooltip="allianceauth-secure-groups"]`))
+                    .map((tooltipTriggerEl) => {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+            };
+
+            const filter_post = (data) => {
+                console.log(data);
+
+                data.forEach(update_cell);
+            };
+
+            {% for fltr in filters %}
+                load_filter({{ fltr.id }});
+            {% endfor %}
+
+            $('#audit-table').DataTable({
+                filterDropDown: {
+                    columns: [
+                        {
+                            idx: 2,
+                            title: '{{ l10nPendingRemoval|escapejs }}'
+                        }
+                    ],
+                    bootstrap: true,
+                    bootstrap_version: 5
+                },
+                columnDefs: [
+                    {searchable: true, targets: [0]},
+                    {visible: false, targets: [2]},
+                    {sortable: true, targets: [0]}
+                ],
+                order: [
+                    [0, 'asc']
+                ],
+                paging: false,
+                responsive: true
+            });
+
+            $('.rem-user-button').on('click', function () {
+                const id = this.id;
+
+                let url = '{% url "securegroups:rem_user" sg.group.id 123456 %}';
+                url = url.replace('123456', id);
+
+                $.get(url, function (data, status) {
+                    if (status === 'success') {
+                        console.log(data);
+
+                        $(`#uid_${data.user_id}`).remove();
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

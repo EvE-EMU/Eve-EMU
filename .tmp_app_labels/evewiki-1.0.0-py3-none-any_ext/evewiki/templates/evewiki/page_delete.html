@@ -1,0 +1,41 @@
+{% extends 'evewiki/base.html' %}
+{% load i18n %}
+{% load django_bootstrap5 %}
+{% load humanize %}
+
+{% block details %}
+
+<div class="card">
+	<div class="card-header">
+		Delete Page '{{ page.title }}'
+	</div>
+	<div class="card-body">
+		{% if children %}
+			<h5 class="card-title">This page cannot be deleted because it has the following children:</h5>
+			<p class="card-text">
+				<ul>
+				{% for child in children %}
+					<li>{{ child }}</li>
+				{% endfor %}
+				</ul>
+			</p>
+		{% else %}
+			<h5 class="card-title">Confirm you wish to delete this page.</h5>
+			<p class="card-text">This cannot be undone.</p>
+			<a href="/evewiki/page_delete?id={{ page.pk }}&confirm_delete=true" class="btn btn-danger">
+				Confirm Delete
+			</a>
+		{% endif %}
+	</div>
+</div>
+
+{% endblock %}
+
+{% block extra_javascript %}
+{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

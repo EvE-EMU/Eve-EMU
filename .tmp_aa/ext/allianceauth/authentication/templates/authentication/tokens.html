@@ -1,0 +1,122 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load aa_i18n %}
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Token Management" %}
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    {% translate "Token Management" %}
+{% endblock header_nav_brand %}
+
+{% block content %}
+    <div>
+        <p class="mb-3">
+            {% translate "This page is a best attempt, but backups or database logs can still contain your tokens. Always revoke tokens on https://developers.eveonline.com/authorized-apps where possible."|urlize %}
+        </p>
+
+        <div class="table-responsive">
+            <table class="table w-100" id="table_tokens">
+                <thead>
+                    <tr>
+                        <th>{% translate "Scopes" %}</th>
+                        <th class="text-end">{% translate "Actions" %}</th>
+                        <th>{% translate "Character" %}</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for t in tokens %}
+                        <tr>
+                            <td style="white-space:initial;">
+                                {% for s in t.scopes.all %}
+                                    <span class="badge text-bg-secondary">{{ s.name }}</span>
+                                {% endfor %}
+                            </td>
+
+                            <td nowrap class="text-end">
+                                <a href="{% url 'authentication:token_delete' t.id %}" class="btn btn-danger"><i class="fa-solid fa-trash-can"></i></a>
+                                <a href="{% url 'authentication:token_refresh' t.id %}" class="btn btn-success"><i class="fa-solid fa-rotate"></i></a>
+                            </td>
+
+                            <td>{{ t.character_name }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+    {% include "bundles/datatables-2-js-bs5.html" %}
+    {% include "bundles/datatables-2-responsive-js.html" %}
+    {% include "bundles/filterdropdown-js.html" %}
+
+    {% get_datatables_language_static LANGUAGE_CODE as DT_LANG_PATH %}
+
+    {% comment %}Translations need to be here, so we can escape them in JS properly though the `escapejs` filter{% endcomment %}
+    {% translate "Filter tokens by" as l10nLabelFilter %}
+    {% translate "All characters" as l10nLabelDropdownAllCharcaters %}
+
+    <script>
+        $(document).ready(() => {
+            /* global DataTable */
+
+            'use strict';
+
+            const groupColumn = 2;
+            const table_tokens = new DataTable($('#table_tokens'), {
+                language: {
+                    url: '{{ DT_LANG_PATH }}'
+                },
+                responsive: true,
+                columnDefs: [
+                    {
+                        targets: [0, 1],
+                        orderable: false
+                    },
+                    {
+                        target: groupColumn,
+                        visible: false
+                    }
+                ],
+                order: [
+                    [groupColumn, 'asc']
+                ],
+                drawCallback: (settings) => {
+                    const api = new $.fn.dataTable.Api(settings);
+                    const rows = api.rows({page: 'current'}).nodes();
+                    let last = null;
+
+                    api.column(groupColumn, {page: 'current'})
+                        .data()
+                        .each((group, i) => {
+                            if (last !== group) {
+                                $(rows).eq(i).before(`<tr class="h5 table-primary"><td colspan="3">${group}</td></tr>`);
+
+                                last = group;
+                            }
+                        });
+                },
+                stateSave: true,
+                filterDropDown: {
+                    label_filter: '{{ l10nLabelFilter|escapejs }}',
+                    columns: [
+                        {
+                            idx: groupColumn,
+                            label_dropdown_all: '{{ l10nLabelDropdownAllCharcaters|escapejs }}'
+                        }
+                    ]
+                }
+            });
+        });
+    </script>
+{% endblock extra_javascript %}
+
+{% block extra_css %}
+    {% include "bundles/datatables-2-css-bs5.html" %}
+    {% include "bundles/datatables-2-responsive-css.html" %}
+{% endblock extra_css %}

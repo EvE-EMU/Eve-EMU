@@ -1,0 +1,220 @@
+{% extends './base.html' %}
+{% load i18n %} {% load static %} {% load humanize %} {% load tz %} {% block details %}
+{% load evelinks %}
+
+    <div class="panel panel-primary">
+        <div class="panel-heading">
+            <h3 class="panel-title">Industry Jobs for {{ character_data.character_name }}</h3>
+        </div>
+        <div class="panel-body" style="min-height: 100px">
+
+            {% if form.error %}
+                {% for error in field.errors %}
+                    <div class="alert alert-danger">
+                        <strong>{{ error | escape }}</strong>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+        <div class="pull-right action-buttons">
+            <a href="{% url 'industry:selector' %}" class="btn btn-info">Add Character</a>
+        </div>
+
+        <div class="users-panel">
+            {% for t in user_tokens %}
+                <div class="">
+                    <a href="{% url 'industry:list_jobs' t.character_ownership.character.character_id %}">
+                        <img src="{{ t.character_ownership.character.portrait_url_64 }}"
+                             title="{{ t.character_ownership.character.character_name }}">
+                    </a>
+                </div>
+            {% endfor %}
+
+        </div>
+
+        <table class="table table-responsive table-striped table-hover table-aa table-dark">
+            <thead>
+                {% if items %}
+                <tr>
+                    <th class="table-center" scope="col">#</th>
+                    <th class="table-center" scope="col">Station</th>
+                    <th class="table-center" scope="col">Activity</th>
+                    <th class="table-center" scope="col">Blueprint</th>
+                    <th class="table-center" scope="col">Progress</th>
+                    <th class="table-center" scope="col">Time Remaining (aprox.)</th>
+                    <th class="table-center" scope="col">Duration</th>
+                    <th class="table-center" scope="col">Start Date</th>
+                    <th class="table-center" scope="col">End Date</th>
+                </tr>
+                {% endif %}
+            </thead>
+
+            <tbody>
+                {% for i in items %}
+                    {% include 'industry/jobs_list_snippet.html' %}
+                {% empty %}
+                    <h2>No Industry Jobs running for {{ character_data.character_name }}</h2>
+                {% endfor %}
+
+            </tbody>
+        </table>
+
+        </div>
+
+    </div>
+
+
+{% endblock %}
+{% block extra_javascript %}
+<script>
+
+    doProgressBars()
+
+    function doProgressBars() {
+        let ids = document.getElementsByName("timeleft")
+        ids.forEach( (i) =>  {
+            //console.log(`id ${i.value}`)
+            // TODO change all dates to new Date("2022-06-07 13:49".replace(/ /g, "T") + "Z")
+            let startElement = document.getElementById(`start_date_${i.value}`)
+            let endElement = document.getElementById(`end_date_${i.value}`)
+            //console.log(`id ${i.id} start: ${startElement.textContent} - end: ${endElement.textContent}`)
+
+            let ds = new Date(startElement.textContent.trim().replace(/ /g, "T") + ":00Z")
+            let de = new Date(endElement.textContent.trim().replace(/ /g, "T") + ":00Z")
+
+            let perc = ((new Date().getTime() - ds.getTime()) * 100) / (de.getTime() - ds.getTime())
+            perc = ( perc > 100 ? 100 : perc)
+            //console.log(`perc => ${parseInt(perc)}`)
+
+
+            //console.log(`timeRemaining => ${dhm_dates(timeRemaining)}`)
+            let dr = document.getElementById(`remaining_${i.value}`)
+            if ( dr !== undefined ) {
+                //dr.innerText =  dhm(timeRemaining)
+                dr.innerText = dhm_dates(de, new Date().getTime())
+            }
+
+
+            let p = document.getElementById(`progress_${i.value}`)
+            p.ariaValueMin = ds.getTime()
+            p.ariaValueMax = de.getTime()
+            p.ariaValueNow = new Date().getUTCMilliseconds()
+
+            if ( perc < 50 ) {
+                p.innerHTML = `<div class="progress-bar-custom2" alt="${parseInt(perc)}%">${parseInt(perc)}%</div>`
+            } else {
+                p.innerHTML = `<div class="progress-bar-custom" alt="${parseInt(perc)}%">${parseInt(perc)}%</div>`
+            }
+
+            p.style.width=`${perc}%`
+
+            let timeRemaining =  de.getTime() - new Date().getTime()
+            //console.log(`timeRemaining => ${timeRemaining}`)
+            if ( timeRemaining < 1 ) {
+                p.classList.remove("progress-bar-striped")
+                p.classList.remove("active")
+            }
+
+        });
+    }
+
+    function padZeroTwo(n)  {
+        return ('' + n).padStart(2, '0');
+    }
+
+
+    function dhm_dates(date_future, date_now) {
+
+        if ( date_now > date_future) {
+            return "ready to deliver"
+        }
+
+        // get total seconds between the times
+        let delta = Math.abs(date_future - date_now) / 1000;
+
+        // calculate (and subtract) whole days
+        let days = Math.floor(delta / 86400);
+        delta -= days * 86400;
+
+        // calculate (and subtract) whole hours
+        let hours = Math.floor(delta / 3600) % 24;
+        delta -= hours * 3600;
+
+        // calculate (and subtract) whole minutes
+        let minutes = Math.floor(delta / 60) % 60;
+        delta -= minutes * 60;
+
+        // what's left is seconds
+        let seconds = parseInt(delta % 60);  // in theory the modulus is not required
+
+        return  padZeroTwo(days) + " days, " + padZeroTwo(hours) + ":" + padZeroTwo(minutes) + ":" + padZeroTwo(seconds)
+    }
+
+
+    setInterval(function() {
+        doProgressBars()
+    }, 1 * 1000); // 60 * 1000 milsec
+
+
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-center {
+        text-align: center;
+    }
+    .table-right {
+        text-align: right;
+    }
+
+    .table-vertical-align {
+        margin-top: 15px;
+        background-color: #D8CDCB;
+    }
+
+    .progress-bar-custom {
+        {#background-color: #ffffff;#}
+        margin-top: 12px;
+        font-weight: bolder;
+        font-size: larger;
+        //color: #f0f0f0;
+        color: #000fff;
+        text-align: center;
+    }
+    .progress-bar-custom2 {
+        margin-left: 65px;
+        background-color: #ffffff;
+        margin-top: 12px;
+        font-weight: bolder;
+        font-size: larger;
+        //color: #f0f0f0;
+        color: #000fff;
+        text-align: center;
+    }
+
+    .activity-description {
+        display: flex;
+        height: 32px;
+        align-items: center;
+    }
+
+    .users-panel {
+        display: flex;
+        gap: 10px;
+    }
+
+    .users-panel img:hover {
+      border: solid 2px lightskyblue;
+      margin: -2px;
+    }
+
+    .blueprint-cell {
+        display: flex;
+        align-items: center;
+    }
+
+</style>
+{% endblock %}
+
+{% block extra_script %} {% endblock %}

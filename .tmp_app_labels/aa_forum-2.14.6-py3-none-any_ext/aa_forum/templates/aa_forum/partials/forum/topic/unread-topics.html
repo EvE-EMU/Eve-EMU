@@ -1,0 +1,19 @@
+<div id="category-{{ board.category.id }}" class="card card-default card-aa-forum-category mb-3">
+    <div class="card-header">
+        <div class="card-title mb-0">
+            {{ board.category.name }} »
+
+            {% if board.parent_board %}
+                {{ board.parent_board.name }} »
+            {% endif %}
+
+            {{ board.name }}
+        </div>
+    </div>
+
+    <div class="card-body">
+        {% for topic in board.topics.all %}
+            {% include "aa_forum/partials/forum/board/topic.html" %}
+        {% endfor %}
+    </div>
+</div>

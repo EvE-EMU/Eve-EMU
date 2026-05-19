@@ -1,0 +1,26 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block extra_css %}
+    {% include "opcalendar/partials/base/stylesheets.html" %}
+{% endblock extra_css %}
+
+{% block page_title %}
+    {% translate "Operation Calendar" %}
+{% endblock page_title %}
+
+{% block header_nav_collapse_right %}
+    {% include "opcalendar/partials/base/menu.html" %}
+{% endblock %}
+
+{% block header_nav_brand %}
+    {% translate "Operation Calendar" %}
+{% endblock %}
+
+
+{% block content %}
+        {% block details %}{% endblock %}
+{% endblock %}
+{% block extra_script %}
+{% endblock extra_script %}

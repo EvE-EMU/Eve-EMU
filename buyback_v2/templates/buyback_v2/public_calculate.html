@@ -1,0 +1,57 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+{% load price_formats %}
+
+{% block page_title %}{% trans "Public buyback calculator" %}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <p><a href="{% url 'buyback_v2:public_index' %}">← {% trans "All public programs" %}</a></p>
+  <h1 class="mb-2">{% if program.name %}{{ program.name }}{% else %}{% trans "Buyback" %}{% endif %}</h1>
+  <p class="alert alert-info">
+    {% trans "Tier" %}: <strong>{{ pricing_ctx.tier_name }}</strong>
+    — {% trans "payout multiplier" %}: <strong>{{ pricing_ctx.multiplier|floatformat:4 }}×</strong>
+    ({% trans "public estimate; log in for corp/alliance rates" %})
+  </p>
+
+  {% if result and result.buyback_data %}
+  <div class="card text-white bg-success mb-3">
+    <div class="card-header">{% trans "Estimate" %}</div>
+    <div class="card-body">
+      <p class="mb-0 fs-5">
+        {% trans "Net payout" %}:
+        <strong>{{ result.contract_price_data.contract_net_total|custom_number_format:2 }} ISK</strong>
+      </p>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">{% trans "Summary" %}</div>
+    <div class="card-body">
+      {% with contract_price_data=result.contract_price_data donation=result.donation price_source=result.price_source %}
+      {% include "buybackprogram/partials/calculate/invoice.html" %}
+      {% endwith %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header">{% trans "Calculator" %}</div>
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="id_items">{{ form.items.label }}</label>
+          <textarea name="items" id="id_items" class="form-control" rows="12">{{ form.items.value|default:"" }}</textarea>
+          <div class="form-text">{{ form.items.help_text }}</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="id_donation">{{ form.donation.label }}</label>
+          <input type="number" name="donation" id="id_donation" class="form-control" value="{{ form.donation.value|default:0 }}" min="0" max="100">
+        </div>
+        <button type="submit" class="btn btn-primary">{% trans "Calculate" %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% load i18n %}
+<table>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Type:" %}</b></td>
+        <td><span class="event {{ event.get_category_class }}">{{ event.operation_type }}</span></td>
+    </tr>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Availability:" %}</b></td>
+        <td><span class="event {{ event.get_visibility_class }}">{{ event.event_visibility }}</span></td>
+    </tr>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Start time:" %}</b></td>
+        <td>{{ event.start_time|date:"D Y-m-d H:i" }} (EVE) / <span id="localtime{{ event.id }}"></span> (Local)</td>
+    </tr>
+
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Est. end time:" %}</b></td>
+        <td>{{ event.end_time|date:"D Y-m-d H:i" }}</td>
+    </tr>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Duration:" %}</b></td>
+        <td>{{ event.duration }}</td>
+    </tr>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Formup location:" %}</b></td>
+        <td>{{ event.formup_system }}</td>
+    </tr>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Doctrine:" %}</b></td>
+        <td>{{ event.doctrine }}</td>
+    </tr>
+    <tr>
+        <td style="padding-right: 10px;"><b>{% trans "Fleet Commander:" %}</b></td>
+        <td>{{ event.fc }}</td>
+    </tr>
+</table>
+<br>
+{{ event.description|linebreaksbr }}

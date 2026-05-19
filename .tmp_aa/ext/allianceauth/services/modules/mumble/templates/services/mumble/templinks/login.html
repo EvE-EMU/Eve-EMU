@@ -1,0 +1,99 @@
+{% extends "services/mumble/base.html" %}
+
+{% load static %}
+{% load i18n %}
+
+{% block mumble %}
+    <div class="col-md-12 text-center">
+        <div class="mumble-sso-login mb-3">
+            <p>
+                <img class="ra-avatar img-circle" src="{{ link.creator.portrait_url_128 }}" alt="{{ link.creator.character_name }}">
+            </p>
+
+            <h4>
+                {% blocktranslate with character=link.creator.character_name %}
+                    {{ character }} has invited you to join Mumble!
+                {% endblocktranslate %}
+            </h4>
+
+            <p>
+                {% translate "Time Remaining" %}: <span id="countdown{{ link.link_ref }}"></span>
+            </p>
+            <p>
+                <span class="label label-info">{% translate "Link Ref" %}: {{ link.link_ref }}</span>
+            </p>
+
+            <form action="{% url 'mumble:join' link.link_ref %}" method="post">
+                {% csrf_token %}
+
+                <input type="hidden" name="sso" value="True">
+                <input
+                    type="image"
+                    class="img-responsive center-block"
+                    src="{% static 'allianceauth/authentication/img/sso/EVE_SSO_Login_Buttons_Large_Black.png' %}"
+                    alt="{% translate 'Login with SSO"' %}"
+                    >
+                </form>
+            </div>
+        </div>
+
+        {% include "bundles/moment-js.html" with locale=True %}
+        {% include "bundles/timers-js.html" %}
+
+        <script>
+            /* global moment */
+            const locale = '{{ LANGUAGE_CODE }}';
+            const timers = [{
+                'id': '{{ link.link_ref }}',
+                'targetDate': moment('{{ link.expires| date:"c" }}'),
+                'expired': false
+            }];
+
+            moment.locale(locale);
+
+            /**
+             * Update a timer
+             *
+             * @param timer
+             */
+            const updateTimer = (timer) => {
+                if (timer.targetDate.isAfter(Date.now())) {
+                    const duration = moment.duration(timer.targetDate - moment(), 'milliseconds');
+
+                    document.getElementById("countdown" + timer.id).innerHTML = getDurationString(duration);
+                } else {
+                    timer.expired = true;
+
+                    document.getElementById("countdown" + timer.id).innerHTML = "";
+                }
+            };
+
+            /**
+             * Update all timers
+             */
+            const updateAllTimers = () => {
+                const l = timers.length;
+
+                for (let i = 0; i < l; ++i) {
+                    if (timers[i].expired) {
+                        continue;
+                    }
+
+                    updateTimer(timers[i]);
+                }
+            };
+
+            /**
+             * Timed update
+             */
+            const timedUpdate = () => {
+                updateAllTimers();
+            };
+
+            // Set initial values
+            timedUpdate();
+
+            // Start timed updates
+            setInterval(timedUpdate, 1000);
+        </script>
+    {% endblock mumble %}

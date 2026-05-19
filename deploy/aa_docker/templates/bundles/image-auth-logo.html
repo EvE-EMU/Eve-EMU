@@ -1,0 +1,8 @@
+{% load static %}
+{# Replaces Alliance Auth SVG sprite logo with EVE EMU branding (see deploy/aa_docker/static/branding/). #}
+<img class="svg-alliance-auth-logo eve-emu-logo"
+     src="{% static 'branding/emu-logo.png' %}"
+     alt="EVE EMU"
+     width="{{ logo_width|default:'128px' }}"
+     height="{% if logo_height %}{{ logo_height }}{% else %}{{ logo_width|default:'128px' }}{% endif %}"
+     decoding="async">

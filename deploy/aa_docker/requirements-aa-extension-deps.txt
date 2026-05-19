@@ -1,0 +1,53 @@
+# Shared dependencies for community apps (resolved against Alliance Auth 5.x).
+pip==26.1.1
+recurrent>=0.4
+psutil>=5.9
+# Transitive via slixmpp / aioxmpp stacks — pin so aa-package-monitor stays current.
+aiodns>=4.0.3,<5
+# PyPI 1.6.x still imports esi.clients (django-esi 8); 2.0.0a* uses esi.openapi_clients (django-esi 9 / AA 5).
+django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a6
+# Celery stack; keep current so aa-package-monitor "Update Available" stays clear.
+click>=8.4.0,<9
+aiopenapi3>=0.10
+bravado
+bravado-core
+django-eveonline-sde>=0.0.1b9
+django-esi>=9,<10
+allianceauth-app-utils>=1.31,<2
+django-navhelper
+django-multiselectfield
+django-bootstrap-form
+django-datatables-view
+dj-datatables-view
+django-bootstrap5>=23.3
+django-sortedm2m
+django-solo
+django-model-utils
+django-ninja>=1.5,<2
+django-modeltranslation
+dhooks-lite>=1.0
+redis-simple-mq>=1.1
+networkx
+humanize>=4.7
+bleach
+unidecode
+tqdm
+dacite
+puremagic
+dnspython
+graphqlclient
+py-cord>=2.8.0,<3
+discordproxy>=1.4,<6
+pyyaml
+requests-mock
+packaging>=22
+importlib-metadata>=6
+# zipp 4.x is transitive; stay on 3.x until importlib-metadata officially supports 4 (Package Monitor may flag it).
+zipp>=3.23.1,<4
+celery-once
+django-bitfield
+python-crontab>=3.0
+pandas>=3.0.3,<4
+numpy>=2.4.6,<3
+ortools
+pytz>=2025.2

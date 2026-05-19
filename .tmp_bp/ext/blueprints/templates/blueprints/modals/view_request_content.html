@@ -1,0 +1,61 @@
+{% load i18n %}
+{% load humanize %}
+
+<div class="modal-content">
+    <div class="modal-header">
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h4 class="modal-title" id="modalTitle">{% translate 'View Request' %}</h4>
+    </div>
+
+    <div class="modal-body">
+        <div class="row">
+            <label class="col-4 col-form-label">
+                {% translate "Blueprint Type" %}
+            </label>
+            <div class="col-8 col-form-label">
+                {{ request.type_icon }}
+                {{ request.type_name }}
+            </div>
+        </div>
+        <div class="row">
+            <label class="col-4 col-form-label">
+                {% translate "Blueprint Location" %}
+            </label>
+            <div class="col-8 col-form-label">
+                {{ request.location }}
+            </div>
+        </div>
+        <div class="row">
+            <label class="col-4 col-form-label">
+                {% translate "Material Efficiency" %}
+            </label>
+            <div class="col-8 col-form-label">
+                {{ request.material_efficiency }}
+            </div>
+        </div>
+        <div class="row">
+            <label class="col-4 col-form-label">
+                {% translate "Time Efficiency" %}
+            </label>
+            <div class="col-8 col-form-label">
+                {{ request.time_efficiency }}
+            </div>
+        </div>
+        <div class="row">
+            <label class="col-4 col-form-label">
+                {% translate "Runs" %}
+            </label>
+            <div class="col-8 col-form-label">
+                {% if request.runs %}
+                    {{ request.runs }}
+                {% else %}
+                    &mdash;
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Close" %}</button>
+    </div>
+</div>

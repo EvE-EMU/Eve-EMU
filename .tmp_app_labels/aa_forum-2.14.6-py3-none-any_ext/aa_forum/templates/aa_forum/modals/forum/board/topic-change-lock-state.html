@@ -1,0 +1,46 @@
+{% load i18n %}
+
+<div class="modal fade" id="topic-lock-state-change-{{ topic.pk }}" tabindex="-1" role="dialog" aria-labelledby="{% translate 'Change lock state of topic' %}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title fs-5">
+                    {% if topic.is_locked %}
+                        {% translate "Unlock/re-open topic" %}
+                        <b>{{ topic.subject }}</b>
+                    {% else %}
+                        {% translate "Lock/close topic" %}
+                        <b>{{ topic.subject }}</b>
+                    {% endif %}
+                </div>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% translate 'Close' %}"></button>
+            </div>
+
+            <div class="modal-body">
+                {% if topic.is_locked %}
+                    <p>{% translate "Are you sure you want to unlock/re-open this topic?" %}</p>
+                {% else %}
+                    <p>{% translate "Are you sure you want to lock/close this topic?" %}</p>
+                {% endif %}
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+                    <i class="fa-regular fa-hand fa-fw"></i>
+                    {% translate "Cancel" %}
+                </button>
+
+                <a id="modal-button-confirm" class="btn btn-danger btn-sm" role="button" href="{% url 'aa_forum:forum_topic_change_lock_state' topic.pk %}">
+                    {% if topic.is_locked %}
+                        <i class="fa-solid fa-unlock fa-fw"></i>
+                        {% translate "Unlock/re-open topic" %}
+                    {% else %}
+                        <i class="fa-solid fa-lock fa-fw"></i>
+                        {% translate "Lock/close topic" %}
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

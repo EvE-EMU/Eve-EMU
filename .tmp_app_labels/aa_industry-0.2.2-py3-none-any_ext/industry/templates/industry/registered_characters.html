@@ -1,0 +1,72 @@
+{% extends './base.html' %}{% load i18n %} {% load static %} {% load humanize %} {% load tz %}
+
+{% block details %}
+
+     <div class="panel panel-primary">
+        <div class="panel-heading">
+            <h3 class="panel-title">Add new Characters or Select an existing one</h3>
+        </div>
+     </div>
+
+    <div class="users-panel char-selector">
+        <div class="characters">
+            <a href="{% url 'industry:selector' %}">
+                <div class="characters-portrait">
+                    <img src="https://images.evetech.net/characters/1/portrait?size=256">
+                </div>
+                <div class="characters-name brn btn-danger">Add Character</div>
+            </a>
+        </div>
+
+        {% for c in characters %}
+            <div class="characters">
+                <a href="{% url 'industry:list_jobs' c.character_id %}">
+                    <div class="characters-portrait"><img src="{{ c.portrait_url_256 }}" title="{{ c.character_name }}"></div>
+                    <div class="characters-name btn btn-warning">{{ c.character_name }}</div>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .char-selector {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .characters {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #2E221F;
+        margin: 0 5px 0 5px;
+    }
+
+    .characters-portrait {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .characters-name {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bolder;
+        color: black;
+        padding: 10px;
+    }
+
+    .users-panel img:hover {
+        border: solid 5px greenyellow;
+        margin: -5px;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

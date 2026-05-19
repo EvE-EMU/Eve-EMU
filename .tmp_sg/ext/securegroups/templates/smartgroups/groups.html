@@ -1,0 +1,240 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Secure Groups" %}{% endblock page_title %}
+
+{% block header_nav_brand %}{% translate "Secure Groups" %}{% endblock header_nav_brand %}
+
+{% if manager_perms %}
+    {% block header_nav_collapse_left %}
+        {% if perms.groupmanagement.management %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'groupmanagement:management' %}">{% translate "Group Management" %}
+                    {% if req_count %}
+                        <span class="badge bg-secondary">{{ req_count }}</span>
+                    {% endif %}
+                </a>
+            </li>
+
+            {% if perms.securegroups.audit_sec_group %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'securegroups:audit_list' %}">{% translate "Secure Group Audit" %}
+                    </a>
+                </li>
+            {% endif %}
+        {% endif %}
+    {% endblock %}
+{% endif %}
+
+{% block content %}
+    <div class="allianceauth-secure-groups">
+        {% if groups %}
+            <table class="table" id="groupsTable" >
+                <thead>
+                    <tr>
+                        <th>{% translate "Name" %}</th>
+                        <th>{% translate "Description" %}</th>
+                        <th>
+                            {% translate "Leaders" %}<br>
+                            <span class="m-1 fw-lighter badge bg-primary">{% translate "User" %}</span>
+                            <span class="m-1 fw-lighter badge bg-secondary">{% translate "Group" %}</span>
+                        </th>
+                        <th class="text-center">{% trans "Actions" %}</th>
+                        <th class="text-center">{% trans "Status" %}</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for g in groups %}
+                        <tr
+                            {% if g.smart_group.group in user.groups.all %}
+                                {% if not g.request %}
+                                    {% if g.grace_msg %}
+                                        class="bg-warning bg-opacity-25"
+                                    {% else %}
+                                        class="bg-success bg-opacity-25"
+                                    {% endif %}
+                                {% else %}
+                                    class="bg-info bg-opacity-25"
+                                {% endif %}
+                            {% elif not g.request %}
+                            {% else %}
+                                class="bg-info bg-opacity-25"
+                            {% endif %}
+                        >
+                            <td>
+                                {{ g.smart_group.group.name }}
+                            </td>
+
+                            <td>
+                                {% if g.smart_group.group.authgroup.description %}
+                                    {{ g.smart_group.group.authgroup.description|linebreaks|urlize }}
+                                {% endif %}
+                            </td>
+
+                            <td style="max-width: 30%;">
+                                {% for leader in g.smart_group.group.authgroup.group_leaders.all %}
+                                    {% if leader.profile.main_character %}
+                                        <span class="my-1 me-1 badge bg-primary">{{ leader.profile.main_character }}</span>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% for group in g.smart_group.group.authgroup.group_leader_groups.all %}
+                                    <span class="my-1 me-1 badge bg-secondary">{{ group.name }}</span>
+                                {% endfor %}
+                            </td>
+
+                            <td class="text-end">
+                                {% if g.smart_group.group in user.groups.all %}
+                                    {% if not g.request %}
+                                        {% if g.grace_msg %}
+                                            <a id="{{ g.smart_group.group.id }}" class="btn btn-warning show-user-button">
+                                                {% translate "Pending Removal - Check Status" %}
+                                            </a>
+                                        {% endif %}
+                                        <a href="{% url 'securegroups:request_leave' g.smart_group.group.id %}" class="btn btn-danger">
+                                            {% trans "Leave" %}
+                                        </a>
+
+                                    {% else %}
+                                        <button type="button" class="btn btn-primary" disabled>
+                                            {% translate "Pending" %}
+                                        </button>
+                                    {% endif %}
+                                {% elif not g.request %}
+                                    <a id="{{ g.smart_group.group.id }}" class="btn btn-primary check-user-button">
+                                        {% translate "Request" %}
+                                    </a>
+                                {% else %}
+                                    <button type="button" class="btn btn-primary" disabled>
+                                        {% translate "Pending" %}
+                                    </button>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if g.smart_group.group in user.groups.all %}
+                                    {% if not g.request %}
+                                        {% if g.grace_msg %}
+                                            {% trans "Pending Removal" %}
+                                        {% else %}
+                                            {% trans "Joined" %}
+                                        {% endif %}
+                                    {% else %}
+                                        {% translate "Pending Leave Requet" %}
+                                    {% endif %}
+                                {% elif not g.request %}
+                                    {% translate "Available to Join" %}
+                                {% else %}
+                                    {% translate "Pending Join Requet" %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% else %}
+            <div class="alert alert-warning text-center">
+                {% translate "No groups available." %}
+            </div>
+        {% endif %}
+        <div class="d-flex align-items-center flex-column text-center">
+            <div class="" style="width: 200px">
+                <h4 class="">Key</h4>
+            </div>
+            <table class="table" style="width: 200px">
+                <tbody>
+                    <tr class="bg-warning bg-opacity-25"><td>{% translate "Pending Removal" %}</td></tr>
+                    <tr class=""><td>{% translate "Available to Join" %}</td></tr>
+                    <tr class="bg-info bg-opacity-25"><td>{% translate "Pending Request" %}</td></tr>
+                    <tr class="bg-success bg-opacity-25"><td>{% translate "Currently Joined" %}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal fade" id="modal-account-checks" tabindex="-1" role="dialog" aria-labelledby="{% translate 'Account Checks' %}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="modal-title fs-5">
+                            {% translate 'Account Checks' %}
+                        </div>
+
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% translate 'Close' %}"></button>
+                    </div>
+
+                    <div id="main-modal-body" class="modal-body" style="overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_css %}
+    {% include 'bundles/datatables-css-bs5.html' %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include 'bundles/datatables-js-bs5.html' %}
+    {% include 'bundles/filterdropdown-js.html' %}
+
+    <script>
+        $(document).ready(function () {
+            $('#groupsTable').DataTable({
+                filterDropDown: {
+                    bootstrap: true,
+                    bootstrap_version: 5,
+                    columns: [
+                        {idx: 4}
+                    ]
+                },
+                columnDefs: [
+                    {
+                        target: 4,
+                        visible: false
+                    },
+                ],
+                autoWidth: false
+            });
+
+            // Bootstrap 5 Tooltip
+            [].slice.call(document.querySelectorAll(`[data-bs-tooltip="allianceauth-secure-groups"]`))
+                .map((tooltipTriggerEl) => {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+        });
+
+        $(".check-user-button").on("click", function() {
+            const id = this.id;
+
+            let url = "{% url 'securegroups:request_check' 123456 %}";
+            url = url.replace('123456', id);
+
+            $.get(url, function(data) {
+                const modal_body = $('#main-modal-body')[0];
+                modal_body.innerHTML = data;
+
+                const myModal = new bootstrap.Modal(document.getElementById('modal-account-checks'));
+
+                myModal.show();
+            });
+        });
+
+        $(".show-user-button").on("click", function() {
+            const id = this.id;
+
+            let url = "{% url 'securegroups:request_show' 123456 %}";
+            url = url.replace('123456', id);
+
+            $.get(url, function(data) {
+                const modal_body = $('#main-modal-body')[0];
+                modal_body.innerHTML = data;
+
+                const myModal = new bootstrap.Modal(document.getElementById('modal-account-checks'));
+
+                myModal.show();
+            });
+        });
+    </script>
+{% endblock %}

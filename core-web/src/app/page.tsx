@@ -1,38 +1,49 @@
-const apiBase =
-  process.env.NEXT_PUBLIC_CORE_API_URL?.replace(/\/$/, "") ||
-  "http://localhost:8000";
+import Link from "next/link";
+
+const authUrl =
+  process.env.NEXT_PUBLIC_AUTH_URL?.replace(/\/$/, "") ||
+  "https://auth.eve-emu.com";
 
 export default function HomePage() {
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-16">
+    <main className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-20">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-white">
-          EVE-EMU Core (web)
+        <p className="text-sm font-medium uppercase tracking-widest text-[var(--accent)]">
+          EvE-EMU
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+          EVE Online tools for your organization
         </h1>
-        <p className="mt-2 text-[var(--muted)]">
-          This Next.js app is the <strong className="text-[var(--fg)]">primary browser experience</strong>.
-          The Python FastAPI service is the <strong className="text-[var(--fg)]">API + SSO backend</strong>{" "}
-          (same repo under <code className="text-[var(--accent)]">core/</code>). The Discord bot stays on
-          Discord and talks to that API with the bot secret where needed.
+        <p className="mt-3 text-[var(--muted)]">
+          Public information and member-facing utilities. Sign in through Alliance
+          Auth for corp services, permissions, and integrations.
         </p>
       </div>
-      <section className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-[var(--muted)]">
-        <p className="font-medium text-white">Configure</p>
-        <ul className="mt-2 list-inside list-disc space-y-1">
-          <li>
-            <code className="text-[var(--accent)]">NEXT_PUBLIC_CORE_API_URL</code> — FastAPI base (shown:{" "}
-            <code className="text-white/90">{apiBase}</code>)
-          </li>
-          <li>
-            Optional <code className="text-[var(--accent)]">CORE_WEB_BASE_PATH</code> at{" "}
-            <em>build time</em> if the site is served under a subpath (e.g. <code>/core</code>).
-          </li>
-        </ul>
+      <section className="flex flex-wrap gap-3">
+        <a
+          href={authUrl}
+          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-black hover:opacity-90"
+        >
+          Member login &amp; services
+        </a>
+        <Link
+          href="/industrial"
+          className="rounded-md border border-white/15 px-4 py-2 text-sm font-medium text-white hover:bg-white/5"
+        >
+          Industrial tools
+        </Link>
       </section>
-      <p className="text-sm text-[var(--muted)]">
-        Next steps: add auth flows that call <code className="text-[var(--accent)]">/v1/auth/eve/...</code>, build
-        dashboards for plugins (finance, moon taxes, etc.), and keep bot-only routes on the API for Discord.
-      </p>
+      <section className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-[var(--muted)]">
+        <p>
+          <strong className="text-white">Alliance Auth</strong> (groups, SRP, market
+          tools, wiki access) lives at{" "}
+          <a href={authUrl} className="text-[var(--accent)] hover:underline">
+            {authUrl.replace(/^https?:\/\//, "")}
+          </a>
+          . This site is the public EvE-EMU front door; authenticated apps and APIs
+          are linked from there.
+        </p>
+      </section>
     </main>
   );
 }

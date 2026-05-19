@@ -1,0 +1,396 @@
+{
+  "EveCategory": [
+    {
+      "id": 2,
+      "name": "Celestial",
+      "published": true
+    },
+    {
+      "id": 3,
+      "name": "Station",
+      "published": false
+    },
+    {
+      "id": 6,
+      "name": "Ship",
+      "published": true
+    },
+    {
+      "id": 9,
+      "name": "Blueprint",
+      "published": true
+    },
+    {
+      "id": 16,
+      "name": "Skill",
+      "published": true
+    },
+    {
+      "id": 20,
+      "name": "Implant",
+      "published": true
+    },
+    {
+      "id": 65,
+      "name": "Structure",
+      "published": true
+    }
+  ],
+  "EveConstellation": [
+    {
+      "eve_region_id": 10000002,
+      "id": 20000020,
+      "name": "Kimotoro",
+      "position_x": -1.3499640046818544e17,
+      "position_y": 6.499945263229326e16,
+      "position_z": 1.0332561731752134e17
+    },
+    {
+      "eve_region_id": 10000014,
+      "id": 20000169,
+      "name": "UX3-N2",
+      "position_x": -8.144235531686658e16,
+      "position_y": 8631923480121213.0,
+      "position_z": -2.142002604277861e17
+    },
+    {
+      "eve_region_id": 10000030,
+      "id": 20000372,
+      "name": "Hed",
+      "position_x": -1.282693384263374e17,
+      "position_y": 3.8212719069804984e16,
+      "position_z": 7556108809294752.0
+    },
+    {
+      "eve_region_id": 10000064,
+      "id": 20000729,
+      "name": "Jeon",
+      "position_x": -2.0690763482714282e17,
+      "position_y": 4.82908790696792e16,
+      "position_z": 7.960999000649318e16
+    }
+  ],
+  "EveGroup": [
+    {
+      "eve_category_id": 2,
+      "id": 5,
+      "name": "Solar System",
+      "published": false
+    },
+    {
+      "eve_category_id": 2,
+      "id": 12,
+      "name": "Cargo Container",
+      "published": true
+    },
+    {
+      "eve_category_id": 3,
+      "id": 15,
+      "name": "Station",
+      "published": false
+    },
+    {
+      "eve_category_id": 6,
+      "id": 25,
+      "name": "Frigate",
+      "published": true
+    },
+    {
+      "eve_category_id": 16,
+      "id": 257,
+      "name": "Spaceship Command",
+      "published": true
+    },
+    {
+      "eve_category_id": 20,
+      "id": 300,
+      "name": "Cyberimplant",
+      "published": true
+    },
+    {
+      "eve_category_id": 6,
+      "id": 513,
+      "name": "Freighter",
+      "published": true
+    },
+    {
+      "eve_category_id": 9,
+      "id": 1270,
+      "name": "Mobile Tractor Unit Blueprint",
+      "published": true
+    },
+    {
+      "eve_category_id": 65,
+      "id": 1406,
+      "name": "Refinery",
+      "published": true
+    },
+    {
+      "eve_category_id": 65,
+      "id": 1657,
+      "name": "Citadel",
+      "published": true
+    }
+  ],
+  "EveRegion": [
+    {
+      "description": "\"The greater the State becomes, the greater humanity under it flourishes.\"",
+      "id": 10000002,
+      "name": "The Forge"
+    },
+    {
+      "description": "Catch has long been a strategically important region. During the initial expansion into the rim territories, it linked the Khanid Kingdom, Sansha's Nation and the Angel Cartel to one another, and through its connections to Providence was given considerable status as the \"Southern Gateway\" by the Amarr Empire. Unlike regions such as Pure Blind, however, its importance did not fade with the dawn of the capsuleer era, as its branching links east and west ensured continued relevance. As a consequence it has earned itself a bloody reputation - some say the very stars reverberate with the dying breaths of the countless lost souls.",
+      "id": 10000014,
+      "name": "Catch"
+    },
+    {
+      "description": "\"Never Again\"",
+      "id": 10000030,
+      "name": "Heimatar"
+    },
+    {
+      "description": "\"The Federation is not a defined region of space, of planets, of mountains, rivers, or woods. It is a vision.\"",
+      "id": 10000064,
+      "name": "Essence"
+    }
+  ],
+  "EveSolarSystem": [
+    {
+      "eve_constellation_id": 20000020,
+      "eve_star_id": null,
+      "id": 30000142,
+      "name": "Jita",
+      "position_x": -1.2906486173487826e17,
+      "position_y": 6.075530690996363e16,
+      "position_z": 1.1746922706009029e17,
+      "security_status": 0.9459131360054016
+    },
+    {
+      "eve_constellation_id": 20000169,
+      "eve_star_id": null,
+      "id": 30001161,
+      "name": "HED-GP",
+      "position_x": -9.54136975600012e16,
+      "position_y": 1.9654254337720636e16,
+      "position_z": -2.0691536685399747e17,
+      "security_status": -0.14632222056388855
+    },
+    {
+      "eve_constellation_id": 20000372,
+      "eve_star_id": null,
+      "id": 30002537,
+      "name": "Amamake",
+      "position_x": -1.242922662884945e17,
+      "position_y": 4.4194364193727224e16,
+      "position_z": 6110392433587103.0,
+      "security_status": 0.43876123428344727
+    },
+    {
+      "eve_constellation_id": 20000729,
+      "eve_star_id": null,
+      "id": 30004984,
+      "name": "Abune",
+      "position_x": -2.1126590104115347e17,
+      "position_y": 5.580652849031512e16,
+      "position_z": 8.141639674703722e16,
+      "security_status": 0.28563404083251953
+    }
+  ],
+  "EveType": [
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 5,
+      "eve_market_group_id": null,
+      "icon_id": null,
+      "id": 5,
+      "mass": 0.0,
+      "name": "Solar System",
+      "packaged_volume": 1.0,
+      "portion_size": 1,
+      "published": false,
+      "radius": 5000000000000.0,
+      "volume": 1.0
+    },
+    {
+      "capacity": 27500.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 12,
+      "eve_market_group_id": null,
+      "icon_id": 16,
+      "id": 23,
+      "mass": 10000.0,
+      "name": "Cargo Container",
+      "packaged_volume": 27500.0,
+      "portion_size": 1,
+      "published": false,
+      "radius": 14.0,
+      "volume": 27500.0
+    },
+    {
+      "capacity": 150.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 25,
+      "eve_market_group_id": null,
+      "icon_id": null,
+      "id": 603,
+      "mass": 997000.0,
+      "name": "Merlin",
+      "packaged_volume": 2500.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 39.0,
+      "volume": 16500.0
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 300,
+      "eve_market_group_id": null,
+      "icon_id": 2053,
+      "id": 19540,
+      "mass": 0.0,
+      "name": "High-grade Snake Alpha",
+      "packaged_volume": 1.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 1.0,
+      "volume": 1.0
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 300,
+      "eve_market_group_id": null,
+      "icon_id": 2061,
+      "id": 19551,
+      "mass": 0.0,
+      "name": "High-grade Snake Beta",
+      "packaged_volume": 1.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 1.0,
+      "volume": 1.0
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 300,
+      "eve_market_group_id": null,
+      "icon_id": 2054,
+      "id": 19553,
+      "mass": 0.0,
+      "name": "High-grade Snake Gamma",
+      "packaged_volume": 1.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 1.0,
+      "volume": 1.0
+    },
+    {
+      "capacity": 465000.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 513,
+      "eve_market_group_id": null,
+      "icon_id": null,
+      "id": 20185,
+      "mass": 960000000.0,
+      "name": "Charon",
+      "packaged_volume": 1300000.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 800.0,
+      "volume": 16250000.0
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 257,
+      "eve_market_group_id": null,
+      "icon_id": 33,
+      "id": 24311,
+      "mass": 0.0,
+      "name": "Amarr Carrier",
+      "packaged_volume": 0.01,
+      "portion_size": 1,
+      "published": true,
+      "radius": 1.0,
+      "volume": 0.01
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 257,
+      "eve_market_group_id": null,
+      "icon_id": 33,
+      "id": 24312,
+      "mass": 0.0,
+      "name": "Caldari Carrier",
+      "packaged_volume": 0.01,
+      "portion_size": 1,
+      "published": true,
+      "radius": 1.0,
+      "volume": 0.01
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 1270,
+      "eve_market_group_id": null,
+      "icon_id": 0,
+      "id": 33519,
+      "mass": 0.0,
+      "name": "Mobile Tractor Unit Blueprint",
+      "packaged_volume": 0.01,
+      "portion_size": 1,
+      "published": true,
+      "radius": 1.0,
+      "volume": 0.01
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 1657,
+      "eve_market_group_id": null,
+      "icon_id": null,
+      "id": 35832,
+      "mass": 3000000000.0,
+      "name": "Astrahus",
+      "packaged_volume": 8000.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 45000.0,
+      "volume": 8000.0
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 1406,
+      "eve_market_group_id": null,
+      "icon_id": null,
+      "id": 35835,
+      "mass": 3000000000.0,
+      "name": "Athanor",
+      "packaged_volume": 8000.0,
+      "portion_size": 1,
+      "published": true,
+      "radius": 45000.0,
+      "volume": 8000.0
+    },
+    {
+      "capacity": 0.0,
+      "eve_graphic_id": null,
+      "eve_group_id": 15,
+      "eve_market_group_id": null,
+      "icon_id": null,
+      "id": 52678,
+      "mass": 0.0,
+      "name": "Jita Trade Hub",
+      "packaged_volume": 1.0,
+      "portion_size": 1,
+      "published": false,
+      "radius": 100000.0,
+      "volume": 1.0
+    }
+  ]
+}

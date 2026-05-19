@@ -1,0 +1,93 @@
+{% extends "allianceauth/base-bs5.html" %}
+
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Secure Group Audit" %}{% endblock page_title %}
+
+{% block header_nav_brand %}{% translate "Secure Group Audit" %}{% endblock %}
+
+{% block content %}
+    <div class="allianceauth-secure-groups">
+        <div class="card card-default">
+            <div class="card-header mb-0">
+                <div class="card-title">{% translate "Secure Groups" %}</div>
+            </div>
+
+            <div class="card-body">
+                {% if sgs %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="groupsTable">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Name" %}</th>
+                                    <th>{% translate "Description" %}</th>
+                                    <th>{% translate "Status" %}</th>
+                                    <th>{% translate "Member Count" %}</th>
+                                    <th>{% translate "Pending Removal" %}</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for sg in sgs %}
+                                    <tr>
+                                        <td>
+                                            {{ sg.group.name }}
+                                        </td>
+
+                                        <td>
+                                            {% if sg.group.authgroup.description %}
+                                                {{ sg.group.authgroup.description|linebreaks|urlize }}
+                                            {% endif %}
+
+                                            {% if sg.description %}
+                                                {{ sg.description|linebreaks|urlize }}
+                                            {% endif %}
+                                        </td>
+
+                                        <td>
+                                            {% if sg.auto_group %}
+                                                <span class="label label-default">{% trans "Auto Group" %}</span>
+                                            {% elif sg.group.authgroup.open %}
+                                                <span class="label label-success">{% trans "Open" %}</span>
+                                            {% else %}
+                                                <span class="label label-default">{% trans "Requestable" %}</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td class="text-end">
+                                            {{ sg.num_members }}
+                                        </td>
+
+                                        <td class="text-end">
+                                            {{ sg.pending_rem }}
+                                        </td>
+
+                                        <td class="text-end">
+                                            <a href="{% url 'securegroups:audit' sg.id %}" class="btn btn-sm btn-primary" title="{% translate "Audit Members" %}">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+
+                                            <a href="{% url 'securegroups:update_group' sg.id %}" class="btn btn-sm btn-primary" title="{% translate "Request Update" %}">
+                                                <i class="fa-solid fa-rotate"></i>
+                                            </a>
+                                        </td>
+
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning text-center">
+                        {% translate "No groups to list." %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock content %}
+
+{% block extra_javascript %}
+{% endblock %}

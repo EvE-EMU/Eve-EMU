@@ -1,0 +1,60 @@
+{% extends "aa_bulletin_board/base.html" %}
+
+{% load i18n %}
+
+{% block aabulletinboard_body %}
+    {% if bulletins %}
+        <div class="row cards-equal-height d-flex flex-wrap">
+            {% for bulletin in bulletins %}
+                <div class="card-bulletin-excerpt col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title mb-0 clearfix">
+                                <span>{{ bulletin.title }}</span>
+                                {% if bulletin.groups.all %}
+                                    <i
+                                        class="fa-regular fa-eye-slash aa-bulletin-board-marker-group-restrictions float-end"
+                                        title="{% blocktranslate count group_count=bulletin.groups.all|length %}This bulletin is restricted to the following group:{% plural %}This bulletin is restricted to the following groups:{% endblocktranslate %}<br>{{ bulletin.groups.all|join:', ' }}"
+                                        data-bs-tooltip="aa-bulletin-board"
+                                        data-bs-html="true"
+                                    ></i>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="ck ck-content">
+                                {{ bulletin.content|safe }}
+                            </div>
+                        </div>
+
+                        <div class="card-footer-read-more-button card-footer-no-background">
+                            <p class="my-2">
+                                <a class="btn btn-success btn-sm btn-read-more" href="{% url 'aa_bulletin_board:view_bulletin' bulletin.slug %}">{% translate "Read more" %}</a>
+
+                                {% if perms.aa_bulletin_board.manage_bulletins %}
+                                    <a class="btn btn-warning btn-sm btn-read-more" href="{% url 'aa_bulletin_board:edit_bulletin' bulletin.slug %}">{% translate "Edit" %}</a>
+                                    <a class="btn btn-danger btn-sm btn-read-more" href="{% url 'aa_bulletin_board:remove_bulletin' bulletin.slug %}">{% translate "Delete" %}</a>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="aa-callout aa-callout-info" role="alert">
+            {% translate "No bulletins found." %}
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include "aa_bulletin_board/bundles/aa-bulletin-board-oembed-js.html" %}
+    {% include "aa_bulletin_board/bundles/aa-bulletin-board-equal-height-js.html" %}
+{% endblock %}
+
+{% block extra_css %}
+    {% include "aa_bulletin_board/bundles/ckeditor5-css.html" %}
+    {% include "aa_bulletin_board/bundles/aa-bulletin-board-css.html" %}
+{% endblock %}

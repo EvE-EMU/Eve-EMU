@@ -1,0 +1,667 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-06-16 16:13+1000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: marketmanager/auth_hooks.py:16
+#: marketmanager/templates/marketmanager/marketbrowser-bs5.html:6
+#: marketmanager/templates/marketmanager/marketbrowser-bs5.html:10
+msgid "Market Browser"
+msgstr ""
+
+#: marketmanager/models.py:39
+msgid "Order ID"
+msgstr ""
+
+#: marketmanager/models.py:40
+msgid "Unique order ID"
+msgstr ""
+
+#: marketmanager/models.py:44 marketmanager/models.py:166
+#: marketmanager/models.py:707
+msgid "Type"
+msgstr ""
+
+#: marketmanager/models.py:47
+msgid "Duration"
+msgstr ""
+
+#: marketmanager/models.py:48
+msgid ""
+"Number of days the order was valid for (starting from the issued date). An "
+"order expires at time issued + duration"
+msgstr ""
+
+#: marketmanager/models.py:50 marketmanager/models.py:243
+#: marketmanager/models.py:309 marketmanager/models.py:410
+msgid "Buy Order"
+msgstr ""
+
+#: marketmanager/models.py:52
+msgid "True if the order is a bid (buy) order"
+msgstr ""
+
+#: marketmanager/models.py:55
+msgid "Issued"
+msgstr ""
+
+#: marketmanager/models.py:56
+msgid "Date and time when this order was issued"
+msgstr ""
+
+#: marketmanager/models.py:60
+msgid "Location ID"
+msgstr ""
+
+#: marketmanager/models.py:61
+msgid "ID of the location where order was placed"
+msgstr ""
+
+#: marketmanager/models.py:64
+msgid "System"
+msgstr ""
+
+#: marketmanager/models.py:71 marketmanager/models.py:93
+#: marketmanager/models.py:256 marketmanager/models.py:329
+#: marketmanager/models.py:447 marketmanager/models.py:713
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:11
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:11
+msgid "Region"
+msgstr ""
+
+#: marketmanager/models.py:74
+msgid "Minimum Volume"
+msgstr ""
+
+#: marketmanager/models.py:77
+msgid ""
+"For buy orders, the minimum quantity that will be accepted in a matching "
+"sell order"
+msgstr ""
+
+#: marketmanager/models.py:79 marketmanager/models.py:345
+#: marketmanager/models.py:465
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:13
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:13
+msgid "Price"
+msgstr ""
+
+#: marketmanager/models.py:82
+msgid "Cost per unit for this order"
+msgstr ""
+
+#: marketmanager/models.py:84
+msgid "1"
+msgstr ""
+
+#: marketmanager/models.py:85
+msgid "2"
+msgstr ""
+
+#: marketmanager/models.py:86
+msgid "3"
+msgstr ""
+
+#: marketmanager/models.py:87
+msgid "4"
+msgstr ""
+
+#: marketmanager/models.py:88
+msgid "5"
+msgstr ""
+
+#: marketmanager/models.py:89
+msgid "10"
+msgstr ""
+
+#: marketmanager/models.py:90
+msgid "20"
+msgstr ""
+
+#: marketmanager/models.py:91
+msgid "30"
+msgstr ""
+
+#: marketmanager/models.py:92
+msgid "40"
+msgstr ""
+
+#: marketmanager/models.py:94 marketmanager/models.py:161
+#: marketmanager/models.py:251 marketmanager/models.py:324
+#: marketmanager/models.py:442
+msgid "Solar System"
+msgstr ""
+
+#: marketmanager/models.py:95
+msgid "Station"
+msgstr ""
+
+#: marketmanager/models.py:97
+msgid "Order Range"
+msgstr ""
+
+#: marketmanager/models.py:100
+msgid "Valid order range, numbers are ranges in jumps"
+msgstr ""
+
+#: marketmanager/models.py:102
+msgid "Volume Remaining"
+msgstr ""
+
+#: marketmanager/models.py:103
+msgid "Quantity of items still required or offered"
+msgstr ""
+
+#: marketmanager/models.py:105
+msgid "Is Corporation"
+msgstr ""
+
+#: marketmanager/models.py:107
+msgid ""
+"Signifies whether the buy/sell order was placed on behalf of a corporation."
+msgstr ""
+
+#: marketmanager/models.py:109
+msgid "Wallet Division"
+msgstr ""
+
+#: marketmanager/models.py:112
+msgid "The corporation wallet division used for this order."
+msgstr ""
+
+#: marketmanager/models.py:115
+msgid "Character"
+msgstr ""
+
+#: marketmanager/models.py:121
+msgid "Corporation"
+msgstr ""
+
+#: marketmanager/models.py:127
+msgid "Cancelled"
+msgstr ""
+
+#: marketmanager/models.py:128
+msgid "Expired"
+msgstr ""
+
+#: marketmanager/models.py:130
+msgid "Order State"
+msgstr ""
+
+#: marketmanager/models.py:133
+msgid ""
+"Current order state, Only valid for Authenticated order History. Will not "
+"update from Public Market Data."
+msgstr ""
+
+#: marketmanager/models.py:153
+msgid "Structure ID"
+msgstr ""
+
+#: marketmanager/models.py:156 marketmanager/models.py:185
+#: marketmanager/models.py:202
+msgid "Name"
+msgstr ""
+
+#: marketmanager/models.py:158
+msgid "Owner Corporation ID"
+msgstr ""
+
+#: marketmanager/models.py:173
+msgid "Pull Market Orders"
+msgstr ""
+
+#: marketmanager/models.py:174
+msgid "Useful to ignore specific structures for _reasons_"
+msgstr ""
+
+#: marketmanager/models.py:188
+msgid "URL"
+msgstr ""
+
+#: marketmanager/models.py:214
+msgid "Channel"
+msgstr ""
+
+#: marketmanager/models.py:215 marketmanager/models.py:279
+#: marketmanager/models.py:365 marketmanager/models.py:479
+#: marketmanager/models.py:611
+msgid "Channels"
+msgstr ""
+
+#: marketmanager/models.py:220
+msgid "Managed By App"
+msgstr ""
+
+#: marketmanager/models.py:223
+msgid "The App managing this SupplyConfig"
+msgstr ""
+
+#: marketmanager/models.py:226
+msgid "Managed App-Identifier"
+msgstr ""
+
+#: marketmanager/models.py:229
+msgid "An identifier relevant to the App managing this SupplyConfig"
+msgstr ""
+
+#: marketmanager/models.py:232
+msgid "Managed App Reason"
+msgstr ""
+
+#: marketmanager/models.py:235
+msgid "User Facing reason for this Managed SupplyConfig"
+msgstr ""
+
+#: marketmanager/models.py:238
+msgid "quantity"
+msgstr ""
+
+#: marketmanager/models.py:239
+msgid "Apply a multiplier to the volumes that will be generated"
+msgstr ""
+
+#: marketmanager/models.py:247 marketmanager/models.py:320
+#: marketmanager/models.py:438
+msgid "Structure"
+msgstr ""
+
+#: marketmanager/models.py:261 marketmanager/models.py:335
+#: marketmanager/models.py:453
+msgid "Filter by structure Type/Size/Docking (ie, forts/keeps for cap fuel)"
+msgstr ""
+
+#: marketmanager/models.py:262 marketmanager/models.py:336
+#: marketmanager/models.py:454
+msgid "Structure Type Filter"
+msgstr ""
+
+#: marketmanager/models.py:266 marketmanager/models.py:352
+#: marketmanager/models.py:458
+msgid "Jita Comparison %"
+msgstr ""
+
+#: marketmanager/models.py:267 marketmanager/models.py:353
+#: marketmanager/models.py:459
+msgid "If set ignores Flat price value"
+msgstr ""
+
+#: marketmanager/models.py:275 marketmanager/models.py:361
+#: marketmanager/models.py:475 marketmanager/models.py:606
+msgid "Webhooks"
+msgstr ""
+
+#: marketmanager/models.py:283 marketmanager/models.py:369
+#: marketmanager/models.py:483 marketmanager/models.py:615
+msgid "Debug Webhook"
+msgstr ""
+
+#: marketmanager/models.py:286
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on Supplyonfigs that _dont_ notify. Because their Configs didnt Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:289 marketmanager/models.py:375
+#: marketmanager/models.py:489 marketmanager/models.py:621
+msgid "Debug Channels"
+msgstr ""
+
+#: marketmanager/models.py:292 marketmanager/models.py:372
+#: marketmanager/models.py:378
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on SupplyConfigs that _dont_ notify. Because their Configs didnt Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:301
+msgid "Managed Supply Config"
+msgstr ""
+
+#: marketmanager/models.py:302
+msgid "Managed Supply Configs"
+msgstr ""
+
+#: marketmanager/models.py:312 marketmanager/models.py:418
+#: marketmanager/models.py:548
+#: marketmanager/templates/marketmanager/marketwatches-bs5.html:25
+msgid "EVE Type"
+msgstr ""
+
+#: marketmanager/models.py:340
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:57
+msgid "Volume"
+msgstr ""
+
+#: marketmanager/models.py:341
+msgid "Set to Zero to check ANY/EVERY order against Price"
+msgstr ""
+
+#: marketmanager/models.py:346
+msgid "Set to Zero to skip this filter"
+msgstr ""
+
+#: marketmanager/models.py:381
+msgid "Managed Watch Configs"
+msgstr ""
+
+#: marketmanager/models.py:387 marketmanager/models.py:495
+#: marketmanager/models.py:627
+msgid "Last Task Runtime"
+msgstr ""
+
+#: marketmanager/models.py:391
+msgid "Last Result Volume"
+msgstr ""
+
+#: marketmanager/models.py:392
+msgid "The Volume returned the last time this WatchConfig was run"
+msgstr ""
+
+#: marketmanager/models.py:400
+msgid "Supply Config"
+msgstr ""
+
+#: marketmanager/models.py:401
+msgid "Supply Configs"
+msgstr ""
+
+#: marketmanager/models.py:413
+msgid "Scalp Finder?"
+msgstr ""
+
+#: marketmanager/models.py:414
+msgid "True for Scalp, False for Bargain"
+msgstr ""
+
+#: marketmanager/models.py:422 marketmanager/models.py:553
+msgid "EVE Inventory Group"
+msgstr ""
+
+#: marketmanager/models.py:426 marketmanager/models.py:558
+msgid "EVE Market Group"
+msgstr ""
+
+#: marketmanager/models.py:429
+msgid "Minimum Price"
+msgstr ""
+
+#: marketmanager/models.py:467
+msgid ""
+"WARNING: Use Jita% when possible, this sets a flat price for ALL items "
+"included in this Config. Possibly useful for Caps/Soups"
+msgstr ""
+
+#: marketmanager/models.py:486 marketmanager/models.py:492
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on PriceConfigs that _dont_ notify. Because their Configs didnt Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:503
+msgid "Price Config"
+msgstr ""
+
+#: marketmanager/models.py:504
+msgid "Price Configs"
+msgstr ""
+
+#: marketmanager/models.py:514
+msgid "Import Items?"
+msgstr ""
+
+#: marketmanager/models.py:515
+msgid "True for Importing, False for Exporting"
+msgstr ""
+
+#: marketmanager/models.py:518
+msgid "Source Buy Orders?"
+msgstr ""
+
+#: marketmanager/models.py:519
+msgid "Buy orders in the Source?, False for Sell"
+msgstr ""
+
+#: marketmanager/models.py:522
+msgid "Destination Buy Orders?"
+msgstr ""
+
+#: marketmanager/models.py:523
+msgid "Buy orders in the Destination?, False for Sell"
+msgstr ""
+
+#: marketmanager/models.py:526
+msgid "% Margin"
+msgstr ""
+
+#: marketmanager/models.py:527
+#, python-format
+msgid "% difference of an order to highlight"
+msgstr ""
+
+#: marketmanager/models.py:533
+msgid "Import Cost (ISK/m3)"
+msgstr ""
+
+#: marketmanager/models.py:534
+msgid "isk/m3 to optionally add to imported item prices"
+msgstr ""
+
+#: marketmanager/models.py:564
+msgid "Source Structure"
+msgstr ""
+
+#: marketmanager/models.py:569
+msgid "Source Station"
+msgstr ""
+
+#: marketmanager/models.py:574
+msgid "Source Solar System"
+msgstr ""
+
+#: marketmanager/models.py:579
+msgid "Source Region"
+msgstr ""
+
+#: marketmanager/models.py:585
+msgid "Destination Structure"
+msgstr ""
+
+#: marketmanager/models.py:590
+msgid "Destination Station"
+msgstr ""
+
+#: marketmanager/models.py:595
+msgid "Destination Solar System"
+msgstr ""
+
+#: marketmanager/models.py:600
+msgid "Destination Region"
+msgstr ""
+
+#: marketmanager/models.py:618 marketmanager/models.py:624
+msgid ""
+"Primarily for Testing/Debugging Purposes. This webhook will receive updates "
+"on MarginConfigs that _dont_ notify. Because their Configs didnt Meet/Breach."
+msgstr ""
+
+#: marketmanager/models.py:635 marketmanager/models.py:636
+msgid "Margin Configs"
+msgstr ""
+
+#: marketmanager/models.py:643
+msgid "Fetch Regions"
+msgstr ""
+
+#: marketmanager/models.py:653
+msgid "Public Market Configuration"
+msgstr ""
+
+#: marketmanager/models.py:659
+msgid "TypeStatistics Calculation Regions"
+msgstr ""
+
+#: marketmanager/models.py:669
+msgid "TypeStatistics Calculation Configuration"
+msgstr ""
+
+#: marketmanager/models.py:675
+msgid "ESI Token"
+msgstr ""
+
+#: marketmanager/models.py:680
+msgid "Valid Corporation Markets for this Token"
+msgstr ""
+
+#: marketmanager/models.py:685
+msgid "Valid Structure Markets for this Token"
+msgstr ""
+
+#: marketmanager/models.py:689
+msgid "Disabled due to Failure, Check reason, adjust config and re-enable"
+msgstr ""
+
+#: marketmanager/models.py:691
+msgid "Failure Reason"
+msgstr ""
+
+#: marketmanager/models.py:700
+msgid "Private Market Configuration"
+msgstr ""
+
+#: marketmanager/models.py:701
+msgid "Private Market Configurations"
+msgstr ""
+
+#: marketmanager/models.py:719
+msgid "Buy 5th Percentile"
+msgstr ""
+
+#: marketmanager/models.py:724
+msgid "Sell 5th Percentile"
+msgstr ""
+
+#: marketmanager/models.py:729
+msgid "Buy Weighted Average"
+msgstr ""
+
+#: marketmanager/models.py:734
+msgid "Sell Weighted Average"
+msgstr ""
+
+#: marketmanager/models.py:739
+msgid "Buy Median"
+msgstr ""
+
+#: marketmanager/models.py:744
+msgid "Sell Median"
+msgstr ""
+
+#: marketmanager/models.py:754
+msgid "Item Type Statistics"
+msgstr ""
+
+#: marketmanager/models.py:755
+msgid "Item Types Statistics"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:7
+#: marketmanager/templates/marketmanager/base-bs5.html:11
+msgid "Market Manager"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:25
+msgid "Add Character Token"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:28
+msgid "Add Corporate Token"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/base-bs5.html:31
+msgid "Market Watch Status"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:5
+msgid "Buy Orders"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:12
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:12
+msgid "Quantity"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:14
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:14
+msgid "Location"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:15
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:15
+msgid "Expires"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:16
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:16
+msgid "Last Updated"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:20
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:20
+msgid "Owned Character Orders"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/buy_orders-bs5.html:21
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:21
+msgid "Owned Corporation Orders"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:48
+#, python-format
+msgid "5%%"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:51
+msgid "Weighted Average"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:54
+msgid "Median"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:62
+msgid "Selling"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html:71
+msgid "Buying"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketbrowser/sell_orders-bs5.html:5
+msgid "Sell Orders"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketwatches-bs5.html:6
+#: marketmanager/templates/marketmanager/marketwatches-bs5.html:10
+msgid "Market Watches"
+msgstr ""
+
+#: marketmanager/templates/marketmanager/marketwatches-bs5.html:26
+msgid "Missing Quantity"
+msgstr ""

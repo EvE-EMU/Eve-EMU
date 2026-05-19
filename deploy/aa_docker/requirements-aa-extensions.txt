@@ -1,0 +1,6 @@
+# Alliance Auth community extensions for Docker (AA 5.x).
+# Installed in two phases — see docker/django-aa/Dockerfile:
+#   1) requirements-aa-extension-deps.txt  (resolver-friendly)
+#   2) requirements-aa-extension-apps.txt  (--no-deps plugin wheels)
+-r requirements-aa-extension-deps.txt
+-r requirements-aa-extension-apps.txt

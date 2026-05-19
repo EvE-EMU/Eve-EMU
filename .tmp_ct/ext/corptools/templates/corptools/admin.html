@@ -1,0 +1,569 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+{% block page_title %}{% translate "Corptools Admin" %}{% endblock %}
+
+{% block header_nav_collapse_left %}
+    {% include 'corptools/top_menu.html' %}
+{% endblock %}
+
+{% block content %}
+{% translate "Corptools Configuration Info" as page_title %}
+{% include "framework/header/page-header.html" with title=page_title %}
+
+<div class="d-flex flex-wrap" >
+    <form action="{% url 'corptools:run_tasks' %}" method="post" class="card m-2 flex-grow-1">
+        <!-- <div class="card m-2 flex-grow-1" style="min-width: 350px;"> -->
+            <div class="card-body">
+                <h5 class="card-title text-center">
+                    {% translate "Manual Task Run" %}
+                </h5>
+                <hr>
+                {% csrf_token %}
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="run_clear_etag" class="form-check-input" id="run_clear_etag">
+                    <label class="form-check-label" for="run_clear_etag">{% translate "Clear all cached Etags" %}</label>
+                    <div class="form-text">{% translate "Wipe all the etags from cache to force new data pulls" %}</div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="run_universe" class="form-check-input" id="run_universe">
+                    <label class="form-check-label" for="run_universe">{% translate "Update EVE Map Data" %}</label>
+                    <div class="form-text">{% translate "Force a full map update from ESI" %}</div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="run_locations" class="form-check-input" id="run_locations">
+                    <label class="form-check-label" for="run_locations">{% translate "Force update all Citadel Locations" %}</label>
+                    <div class="form-text">{% translate "Attempt to update all citadel names from ESI" %}</div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="run_update_all" class="form-check-input" id="run_update_all">
+                    <label class="form-check-label" for="run_update_all">{% translate "Force all character updates" %}</label>
+                    <div class="form-text">{% translate "Force updates to ALL character audits" %}</div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="run_corp_updates" class="form-check-input" id="run_corp_updates">
+                    <label class="form-check-label" for="run_corp_updates">{% translate "Force all corp updates" %}</label>
+                    <div class="form-text">{% translate "Force updates to ALL corporation audits" %}</div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="run_update_eve_models" class="form-check-input" id="run_update_eve_models">
+                    <label class="form-check-label" for="run_update_eve_models">{% translate "Update EVE Entity Models" %}</label>
+                    <div class="form-text">{% translate "Force updates to ALL EVE entity names" %}</div>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <input type="submit" value="{% translate "Submit" %}" class="btn btn-primary w-100 mt-auto">
+            </div>
+        <!-- </div> -->
+    </form>
+    <div class="card m-2 flex-grow-1">
+        <div class="card-body">
+            <h5 class="card-title text-center">
+                {% translate "Corptools Module Configuration" %}
+            </h5>
+            <hr>
+            <div>
+                <table class="table">
+                    <thead>
+                      <tr>
+                        <th>{% translate "Module" %}</th>
+                        <th>{% translate "Enabled" %}</th>
+                        <th>{% translate "Include in Active" %}</th>
+                        <th>{% translate "Temp Disabled" %}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{% translate "Assets" %}
+                                {% if ct_config.disable_verification_assets %}
+                                    <span class="text-danger">{% translate "(Validation Disabled)" %}</span>
+                                {% else %}
+                                    <span class="text-success">{% translate "(Validation Enabled)" %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_ASSETS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_ASSETS_MODULE  %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_assets  %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <!-- <tr>
+                            <td>{% translate "Standings" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_STANDINGS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_ACTIVE_IGNORE_STANDINGS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_assets  %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                        </tr> -->
+                        <tr>
+                            <td>{% translate "Contacts" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_CONTACTS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_CONTACTS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_contacts %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Notifications" %}
+                                {% if ct_config.disable_verification_notifications %}
+                                    <span class="text-danger">{% translate "(Validation Disabled)" %}</span>
+                                {% else %}
+                                    <span class="text-success">{% translate "(Validation Enabled)" %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_NOTIFICATIONS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_NOTIFICATIONS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_notif %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Roles" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_ROLES_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_ROLES_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_roles %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Industry" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_INDUSTRY_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_INDUSTRY_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_indy %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Mining" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_MINING_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_MINING_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_mining %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Wallets/Markets/Contracts" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_WALLET_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_WALLET_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_wallet %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Skills" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_SKILLS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_SKILLS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_skills %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Clones" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_CLONES_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_CLONES_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_clones %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Mail" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_MAIL_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_MAIL_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_mails %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Loyalty Points" %}</td>
+                            <td class="text-center">
+                                {% if app_settings.CT_CHAR_LOYALTYPOINTS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if not app_settings.CT_CHAR_ACTIVE_IGNORE_LOYALTYPOINTS_MODULE %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-warning"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if ct_config.disable_update_loyaltypoints %}
+                                    <i class="fas fa-check-circle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-success"></i>
+                                {% endif %}
+                            </td>
+                      </tr>
+                    </tbody>
+                  </table>
+            </div>
+        </div>
+    </div>
+    <div class="card m-2 flex-grow-1" style="min-width: 350px;">
+        <div class="card-body">
+            <h5 class="card-title text-center">
+                {% translate "EVE Models" %}
+            </h5>
+            <hr>
+            <div>
+                <table class="table">
+                    <tr>
+                        <td class="">{% translate "Entity Names" %}</td>
+                        <td class="text-end">
+                            {{ names }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Structure Names" %}</td>
+                        <td class="text-end">
+                            {{ location }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Categories" %}</td>
+                        <td class="text-end">
+                            {{ categorys }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Groups" %}</td>
+                        <td class="text-end">
+                            {{ groups }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Types" %}</td>
+                        <td class="text-end">
+                            {{ types }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Dogma Attributes" %}</td>
+                        <td class="text-end">
+                            {{ dogma }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Type Refine Material Outputs" %}</td>
+                        <td class="text-end">
+                            {{ type_mets }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card m-2 flex-grow-1" style="min-width: 350px;">
+        <div class="card-body">
+            <h5 class="card-title text-center">
+                {% translate "EVE Universe Models" %}
+            </h5>
+            <hr>
+            <div>
+                <table class="table">
+                    <tr>
+                        <td class="">{% translate "Regions" %}</td>
+                        <td class="text-end">
+                            {{ regions }}/112
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Constellations" %}</td>
+                        <td class="text-end">
+                            {{ constellations }}/1174
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Systems" %}</td>
+                        <td class="text-end">
+                            {{ systems }}/8436
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Gate Links" %}</td>
+                        <td class="text-end">
+                            {{ gates }}/6888
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Jump Bridge Links" %}</td>
+                        <td class="text-end">
+                            {{ bridges }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card m-2 flex-grow-1" style="min-width: 350px;">
+        <div class="card-body">
+            <h5 class="card-title text-center">
+                {% translate "Audit Models" %}
+            </h5>
+            <hr>
+            <div>
+                <table class="table">
+                    <tr>
+                        <td class="">{% translate "Corporation Audits" %}</td>
+                        <td class="text-end">
+                            {{ corpations }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Character Audits (Active/Total)" %}</td>
+                        <td class="text-end">
+                            {{active_chars}} / {{ characters }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="">{% translate "Skill Lists" %}</td>
+                        <td class="text-end">
+                            {{ skilllists }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <h5 class="card-title text-center">
+                {% translate "Audit Tasks" %}
+            </h5>
+            <hr>
+            <table class="table">
+                <tr>
+                    <td>{% translate "Character Task" %}</td>
+                    <td class="text-end">
+                        <span class="">{{ char_tasks }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>{% translate "Corporation Task" %}</td>
+                    <td class="text-end">
+                        <span class="">{{ corp_tasks }}</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="card-footer">
+            <a class="btn w-100 btn-primary" href="{% url 'corptools:admin_create_tasks' %}">{% translate "Create or Update Periodic Tasks" %}</a>
+        </div>
+    </div>
+    <form class="card m-2 flex-grow-1"method="post" action="{% url 'corptools:admin_add_pyfa_xml' %}" enctype="multipart/form-data">
+        <div class="card-body">
+            <h5 class="card-title text-center">
+                {% translate "Skill Lists" %}
+            </h5>
+            <hr>
+            <div>
+                {% csrf_token %}
+                <div class="form-group mb-3">
+                    <label for="name">{% translate "Skill List Description" %}</label>
+                    <input type="text" class="form-control" name="name" placeholder="Enter Description">
+                    <div id="nameHelp" class="form-text">{% translate "This will show as the name of the Skill List" %}.</div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <div class="input-group">
+                        <span class='form-control' id="upload-file-info"></span>
+                        <span class="input-group-btn">
+                            <label class="btn btn-secondary" for="file">
+                                <input id="file" name="file" type="file" style="display:none" onchange="$('#upload-file-info').html(this.files[0].name)">
+                                {% translate "Browse" %}
+                            </label>
+                        </span>
+                    </div>
+                    <div id="descriptionHelp" class="form-text">{% translate "PYFA XML Skills required list" %}.</div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <input type="submit" class="btn w-100 btn-primary">
+        </div>
+    </form>
+</div>
+{% endblock content %}
+
+{% block extra_javascript %}
+{% endblock extra_javascript %}

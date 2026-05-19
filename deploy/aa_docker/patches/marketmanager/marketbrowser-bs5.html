@@ -1,0 +1,139 @@
+{% extends "marketmanager/base-bs5.html" %}
+{% load i18n %}
+{% load humanize %}
+{% load static %}
+{% block page_title %}
+    {% translate "Market Browser" %}
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    {% translate "Market Browser" %}
+{% endblock header_nav_brand %}
+
+{% block content %}
+    {% include "marketmanager/marketbrowser/item_details-bs5.html" %}
+    <div class="col-lg-12">
+        {% include "marketmanager/marketbrowser/sell_orders-bs5.html" %}
+        {% include "marketmanager/marketbrowser/buy_orders-bs5.html" %}
+    </div>
+{% endblock content %}
+
+{% block extra_script %}
+    $(document).ready(function(){
+    $('#table-sell-orders').DataTable({
+    {% if item_type.id is not None %}
+        "ajax": {
+        "url": "{% url 'marketmanager:marketbrowser_sell_orders' %}",
+        "dataSrc": "sell_orders",
+        "data": {
+        {% if region is not None %}"region_id": {{ region.id }},{% endif %}
+        "type_id": {{ item_type.id }}
+        }
+        },
+    {% endif %}
+    columns: [
+    {
+    data: "region__name"
+    },
+    {
+    data: "volume_remain",
+    render: $.fn.dataTable.render.number(',', '.', 0, null, "")
+    },
+    {
+    data: 'price',
+    render: $.fn.dataTable.render.number(',', '.', 2, null, " ISK")
+    },
+    {
+    data: "location_resolved"
+    },
+    {
+    data: "expiry_calculated"
+    },
+    {
+    data: "updated_at"
+    },
+    ],
+    "fnRowCallback": function(nRow, aData) {
+    if (aData["user_is_owner"] == true) {
+    $('td', nRow).addClass('bg-info');
+    };
+    if (aData["corporation_is_owner"] == true) {
+    $('td', nRow).addClass('bg-success');
+    }
+    },
+    "order": [[ 2, "asc" ]],
+    "processing": true,
+    "stateSave": true,
+    "stateDuration": 0
+    } );
+
+    $('#table-buy-orders').DataTable({
+    {% if item_type.id is not None %}
+        "ajax": {
+        "url": "{% url 'marketmanager:marketbrowser_buy_orders' %}",
+        "dataSrc": "buy_orders",
+        "data": {
+        {% if region is not None %}"region_id": {{ region.id }},{% endif %}
+        "type_id": {{ item_type.id }}
+        }
+        },
+    {% endif %}
+    columns: [
+    {
+    data: "region__name"
+    },
+    {
+    data: "volume_remain",
+    render: $.fn.dataTable.render.number(',', '.', 0, null, "")
+    },
+    {
+    data: 'price',
+    render: $.fn.dataTable.render.number(',', '.', 2, null, " ISK")
+    },
+    {
+    data: "location_resolved"
+    },
+    {
+    data: "expiry_calculated"
+    },
+    {
+    data: "updated_at"
+    },
+    ],
+    "fnRowCallback": function(nRow, aData) {
+    if (aData["user_is_owner"] == true) {
+    $('td', nRow).addClass('bg-info');
+    };
+    if (aData["corporation_is_owner"] == true) {
+    $('td', nRow).addClass('bg-success');
+    }
+    },
+    "order": [[ 2, "desc" ]],
+    "processing": true,
+    "stateSave": true,
+    "stateDuration": 0
+    } );
+    });
+
+    $(document).ready(function() {
+    $("#search").autocomplete({
+    source: "{% url 'marketmanager:marketbrowser_autocomplete' %}",
+    minLength: 3,
+    autoFocus: true,
+    select: function(event, ui){
+    SearchTypeID(ui.item.label, ui.item.value);
+    event.preventDefault();
+    },
+    focus: function(event, ui){
+    event.preventDefault();
+    },
+    });
+    });
+
+    function SearchTypeID(item_type_name, item_type_id) {
+    window.location.href = "?type_id="+item_type_id
+    {% if region != None %}+"&region_id="+ {{ region.id }}{% endif %}
+    ;
+    }
+
+{% endblock extra_script %}

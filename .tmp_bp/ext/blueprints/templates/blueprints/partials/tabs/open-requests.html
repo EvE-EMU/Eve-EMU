@@ -1,0 +1,19 @@
+{% load i18n %}
+{% load humanize %}
+
+<div class="tab-pane card" id="tab-open-requests">
+    <div class="card-body">
+        <table id="table-open-requests" style="width: 100%" class="table table-striped">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>{% translate "Type" %}</th>
+                    <th>{% translate "Runs" %}</th>
+                    <th>{% translate "Requestor" %}</th>
+                    <th>{% translate "Requested From" %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>

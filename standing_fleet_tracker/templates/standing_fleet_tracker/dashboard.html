@@ -1,0 +1,75 @@
+{% extends "standing_fleet_tracker/base_page.html" %}
+{% load i18n %}
+
+{% block sft_title %}{% trans "Standing Fleet Tracker" %}{% endblock %}
+
+{% block sft_body %}
+<h1>{% trans "Standing Fleet Tracker" %}</h1>
+<p class="text-muted">
+  {% blocktrans with sec=poll_interval %}ESI polls linked characters about every {{ sec }} seconds. Opening this page refreshes your characters (at most once per minute).{% endblocktrans %}
+</p>
+
+{% if chars_needing_scopes %}
+<div class="alert alert-warning">
+  <strong>{% trans "Some characters still need fleet scopes on Charlink." %}</strong>
+  {% trans "Per character — you do not need to be FC. Enable Standing Fleet Tracker for each alt below at" %}
+  <a href="{% url 'charlink:index' %}">{% trans "Charlink" %}</a>.
+  <ul class="mb-0 mt-2">
+    {% for status in chars_needing_scopes %}
+    <li><strong>{{ status.character.character_name }}</strong> — <code>{{ status.missing_scope_names|join:", " }}</code></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<h2 class="h4 mt-4">{% trans "Your characters" %}</h2>
+{% for status in my_statuses %}
+  {% include "standing_fleet_tracker/partials/character_status.html" %}
+{% empty %}
+<p class="text-muted">{% trans "No linked characters with fleet scope yet." %}</p>
+{% endfor %}
+
+<h2 class="h4 mt-4">{% trans "Active fleets now" %}</h2>
+<p class="text-muted small">{% trans "Everyone currently in a fleet (standing fleets highlighted)." %}</p>
+<table class="table table-sm table-hover">
+  <thead>
+    <tr>
+      <th>{% trans "Pilot" %}</th>
+      <th>{% trans "Status" %}</th>
+      <th>{% trans "Progress" %}</th>
+      <th>{% trans "Ship" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in roster %}
+    <tr class="{% if row.is_standing_fleet %}table-success{% endif %}">
+      <td>
+        <a href="{% url 'standing_fleet_tracker:character_detail' character_id=row.character.pk %}">{{ row.character.character_name }}</a>
+      </td>
+      <td>
+        {% if row.is_standing_fleet %}
+          <span class="badge bg-success">{{ row.standing_label|default:"Standing" }}</span>
+        {% else %}
+          <span class="badge bg-warning text-dark">{% trans "In fleet" %}</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if row.is_standing_fleet %}
+          <div class="progress" style="height: 0.75rem; min-width: 6rem">
+            <div class="progress-bar bg-success" style="width: {{ row.progress_to_next_point }}%"></div>
+          </div>
+          <span class="small text-muted">{{ row.progress_to_next_point }}% · {{ row.seconds_to_next_point }}s</span>
+        {% else %}—{% endif %}
+      </td>
+      <td>{{ row.ship_name|default:"—" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" class="text-muted">{% trans "Nobody in a fleet right now (or poll has not run yet)." %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p class="mt-3">
+  <a class="btn btn-primary" href="{% url 'standing_fleet_tracker:leaderboard' %}">{% trans "View leaderboard" %}</a>
+</p>
+{% endblock %}

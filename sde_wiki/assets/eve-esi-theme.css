@@ -1,0 +1,191 @@
+/**
+ * EVE Online ESI / Swagger UI inspired theme for Wiki.js
+ * https://esi.evetech.net/ui/
+ */
+:root {
+  --eve-bg: #1b1b1d;
+  --eve-surface: #252528;
+  --eve-surface-2: #2d2d30;
+  --eve-border: #3b3b3d;
+  --eve-text: #e8e8ea;
+  --eve-muted: #9a9a9e;
+  --eve-accent: #61affe;
+  --eve-green: #49cc90;
+  --eve-gold: #c9a227;
+  --eve-orange: #fca130;
+  --eve-red: #f93e3e;
+  --eve-font: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --eve-mono: "Source Code Pro", "Consolas", monospace;
+}
+
+html,
+body,
+.v-application {
+  background: var(--eve-bg) !important;
+  color: var(--eve-text) !important;
+  font-family: var(--eve-font) !important;
+}
+
+.v-main,
+.contents,
+.page-col-content,
+.v-main__wrap {
+  background: var(--eve-bg) !important;
+}
+
+/* Top navigation — Swagger-style dark bar */
+.v-app-bar,
+.nav-header,
+header.v-toolbar {
+  background: #161617 !important;
+  border-bottom: 2px solid var(--eve-gold) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+}
+
+.v-app-bar .v-toolbar__title,
+.nav-header .v-btn,
+.nav-header a {
+  color: var(--eve-text) !important;
+  font-weight: 600 !important;
+}
+
+/* Sidebar / TOC */
+.v-navigation-drawer,
+.page-col-sd,
+.toc-navigation {
+  background: var(--eve-surface) !important;
+  border-color: var(--eve-border) !important;
+}
+
+.v-navigation-drawer .v-list-item,
+.toc-navigation a {
+  color: var(--eve-muted) !important;
+}
+
+.v-navigation-drawer .v-list-item--active,
+.toc-navigation .toc-link.is-active {
+  color: var(--eve-accent) !important;
+  background: rgba(97, 175, 254, 0.12) !important;
+}
+
+/* Page content */
+.contents .contents-title h1,
+.contents h1 {
+  color: var(--eve-text) !important;
+  border-bottom: 1px solid var(--eve-border);
+  padding-bottom: 0.35em;
+  font-weight: 700 !important;
+}
+
+.contents h2 {
+  color: var(--eve-gold) !important;
+  margin-top: 1.5em;
+}
+
+.contents h3 {
+  color: var(--eve-accent) !important;
+}
+
+.contents p,
+.contents li,
+.contents td,
+.contents th {
+  color: var(--eve-text) !important;
+}
+
+.contents a {
+  color: var(--eve-accent) !important;
+  text-decoration: none;
+}
+
+.contents a:hover {
+  color: var(--eve-green) !important;
+  text-decoration: underline;
+}
+
+/* Tables — API-doc style */
+.contents table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.95rem;
+  background: var(--eve-surface);
+  border: 1px solid var(--eve-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.contents thead th {
+  background: var(--eve-surface-2) !important;
+  color: var(--eve-gold) !important;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.6em 0.75em;
+  border-bottom: 2px solid var(--eve-border);
+}
+
+.contents tbody td {
+  padding: 0.5em 0.75em;
+  border-top: 1px solid var(--eve-border);
+  vertical-align: top;
+}
+
+.contents tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.contents tbody tr:hover {
+  background: rgba(97, 175, 254, 0.08);
+}
+
+/* Code blocks */
+.contents pre,
+.contents code {
+  font-family: var(--eve-mono) !important;
+  background: #0d0d0e !important;
+  border: 1px solid var(--eve-border);
+  border-radius: 3px;
+}
+
+.contents pre {
+  padding: 1em;
+  overflow-x: auto;
+}
+
+.contents code {
+  color: var(--eve-green) !important;
+  padding: 0.15em 0.35em;
+}
+
+/* Blockquotes / notes */
+.contents blockquote {
+  border-left: 4px solid var(--eve-gold);
+  background: var(--eve-surface);
+  padding: 0.75em 1em;
+  margin: 1em 0;
+  color: var(--eve-muted) !important;
+}
+
+/* Search */
+.v-text-field--outlined fieldset,
+.v-input__slot {
+  border-color: var(--eve-border) !important;
+}
+
+/* Breadcrumbs */
+.breadcrumbs,
+.contents .breadcrumbs-li {
+  color: var(--eve-muted) !important;
+}
+
+/* Footer */
+.v-footer {
+  background: #161617 !important;
+  border-top: 1px solid var(--eve-border) !important;
+  color: var(--eve-muted) !important;
+}
+
+/* SDE home badge */
+.contents h1::after {
+  content: none;
+}

@@ -1,0 +1,191 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n static %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="col-lg-11 col-xl-10">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h2 class="mb-1">{{ title }}</h2>
+            <p class="text-muted mb-0">
+                Janice Jita sell + {{ config.item_markup_percent }}% per item.
+                Freight always quoted <strong>PushX {{ config.origin_system }} → {{ config.destination_system }}</strong>
+                (hub); enter the system where stock is ultimately needed below.
+            </p>
+        </div>
+    </div>
+
+    <form method="post" id="corp-order-form">
+        {% csrf_token %}
+
+        <div class="card mb-3 border-primary">
+            <div class="card-header bg-primary-subtle fw-semibold">Final destination system</div>
+            <div class="card-body">
+                <label class="form-label" for="{{ form.final_destination_system.id_for_label }}">
+                    System name (where stock is ultimately delivered)
+                </label>
+                <div class="corp-orders-system-ac" data-search-url="{% url 'corp_orders:system_search' %}">
+                    {{ form.final_destination_system }}
+                    <div class="corp-orders-system-ac-menu list-group position-absolute d-none" role="listbox"></div>
+                </div>
+                {% if form.final_destination_system.errors %}
+                <div class="text-danger small">{{ form.final_destination_system.errors }}</div>
+                {% endif %}
+                <p class="form-text mb-0">
+                    Click the field or type to search SDE system names (<strong>3-F*</strong> listed first).
+                    Freight is always priced <strong>{{ config.origin_system }} → {{ config.destination_system }}</strong>
+                    (hub). Pick a full system name from the list before submitting.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-header">Inventory</div>
+                    <div class="card-body">
+                        {% if form.items_text.errors %}
+                        <div class="text-danger small">{{ form.items_text.errors }}</div>
+                        {% endif %}
+                        {{ form.items_text }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card mb-3">
+                    <div class="card-header">Delivery speed &amp; issuer</div>
+                    <div class="card-body">
+                        <fieldset class="mb-3">
+                            <legend class="form-label fs-6 mb-2">{{ form.speed.label }}</legend>
+                            {% for radio in form.speed %}
+                            <div class="form-check">
+                                {{ radio.tag }}
+                                <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </fieldset>
+                        <fieldset>
+                            <legend class="form-label fs-6 mb-2">{{ form.issuer_kind.label }}</legend>
+                            {% for radio in form.issuer_kind %}
+                            <div class="form-check">
+                                {{ radio.tag }}
+                                <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                            </div>
+                            {% endfor %}
+                        </fieldset>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Payback</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.wallet_method.id_for_label }}">{{ form.wallet_method.label }}</label>
+                            {{ form.wallet_method }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.wallet_notes.id_for_label }}">{{ form.wallet_notes.label }}</label>
+                            {{ form.wallet_notes }}
+                        </div>
+                        <div class="form-check">
+                            {{ form.payback_on_completion }}
+                            <label class="form-check-label" for="{{ form.payback_on_completion.id_for_label }}">
+                                {{ form.payback_on_completion.label }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="submit" name="action" value="quote" class="btn btn-primary">Calculate quote</button>
+            {% if quote and not quote.errors and quote.lines %}
+            <button type="submit" name="action" value="create" class="btn btn-success">
+                Create order &amp; notify Discord
+            </button>
+            {% endif %}
+            <a href="{% url 'corp_orders:order_list' %}" class="btn btn-link">All orders</a>
+        </div>
+    </form>
+
+    {% if quote %}
+    {% if quote.errors %}
+    <div class="alert alert-danger mt-4">
+        <ul class="mb-0">
+            {% for e in quote.errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if quote.lines %}
+    <div class="card mt-4 border-success">
+        <div class="card-header bg-success-subtle">Quote summary</div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p class="mb-1"><span class="text-muted">Final destination</span><br>
+                        <strong>{{ quote.final_destination_system|default:"—" }}</strong></p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><span class="text-muted">Freight (PushX)</span><br>
+                        <strong>{{ quote.freight_route }}</strong></p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th class="text-end">Qty</th>
+                            <th class="text-end">Unit</th>
+                            <th class="text-end">Line</th>
+                            <th class="text-end">Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in quote.lines %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td class="text-end">{{ row.quantity }}</td>
+                        <td class="text-end">{{ row.unit_isk }} ISK</td>
+                        <td class="text-end">{{ row.line_total_isk|floatformat:0 }} ISK</td>
+                        <td class="text-end">{{ row.volume_m3|floatformat:0 }} m³</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <ul class="list-unstyled mb-0">
+                        <li>Items subtotal: <strong>{{ quote.items_subtotal_isk|floatformat:0 }}</strong> ISK</li>
+                        <li>Freight: <strong>{{ quote.freight_isk|floatformat:0 }}</strong> ISK</li>
+                        <li>Speed surcharge: <strong>{{ quote.speed_surcharge_isk|floatformat:0 }}</strong> ISK</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1 fs-5">Contract (I will pay): <strong>{{ quote.contract_price_isk|floatformat:0 }} ISK</strong></p>
+                    <p class="text-muted mb-0">I will receive: 0 · Expiration ~{{ quote.expiration_hours }} h</p>
+                    {% if quote.freight_detail.note %}
+                    <p class="small text-muted mt-2 mb-0">{{ quote.freight_detail.note }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'corp_orders/css/system_autocomplete.css' %}">
+{% endblock %}
+
+{% block extra_javascript %}
+<script src="{% static 'corp_orders/js/system_autocomplete.js' %}"></script>
+{% endblock %}

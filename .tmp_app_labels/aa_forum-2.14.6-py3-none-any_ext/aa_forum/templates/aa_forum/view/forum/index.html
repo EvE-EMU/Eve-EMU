@@ -1,0 +1,48 @@
+{% extends "aa_forum/base.html" %}
+
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}
+    {% translate "Forum" %}
+{% endblock %}
+
+{% block aa_forum_header %}
+    {% include "aa_forum/partials/forum/unread-topic-buttons.html" with position="above-category-list" %}
+    {% include "aa_forum/partials/breadcrumb.html" %}
+{% endblock %}
+
+{% block aa_forum_body %}
+    {% include "aa_forum/partials/forum/forum-index.html" %}
+    {% include "aa_forum/partials/forum/unread-topic-buttons.html" with position="below-category-list" %}
+
+    <div class="card-body">
+        <div class="aa-forum-legend">
+            <span class="aa-forum-legend-new-post">
+                <span class="aa-forum-legend-image me-2">
+                    <svg class="svg-icon-post-new">
+                        <use href="#aa-forum-icon-post"></use>
+                    </svg>
+                </span>
+                <span class="aa-forum-legend-text mt-1">{% translate "New posts" %}</span>
+            </span>
+
+            <span class="aa-forum-legend-no-new-post">
+                <span class="aa-forum-legend-image me-2">
+                    <svg class="svg-icon-post">
+                        <use href="#aa-forum-icon-post"></use>
+                    </svg>
+                </span>
+                <span class="aa-forum-legend-text mt-1">{% translate "No new posts" %}</span>
+            </span>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+    {% include "aa_forum/bundles/aa-forum-css.html" %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include "aa_forum/bundles/aa-forum-bootstrap-js.html" %}
+{% endblock %}

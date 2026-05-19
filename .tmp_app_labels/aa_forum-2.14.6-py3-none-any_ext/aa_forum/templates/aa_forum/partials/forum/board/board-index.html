@@ -1,0 +1,37 @@
+{% load i18n %}
+
+<div id="category-{{ category.id }}" class="card card-default card-aa-forum-category mb-3">
+    <div class="card-header">
+        <div class="card-title mb-0">{{ board.name }}</div>
+    </div>
+
+    {% if board.child_boards.all %}
+        <div class="card-body row">
+            {% for child_board in board.child_boards.all %}
+                {% include "aa_forum/partials/forum/board/board.html" with board=child_board %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+{% include "aa_forum/partials/forum/board/new-topic-button.html" with suffix="above-list" %}
+
+<div class="card card-default card-aa-forum-topic-list">
+    <div class="card-body">
+        {% if page_obj %}
+            {% for topic in page_obj %}
+                {% include "aa_forum/partials/forum/board/topic.html" %}
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <p>{% translate "No topics have been started in this board …" %}</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% include "aa_forum/partials/forum/board/new-topic-button.html" with suffix="below-list" %}
+
+{% if page_obj %}
+    {% include "aa_forum/partials/forum/board/pagination.html" %}
+{% endif %}

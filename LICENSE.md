@@ -4,6 +4,12 @@ The **EVE Emu** project is free software licensed under the **GNU Affero General
 
 **Copyright © 2026 EVE Emu contributors.** Contributors retain copyright in their own contributions; see Git history. Update this line if you publish a consolidated copyright notice.
 
+## Fork lineage and third-party components
+
+- **EvE-EMU–origin code** in this repository (FastAPI `core/`, Discord bot, Next.js `core-web/`, and other original files) is, unless a file header states otherwise, under **AGPL-3.0-only** as described in this document and in the plain-text **`LICENSE`** file.
+- **Alliance Auth** is intended to be consumed as a **Git submodule** at **`allianceauth/`** (see **`docs/ALLIANCE_AUTH.md`**). Upstream Alliance Auth is licensed under **GNU General Public License v2.0 (GPL-2.0)**. That upstream code is **not** relicensed by this file; keep upstream `LICENSE` / notices in the submodule tree and comply with the GPL when you distribute combined works that include Alliance Auth.
+- **GPL compatibility note:** If you combine AGPL-3.0 code with GPL-2.0-only code (for example Alliance Auth) in a single program, your obligations depend on how the programs are linked and distributed. Treat this as a **compliance topic for your lawyers and your packaging choices**; the maintainers do not provide legal advice. Practical pattern: keep AGPL services (`core/`, `core-web/`) clearly separable, and treat the Django portal as GPL-2.0–licensed upstream plus your apps under compatible terms.
+
 For how this license interacts with use of the software and services, see [TERMS.md](TERMS.md).
 
 The text below is the **verbatim** GNU AGPL v3 as published by the [Free Software Foundation](https://www.gnu.org/licenses/agpl-3.0.html). Do not edit the license terms below this rule; project-specific exceptions belong in separate files or in source headers as permitted by the license.

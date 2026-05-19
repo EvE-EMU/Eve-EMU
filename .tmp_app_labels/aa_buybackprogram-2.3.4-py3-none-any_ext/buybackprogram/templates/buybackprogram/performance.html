@@ -1,0 +1,293 @@
+{% extends 'buybackprogram/page.html' %}
+{% load i18n %}
+{% load humanize %}
+{% load bootstrap %}
+{% load static %}
+{% load i18n %}
+
+{% block body %}
+<div class="row">
+	<div class="col-sm-3">
+		<div class="card">
+    		<div class="card-header">{% trans "Most common items last 3 Months" %}</div>
+      		<div class="card-body">
+	    		<div id="lastthree"></div>
+      		</div>
+    	</div>
+	</div>
+	<div class="col-sm-9">
+		<div class="card">
+    		<div class="card-header">{% trans "ISK and donation performance" %}</div>
+      		<div class="card-body">
+	    		<div id="isk"></div>
+      		</div>
+    	</div>
+	</div>
+	<div class="col-sm-12" style="margin-top:10px;">
+		<div class="card">
+    		<div class="card-header">{% trans "Contract and donation count" %}</div>
+      		<div class="card-body">
+	    		<div id="donations"></div>
+      		</div>
+    	</div>
+	</div>
+	<div class="col-sm-6" style="margin-top:10px;">
+		<div class="card">
+    		<div class="card-header">{% trans "ISK per item category" %}</div>
+      		<div class="card-body">
+	    		<div id="categoryisk"></div>
+      		</div>
+    	</div>
+	</div>
+	<div class="col-sm-6" style="margin-top:10px;">
+		<div class="card">
+    		<div class="card-header">{% trans "Quantity per item category" %}</div>
+      		<div class="card-body">
+	    		<div id="categoryq"></div>
+      		</div>
+    	</div>
+	</div>
+	<div class="col-sm-12" style="margin-top:10px;">
+		<div class="card">
+    		<div class="card-header">{% trans "Statistics per item category" %}</div>
+      		<div class="card-body">
+	    		<div id='categories' class="btn-group-sm" role="group" aria-label="..."></div>
+      		</div>
+      		<div class="col-sm-12" style="padding:10px;">
+				<div class="card">
+		    		<div class="card-header">{% trans "ISK per category" %}</div>
+		      		<div class="card-body">
+			    		<div id="itemisk"></div>
+		      		</div>
+		    	</div>
+			</div>
+			<div class="col-sm-12" style="padding:10px;">
+				<div class="card">
+		    		<div class="card-header">{% trans "Quantity per category" %}</div>
+		      		<div class="card-body">
+			    		<div id="itemq"></div>
+		      		</div>
+		    	</div>
+			</div>
+    	</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.6.1/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/billboard.js/3.5.1/billboard.min.js" integrity="sha512-D8lwQ1l9jYC7cgPTITQkT2LZYlyx0kc+oBuLMfh1HGxwoO84e3U/RDuvbNJR1+A7HGmAIf5LMqWIlSl2UfKr7Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript">
+{% autoescape off %}
+function exportToCsv(filename, rows) {
+    var processRow = function (row) {
+        var finalVal = '';
+        for (var j = 0; j < row.length; j++) {
+            var innerValue = row[j] === null ? '' : row[j].toString();
+            if (row[j] instanceof Date) {
+                innerValue = row[j].toLocaleString();
+            };
+            var result = innerValue.replace(/"/g, '""');
+            if (result.search(/("|,|\n)/g) >= 0)
+                result = '"' + result + '"';
+            if (j > 0)
+                finalVal += ',';
+            finalVal += result;
+        }
+        return finalVal + '\n';
+    };
+
+    var csvFile = '';
+    for (var i = 0; i < rows.length; i++) {
+        csvFile += processRow(rows[i]);
+    }
+
+    var blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(blob, filename);
+    } else {
+        var link = document.createElement("a");
+        if (link.download !== undefined) { // feature detection
+            // Browsers that support HTML5 download attribute
+            var url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+}
+
+function render(k) {
+	const cat2items = {{categories}};
+
+	var itemisk = bb.generate({
+		data: { x: "x", columns: [], type: "line", },
+		axis: {
+			x: {
+				type: "timeseries",
+				tick: {
+					format: "%Y-%m"
+				}
+			},
+			y: {
+				tick: { format: function(x) {
+					if (hscaling["items"] == "") {
+						return d3.format(",")(x);
+					} else {
+						return d3.format(",")(x) + " " + hscaling["items"][0]; }
+					} },
+				label: "ISK (" + hscaling["items"] + ")",
+			},
+		},
+		bindto:"#itemisk"
+	});
+
+	var itemq = bb.generate({
+		data: { x: "x", columns: [], type: "line", },
+		axis: {
+			x: {
+				type: "timeseries",
+				tick: {
+					format: "%Y-%m"
+				}
+			},
+			y: {
+				tick: { format: function(x) { return d3.format(",")(x); } },
+				label: "Quantity",
+			},
+		},
+		bindto:"#itemq"
+	});
+	cat2items[k].forEach(function(it) {
+		itemisk.load({columns: [data['x'], data["items"][it][0]]});
+		itemq.load({columns: [data['x'], data["items"][it][1]]});
+	});
+}
+
+function exportdata() {
+	const data = {{export}};
+	exportToCsv("buyback.csv", data);
+}
+
+var data;
+var hscaling;
+
+(function() {
+	data = {{stats}};
+	hscaling = {{hscaling}};
+	var iskchart = bb.generate({
+		data: {
+			x: "x",
+			columns: [ data["x"], data["overall"]["all"][0], data["donations"]["all"][0] ],
+			axes: { isk: "y"},
+		},
+		axis: {
+			x: {
+				type: "timeseries",
+				tick: { format: "%Y-%m" }
+			},
+			y: {
+				tick: { format: function(x) {
+					if (hscaling["overall"] == "") {
+						return d3.format(",")(x);
+					} else {
+						return d3.format(",")(x) + " " + hscaling["overall"][0]; }
+					} },
+				label: "ISK (" + hscaling["overall"] + ")"
+			},
+		},
+		bindto:"#isk"
+	});
+
+	var donationchart = bb.generate({
+		data: {
+			x: "x",
+			columns: [ data["x"], data["overall"]["all"][1], data["donations"]["all"][1] ],
+			axes: { isk: "y"},
+		},
+		axis: {
+			x: {
+				type: "timeseries",
+				tick: { format: "%Y-%m" }
+			},
+			y: {
+				tick: { format: function(x) { return d3.format(",")(x); } },
+				label: "Count"
+			},
+		},
+		bindto:"#donations"
+	});
+
+	var catisk = bb.generate({
+		data: { x: "x", columns: [], type: "line", },
+		axis: {
+			x: {
+				type: "timeseries",
+				tick: {
+					format: "%Y-%m"
+				}
+			},
+			y: {
+				tick: { format: function(x) {
+					if (hscaling["categories"] == "") {
+						return d3.format(",")(x);
+					} else {
+						return d3.format(",")(x) + " " + hscaling["categories"][0]; }
+					} },
+				label: "ISK (" + hscaling["categories"] + ")",
+			},
+		},
+		bindto:"#categoryisk"
+	});
+
+	var catq = bb.generate({
+		data: { x: "x", columns: [], type: "line", },
+		axis: {
+			x: {
+				type: "timeseries",
+				tick: {
+					format: "%Y-%m"
+				}
+			},
+			y: {
+				tick: { format: function(x) { return d3.format(",")(x); } },
+				label: "Quantity",
+			},
+		},
+		bindto:"#categoryq"
+	});
+	var chart = bb.generate({
+	  data: {
+	    columns: {{lastthree}},
+	    type: "donut", // for ESM specify as: donut()
+	  },
+	  donut: { title: "", },
+	  bindto: "#lastthree"
+	});
+
+
+	var html = "";
+	for (const [key, value] of Object.entries(data.categories)) {
+		html += '<button type="button" class="btn btn-default" onclick="render(\'' + key + '\')">' + key + '</button>';
+
+		catisk.load({columns: [data['x'], value[0]]});
+		catq.load({columns: [data['x'], value[1]]});
+	}
+	$("#categories").html(html);
+
+})();
+{% endautoescape %}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+
+{% include "buybackprogram/bundles/buybackprogram-css-light.html" %}
+
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

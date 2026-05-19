@@ -1,0 +1,35 @@
+# SITE_HOST = public apex (e.g. eve-emu.com), from compose env DOMAIN_NAME.
+# Alliance Auth: auth.<SITE_HOST> (e.g. auth.eve-emu.com) — set AA_SITE_URL to match.
+# Caddy obtains certificates when DNS points here and ports 80/443 reach this host.
+
+wiki.{$SITE_HOST} {
+	reverse_proxy wikijs:3000
+}
+
+wh.{$SITE_HOST} {
+	reverse_proxy wanderer:8000
+}
+
+auth.{$SITE_HOST} {
+	reverse_proxy {
+		dynamic a {
+			name aa-web
+			port 8080
+			refresh 3s
+			resolvers 127.0.0.11
+		}
+		lb_try_duration 90s
+		lb_try_interval 500ms
+		transport http {
+			resolvers 127.0.0.11
+		}
+	}
+}
+
+{$SITE_HOST} {
+	reverse_proxy core-web:3000
+}
+
+www.{$SITE_HOST} {
+	redir https://{$SITE_HOST}{uri} permanent
+}

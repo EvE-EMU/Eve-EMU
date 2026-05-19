@@ -1,0 +1,84 @@
+{% extends 'opcalendar/base.html' %}
+{% load static %}
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+{% block title %}
+Event Details
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        {% include "opcalendar/partials/event_details/navigation.html" %}
+    </div>
+    <div class="card-body">
+        <h5 class="card-title">{{ event.title }}</h5>
+        <h6 class="card-subtitle mb-2 text-muted">
+            Created by: {{ event.eve_character }}<br>
+            {% trans "Current Eve Time:" %} <strong class="label label-info text-left" id="current-time"></strong>
+        </h6>
+        {% include "opcalendar/partials/event_details/details.html" %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:10px;">
+    <div class="card-header">
+        {% include "opcalendar/partials/event_details/signups_navigation.html" %}
+    </div>
+    <div class="card-body">
+        {% include "opcalendar/partials/event_details/signups.html" %}
+    </div>
+</div>
+
+<div class="card" style="margin-top:10px;">
+    <div class="card-header">
+        Host Details
+    </div>
+    <div class="card-body">
+        {% include "opcalendar/partials/event_details/host.html" %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_javascript %}
+    {% include "bundles/moment-js.html" with locale=True %}
+    {% include "bundles/timers-js.html" %}
+
+    <script>
+        const timers = [
+                {
+                    'id': {{ event.id }},
+                    'targetDate': moment("{{ event.start_time | date:"c" }}"),
+                    'expired': false
+                },
+        ];
+
+
+        /**
+         * Set the local time info for the timer
+         * @param timer Timer information
+         */
+        const setLocalTime = (timer) => {
+            document.getElementById("localtime" + timer.id).innerHTML = timer.targetDate.format("ddd @ LT");
+        };
+
+        /**
+         * Set all local time fields
+         */
+        const setAllLocalTimes = () => {
+            const l = timers.length;
+
+            for (let i=0; i < l; ++i) {
+                setLocalTime(timers[i]);
+            }
+        };
+
+        const updateClock = () => {
+            document.getElementById("current-time").innerHTML = getCurrentEveTimeString();
+        };
+
+
+        // Set initial values
+        setAllLocalTimes();
+
+    </script>
+{% endblock extra_javascript %}

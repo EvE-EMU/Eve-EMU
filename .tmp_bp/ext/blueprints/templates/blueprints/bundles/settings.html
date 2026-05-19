@@ -1,0 +1,63 @@
+{% load i18n %}
+{% load humanize %}
+{% load sri %}
+
+<script type="application/javascript">
+    let listDataUrl = '{% url "blueprints:list_blueprints" %}';
+    {% if active_tags %}
+        listDataUrl += '?tags={{ active_tags|join:"," }}'
+    {% endif %}
+
+    let blueprintsSettings = {
+        listDataUrl: listDataUrl,
+        listDataFddUrl: '{% url "blueprints:list_blueprints_ffd" %}',
+        openRequestListUrl: '{% url "blueprints:list_open_requests" %}',
+        userRequestListUrl: '{% url "blueprints:list_user_requests" %}',
+        inProgressRequestUrl: '{% url "blueprints:request_in_progress" request_id=12345 %}',
+        cancelRequestUrl:'{% url "blueprints:request_cancelled" request_id=12345 %}',
+        openRequestUrl: '{% url "blueprints:request_open" request_id=12345 %}',
+        fulfillRequestUrl: '{% url "blueprints:request_fulfilled" request_id=12345 %}',
+        viewBlueprintUrl: '{% url "blueprints:create_request" %}',
+        listUserOwnerUrl: '{% url "blueprints:list_user_owners" %}',
+        removeOwnerUrl: '{% url "blueprints:remove_owner" owner_id=12345 %}',
+        viewBlueprintModalUrl: '{% url "blueprints:view_blueprint_modal" %}',
+        viewRequestModalUrl: '{% url "blueprints:view_request_modal" %}',
+        csrfToken: '{% csrf_token %}',
+        canAddBlueprints: {% if perms.blueprints.request_blueprints %} true {% else %} false {% endif %},
+        canViewLocations: {% if perms.blueprints.view_blueprint_locations %} true {% else %} false {% endif %},
+        dataTablesPageLength: {{ data_tables_page_length }},
+        dataTablesPaging: {{ data_tables_paging|yesno:"true,false" }},
+        translation: {
+            filterLocation: "{% translate 'Location' %}",
+            filterOwner: "{% translate 'Owner' %}",
+            filterIsOriginal: "{% translate 'Is BPO?' %}",
+            viewBlueprint: "{% translate 'View Blueprint' %}",
+            markRequestCancelled: "{% translate 'Mark Request as Cancelled' %}",
+            markRequestFulfilled: "{% translate 'Mark Request as Fulfilled' %}",
+            markRequestInProgress: "{% translate 'Mark Request as In Progress' %}",
+            markRequestOpen: "{% translate 'Mark Request as Open' %}",
+            createRequest: "{% translate 'Create Request' %}",
+            requestInfo: "{% translate 'Request Information' %}",
+            removeBlueprints: "{% translate 'Remove Blueprints' %}"
+        }
+    };
+
+    $('#modalViewBlueprintContainer').on('show.bs.modal', function (event) {
+        let button = $(event.relatedTarget)
+        let ajax_url = button.data('ajax_url');
+
+        $("#modalViewBlueprintContent").load(ajax_url)
+    });
+
+    $('#modalViewRequestContainer').on('show.bs.modal', function (event) {
+        let button = $(event.relatedTarget)
+        let ajax_url = button.data('ajax_url');
+
+        $("#modalViewRequestContent").load(ajax_url)
+    });
+</script>
+
+{% sri_static 'blueprints/js/blueprint_list.js' %}
+{% sri_static 'blueprints/js/user_request_list.js' %}
+{% sri_static 'blueprints/js/open_request_list.js' %}
+{% sri_static 'blueprints/js/manage_blueprint_list.js' %}

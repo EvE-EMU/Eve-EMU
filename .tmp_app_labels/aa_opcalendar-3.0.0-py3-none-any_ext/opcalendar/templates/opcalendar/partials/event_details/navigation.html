@@ -1,0 +1,21 @@
+{% load i18n %}
+
+<div class="d-grid gap-2 d-md-flex justify-content-md-start w-100">
+    <form method="get" action="{% url 'opcalendar:calendar' %}" class="d-inline">
+        <button class="btn btn-primary me-md-2" type="submit"><i class="far fa-calendar-alt"></i> {% trans "Back to Calendar" %}</button>
+    </form>
+    <form method="get" action="{% url 'opcalendar:event-ical-view' event.pk %}" class="d-inline">
+        <button class="btn btn-success me-md-2" type="submit"><i class="fas fa-bookmark"></i> {% trans "Add to my calendar" %}</button>
+    </form>
+    {% if perms.opcalendar.create_event %}
+        {% if not event.external %}
+            <form method="get" action="{% url 'opcalendar:event_edit' event.pk %}" class="d-inline">
+                <button class="btn btn-primary me-md-2" type="submit"><i class="fas fa-edit"></i> {% trans "Edit Event" %}</button>
+            </form>
+            <form method="post" action="{% url 'opcalendar:remove_event' event.id %}" class="d-inline">
+                {% csrf_token %}
+                <button class="btn btn-danger" type="submit"><i class="fas fa-trash"></i> {% trans "Remove" %}</button>
+            </form>
+        {% endif %}
+    {% endif %}
+</div>

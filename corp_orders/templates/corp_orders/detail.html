@@ -1,0 +1,90 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="col-lg-12">
+    <h2>{{ order.code }}</h2>
+    <p class="text-muted">{{ order.contract_description }} — {{ order.get_status_display }}</p>
+    {% if order.final_destination_system %}
+    <p class="text-muted mb-3">
+        Final destination: <strong>{{ order.final_destination_system }}</strong>
+        · Freight quoted: {{ config.origin_system }} → {{ config.destination_system }}
+    </p>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">Contract values</div>
+                <div class="card-body">
+                    <ul>
+                        <li>I will pay: <strong>{{ order.contract_price_isk|floatformat:0 }} ISK</strong></li>
+                        <li>I will receive: <strong>0</strong></li>
+                        <li>Items: {{ order.items_subtotal_isk|floatformat:0 }} ISK</li>
+                        <li>Freight: {{ order.freight_isk|floatformat:0 }} ISK</li>
+                        <li>Speed fee: {{ order.speed_surcharge_isk|floatformat:0 }} ISK</li>
+                        <li>Wallet: {{ order.get_wallet_method_display }}{% if order.wallet_notes %} — {{ order.wallet_notes }}{% endif %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">In-game contract steps</div>
+                <div class="card-body">
+                    <ol>
+                        {% for step in instructions.steps %}
+                        <li>{{ step }}</li>
+                        {% endfor %}
+                    </ol>
+                    <pre class="small bg-dark text-light p-2">{{ instructions.description }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Items</div>
+        <div class="card-body">
+            <pre>{{ instructions.items }}</pre>
+        </div>
+    </div>
+
+    {% if can_cancel %}
+    <div class="card mb-3 border-danger">
+        <div class="card-header text-danger">Admin</div>
+        <div class="card-body">
+            <form method="post" onsubmit="return confirm('Cancel this stock order? This cannot be undone.');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel">
+                <button type="submit" class="btn btn-danger">Cancel order</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+        <div class="card-header">Link EVE contract</div>
+        <div class="card-body">
+            <form method="post" class="row g-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="link">
+                {{ link_form.eve_contract_id }}
+                <div><button type="submit" class="btn btn-primary">Link contract ID</button></div>
+            </form>
+            <form method="post" class="mt-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="poll">
+                <button type="submit" class="btn btn-outline-secondary">Refresh contract status</button>
+            </form>
+            {% if order.eve_contract_id %}
+            <p class="mt-2 mb-0">Linked: {{ order.eve_contract_id }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <a href="{% url 'corp_orders:order_list' %}" class="btn btn-link">All orders</a>
+</div>
+{% endblock %}

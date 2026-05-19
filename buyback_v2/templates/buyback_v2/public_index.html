@@ -1,0 +1,25 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Public buyback calculator" %}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <h1 class="mb-3">{% trans "Public buyback calculator" %}</h1>
+  <p class="text-muted">
+    {% trans "Price your cargo without logging in. Payout rates depend on the program and tier shown on each calculator." %}
+  </p>
+  {% if programs %}
+  <div class="list-group">
+    {% for program in programs %}
+    <a class="list-group-item list-group-item-action" href="{% url 'buyback_v2:public_calculate' program_pk=program.pk %}">
+      <strong>{% if program.name %}{{ program.name }}{% else %}{% trans "Buyback program" %}{% endif %}</strong>
+      <span class="badge bg-secondary ms-2">{{ program.pricing_v2.public_multiplier|floatformat:2 }}× {% trans "public" %}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-warning">{% trans "No programs have public pricing enabled." %}</div>
+  {% endif %}
+</div>
+{% endblock %}

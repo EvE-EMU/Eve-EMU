@@ -1,0 +1,45 @@
+{% extends 'blueprints/base.html' %}
+
+{% load i18n %}
+{% load humanize %}
+{% load sri %}
+
+{% block details %}
+    <div>
+        <div class="card card-body tab-content">
+            {% include 'blueprints/partials/tabs/libary.html' %}
+
+            {% if perms.blueprints.request_blueprints %}
+                {% include 'blueprints/partials/tabs/user-requests.html' %}
+            {% endif %}
+
+            {% if perms.blueprints.manage_requests %}
+                {% include 'blueprints/partials/tabs/open-requests.html' %}
+            {% endif %}
+
+
+            {% if perms.blueprints.add_personal_blueprint_owner or perms.blueprints.add_corporate_blueprint_owner %}
+                {% include 'blueprints/partials/tabs/manage-blueprints.html' %}
+            {% endif %}
+        </div>
+    </div>
+
+    {% include 'blueprints/modals/modal_dialog.html' with name="ViewBlueprint" %}
+    {% include 'blueprints/modals/modal_dialog.html' with name="ViewRequest" %}
+{% endblock %}
+
+{% block extra_css %}
+    {% include 'bundles/datatables-css.html' %}
+
+    {% sri_static 'blueprints/css/blueprints.css' %}
+{% endblock %}
+
+{% block extra_javascript %}
+    {% include 'bundles/datatables-js-bs5.html' %}
+    {% include 'bundles/datatables-css-bs5.html' %}
+    {% include "bundles/filterdropdown-js.html" %}
+    {% include "blueprints/bundles/settings.html" %}
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

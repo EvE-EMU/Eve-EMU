@@ -1,0 +1,395 @@
+# EvE-EMU unified stack — copy `.env.example` to `.env`, run `./setup.sh`, then `docker compose up -d`.
+# FastAPI core is the canonical EVE SSO callback host (`ESI_CALLBACK_URL` → `/v1/auth/eve/callback`).
+# Alliance Auth submodule is required to build `aa-*` images; optional bind-mount refreshes `/opt/allianceauth` at runtime.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve}
+      POSTGRES_DB: ${POSTGRES_DB_CORE:-eve_emu_core}
+      POSTGRES_DB_AA: ${POSTGRES_DB_AA:-eve_emu_aa}
+    volumes:
+      - eve_emu_pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - eve_emu_redis:/data
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  core-api:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CORE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/${POSTGRES_DB_CORE:-eve_emu_core}
+      CORE_PUBLIC_BASE_URL: ${CORE_PUBLIC_BASE_URL:-http://localhost:8000}
+      CORE_SSO_CLIENT_ID: ${ESI_CLIENT_ID:-}
+      CORE_SSO_CLIENT_SECRET: ${ESI_CLIENT_SECRET:-}
+      # FastAPI SSO path is /v1/auth/eve/callback — not Alliance Auth's /sso/callback.
+      CORE_SSO_CALLBACK_URL: ${CORE_SSO_CALLBACK_URL:-http://localhost:8000/v1/auth/eve/callback}
+      CORE_DISCORD_BOT_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      CORE_TOKEN_ENCRYPTION_KEY: ${CORE_TOKEN_ENCRYPTION_KEY:-}
+      CORE_MOON_TAX_PERCENT_OF_OWED_VALUE: ${MINING_TAX_RATE:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${CORE_API_PUBLISH_PORT:-8000}:8000"
+
+  core-web:
+    build:
+      context: ./core-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CORE_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_AUTH_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+        CORE_WEB_BASE_PATH: ${CORE_WEB_BASE_PATH:-}
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - core-api
+    expose:
+      - "3000"
+    # Dev direct access (optional): CORE_WEB_PUBLISH_PORT=3000
+    ports:
+      - "${CORE_WEB_PUBLISH_PORT:-3000}:3000"
+
+  emu-bot:
+    build:
+      context: .
+      dockerfile: discord-bot/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      EVE_DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      EVE_DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      EVE_TICKET_QUEUE_CHANNEL_ID: ${EVE_TICKET_QUEUE_CHANNEL_ID:-}
+      EVE_CORE_BASE_URL: ${BOT_CORE_API_URL:-http://core-api:8000}
+      EVE_CORE_BOT_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+    depends_on:
+      - core-api
+    restart: unless-stopped
+
+  # Wanderer CE — EVE mapper at https://wh.<DOMAIN_NAME> (see docs/WANDERER.md).
+  wanderer-route-builder:
+    image: wandererltd/eve-route-builder:main
+    restart: unless-stopped
+    expose:
+      - "2001"
+    environment:
+      PORT: "2001"
+
+  wanderer-kills:
+    image: wandererltd/wanderer-kills:latest
+    restart: unless-stopped
+    expose:
+      - "4004"
+    environment:
+      PORT: "4004"
+      MIX_ENV: prod
+      ESI_BASE_URL: https://esi.evetech.net/latest
+      ESI_DATASOURCE: tranquility
+      CACHE_KILLMAIL_TTL: "300"
+      CACHE_SYSTEM_TTL: "3600"
+      CACHE_ESI_TTL: "86400"
+
+  wanderer:
+    image: wandererltd/community-edition:latest
+    restart: unless-stopped
+    command: >
+      sh -c "sleep 5 &&
+      /app/entrypoint.sh db migrate &&
+      /app/entrypoint.sh run"
+    depends_on:
+      db:
+        condition: service_healthy
+      wanderer-route-builder:
+        condition: service_started
+      wanderer-kills:
+        condition: service_started
+    expose:
+      - "8000"
+    environment:
+      PHX_SERVER: "true"
+      ECTO_IPV6: "false"
+      ERL_AFLAGS: -proto_dist inet6_tcp
+      DATABASE_URL: postgresql://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/${POSTGRES_DB_WANDERER:-wanderer}
+      CUSTOM_ROUTE_BASE_URL: http://wanderer-route-builder:2001
+      WANDERER_KILLS_SERVICE_ENABLED: "true"
+      WANDERER_KILLS_BASE_URL: ws://wanderer-kills:4004
+      WEB_APP_URL: ${WANDERER_URL:-https://wh.${DOMAIN_NAME:-eve-emu.com}}
+      SECRET_KEY_BASE: ${WANDERER_SECRET_KEY_BASE:-}
+      CLOAK_KEY: ${WANDERER_CLOAK_KEY:-}
+      EVE_CLIENT_ID: ${WANDERER_EVE_CLIENT_ID:-}
+      EVE_CLIENT_SECRET: ${WANDERER_EVE_CLIENT_SECRET:-}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8000/ || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
+
+  # Wiki.js — public URL via Caddy `wiki.<DOMAIN_NAME>`; AA provisions users via GraphQL (see docs/WIKIJS.md).
+  wikijs:
+    image: ghcr.io/requarks/wiki:2
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DB_TYPE: postgres
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-eve}
+      DB_PASS: ${POSTGRES_PASSWORD:-eve}
+      DB_NAME: ${POSTGRES_DB_WIKI:-wikijs}
+      DB_SSL: "false"
+    expose:
+      - "3000"
+    volumes:
+      - eve_emu_wikijs_data:/wiki/data
+      - eve_emu_wikijs_config:/wiki/config
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:3000/healthz || wget -q -O /dev/null http://127.0.0.1:3000/",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  aa-web:
+    build:
+      context: .
+      dockerfile: docker/django-aa/Dockerfile
+    entrypoint: ["python3", "/docker-entrypoint.py"]
+    command:
+      [
+        "gunicorn",
+        "eve_auth.wsgi:application",
+        "--bind",
+        "0.0.0.0:8080",
+        "--chdir",
+        "/app/site",
+        "--workers",
+        "2",
+      ]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-eve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve}
+      POSTGRES_DB_AA: ${POSTGRES_DB_AA:-eve_emu_aa}
+      POSTGRES_DB_WIKI: ${POSTGRES_DB_WIKI:-wikijs}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      AA_ALLOWED_HOSTS: ${AA_ALLOWED_HOSTS:-*}
+      AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
+      AA_DEBUG: ${AA_DEBUG:-0}
+      AA_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      AA_SITE_NAME: ${AA_SITE_NAME:-EVE-EMU Alliance Auth}
+      AA_SKIP_EMAIL_VERIFY: ${AA_SKIP_EMAIL_VERIFY:-1}
+      AA_CSRF_TRUSTED_ORIGINS: ${AA_CSRF_TRUSTED_ORIGINS:-}
+      ESI_CLIENT_ID: ${ESI_CLIENT_ID:-}
+      ESI_CLIENT_SECRET: ${ESI_CLIENT_SECRET:-}
+      WIKIJS_URL: ${WIKIJS_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
+      WIKIJS_API_URL: ${WIKIJS_API_URL:-http://wikijs:3000}
+      WIKIJS_API_KEY: ${WIKIJS_API_KEY:-}
+    volumes:
+      - ./allianceauth:/opt/allianceauth:ro
+      - eve_emu_aa_static:/app/site/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      wikijs:
+        condition: service_started
+    expose:
+      - "8080"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import socket; socket.create_connection(('127.0.0.1', 8080), timeout=2).close()\"",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 120s
+
+  # Terminates TLS on 443 (and HTTP on 80 for ACME + redirects).
+  # eve-emu.com → core-web; auth.eve-emu.com → aa-web; wiki.eve-emu.com → wikijs.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SITE_HOST: ${DOMAIN_NAME:-eve-emu.com}
+    ports:
+      - "${CADDY_HTTP_PUBLISH_PORT:-80}:80"
+      - "${CADDY_HTTPS_PUBLISH_PORT:-443}:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - eve_emu_caddy_data:/data
+      - eve_emu_caddy_config:/config
+    depends_on:
+      aa-web:
+        condition: service_healthy
+      wikijs:
+        condition: service_started
+      wanderer:
+        condition: service_started
+      core-web:
+        condition: service_started
+
+  aa-worker:
+    build:
+      context: .
+      dockerfile: docker/django-aa/Dockerfile
+    entrypoint: ["python3", "/docker-entrypoint.py"]
+    command:
+      [
+        "celery",
+        "-A",
+        "eve_auth",
+        "worker",
+        "-l",
+        "INFO",
+        "-Q",
+        "celery,services,aadiscordbot",
+      ]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-eve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve}
+      POSTGRES_DB_AA: ${POSTGRES_DB_AA:-eve_emu_aa}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
+      AA_DEBUG: ${AA_DEBUG:-0}
+    volumes:
+      - ./allianceauth:/opt/allianceauth:ro
+      - eve_emu_aa_static:/app/site/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  aa-beat:
+    build:
+      context: .
+      dockerfile: docker/django-aa/Dockerfile
+    entrypoint: ["python3", "/docker-entrypoint.py"]
+    command: ["celery", "-A", "eve_auth", "beat", "-l", "INFO"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-eve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve}
+      POSTGRES_DB_AA: ${POSTGRES_DB_AA:-eve_emu_aa}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
+      AA_DEBUG: ${AA_DEBUG:-0}
+    volumes:
+      - ./allianceauth:/opt/allianceauth:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Alliance Auth Discord bot (allianceauth-discordbot). Requires AA Discord service + bot token in admin.
+  aa-discordbot:
+    build:
+      context: .
+      dockerfile: docker/django-aa/Dockerfile
+    entrypoint: ["python3", "/docker-entrypoint.py"]
+    command:
+      [
+        "python",
+        "/app/site/manage.py",
+        "run_authbot",
+      ]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-eve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve}
+      POSTGRES_DB_AA: ${POSTGRES_DB_AA:-eve_emu_aa}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
+      AA_DEBUG: ${AA_DEBUG:-0}
+      AA_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      AA_INSTALL_AADISCORDBOT: "1"
+    volumes:
+      - ./allianceauth:/opt/allianceauth:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      aa-web:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  eve_emu_pgdata: {}
+  eve_emu_redis: {}
+  eve_emu_aa_static: {}
+  eve_emu_wikijs_data: {}
+  eve_emu_wikijs_config: {}
+  eve_emu_caddy_data: {}
+  eve_emu_caddy_config: {}

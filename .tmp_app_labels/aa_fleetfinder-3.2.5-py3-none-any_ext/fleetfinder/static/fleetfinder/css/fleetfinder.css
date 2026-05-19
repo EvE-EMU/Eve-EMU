@@ -1,0 +1,47 @@
+@media all {
+    .aa-fleetfinder .eve-character-portrait,
+    .aa-fleetfinder .eve-type-icon {
+        margin-right: 0.5rem;
+    }
+
+    .aa-fleetfinder .table-vertical-middle td {
+        vertical-align: middle;
+    }
+
+    /* Slim Select
+    --------------------------------------------------------------------------------- */
+
+    .aa-fleetfinder .ss-main {
+        appearance: none;
+        background-clip: padding-box;
+        border: var(--bs-border-width) solid var(--bs-border-color);
+        border-radius: var(--bs-border-radius);
+        color: var(--bs-body-color);
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        min-height: calc(1.5em + .75rem + 2px);
+        padding: .375rem .75rem;
+        transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+        width: 100%;
+    }
+
+    /* END Slim Select
+    --------------------------------------------------------------------------------- */
+
+    /* DataTables ColumnControl
+    --------------------------------------------------------------------------------- */
+
+    table.dataTable span.dtcc div.dtcc-search>div select {
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        padding: 0.375rem;
+    }
+
+    table.dataTable .dt-column-header div.dtcc-search-title {
+        display: none;
+    }
+
+    /* END DataTables ColumnControl
+    --------------------------------------------------------------------------------- */
+}
