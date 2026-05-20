@@ -19,6 +19,23 @@ if not argv:
     sys.stderr.write("entrypoint: missing command\n")
     sys.exit(2)
 
+def _apply_allianceauth_patches() -> None:
+    """Overlay eve-emu patches onto the mounted Alliance Auth tree when writable."""
+    patch = Path("/app/deploy/aa_docker/patches/discord/core.py")
+    target = Path("/opt/allianceauth/allianceauth/services/modules/discord/core.py")
+    if not patch.is_file() or not target.parent.is_dir():
+        return
+    try:
+        if patch.read_text(encoding="utf-8") != target.read_text(encoding="utf-8"):
+            import shutil
+
+            shutil.copy(patch, target)
+    except OSError:
+        pass
+
+
+_apply_allianceauth_patches()
+
 _manage = Path("/app/site/manage.py")
 if _manage.is_file():
     exe = Path(argv[0]).name

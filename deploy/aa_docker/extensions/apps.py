@@ -82,17 +82,23 @@ def _graphql_enabled() -> bool:
     )
 
 
-def extension_installed_apps() -> list[str]:
-    if not _extensions_enabled():
-        return []
-
-    apps = list(FULL_EXTENSION_APPS)
-    if os.environ.get("AA_INSTALL_AADISCORDBOT", "0").strip().lower() in (
+def _aadiscordbot_enabled() -> bool:
+    if os.environ.get("AA_INSTALL_AADISCORDBOT", "0").strip().lower() not in (
         "1",
         "true",
         "yes",
         "on",
     ):
+        return False
+    return bool(os.environ.get("DISCORD_BOT_TOKEN", "").strip())
+
+
+def extension_installed_apps() -> list[str]:
+    if not _extensions_enabled():
+        return []
+
+    apps = list(FULL_EXTENSION_APPS)
+    if _aadiscordbot_enabled():
         apps.append("aadiscordbot")
     if _graphql_enabled():
         apps.extend(GRAPHQL_APPS)

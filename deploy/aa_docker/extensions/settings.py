@@ -23,7 +23,29 @@ def _prepend_template_dir(settings: dict, directory: str) -> None:
         settings["TEMPLATES"] = templates
 
 
+def _apply_discord_settings(settings: dict) -> None:
+    """Map root `.env` DISCORD_* into Django settings for Alliance Auth's Discord service."""
+    site_url = str(settings.get("SITE_URL", "")).rstrip("/")
+    for key in (
+        "DISCORD_BOT_TOKEN",
+        "DISCORD_GUILD_ID",
+        "DISCORD_APP_ID",
+        "DISCORD_APP_SECRET",
+        "DISCORD_CALLBACK_URL",
+    ):
+        val = os.environ.get(key, "").strip()
+        if val:
+            settings[key] = val
+    if site_url and not str(settings.get("DISCORD_CALLBACK_URL", "")).strip():
+        settings.setdefault("DISCORD_CALLBACK_URL", f"{site_url}/discord/callback/")
+    sync = os.environ.get("DISCORD_SYNC_NAMES", "").strip()
+    if sync:
+        settings["DISCORD_SYNC_NAMES"] = sync.lower() in ("1", "true", "yes", "on")
+
+
 def apply_extension_settings(settings: dict) -> None:
+    _apply_discord_settings(settings)
+
     _aa_docker_templates = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "templates")
     )

@@ -63,6 +63,8 @@ COPY deploy/aa_docker/patches/marketmanager/cogs/marketmanager.py /usr/local/lib
 COPY deploy/aa_docker/patches/marketmanager/marketbrowser-bs5.html /usr/local/lib/python3.12/site-packages/marketmanager/templates/marketmanager/marketbrowser-bs5.html
 COPY deploy/aa_docker/patches/marketmanager/item_details-bs5.html /usr/local/lib/python3.12/site-packages/marketmanager/templates/marketmanager/marketbrowser/item_details-bs5.html
 # aa-taskmonitor: kill single queued Celery task from Django admin
+# Alliance Auth Discord: allow Django boot when DISCORD_BOT_TOKEN is unset (aadiscordbot import).
+COPY deploy/aa_docker/patches/discord/core.py /opt/allianceauth/allianceauth/services/modules/discord/core.py
 COPY deploy/aa_docker/patches/taskmonitor/views.py /usr/local/lib/python3.12/site-packages/taskmonitor/views.py
 COPY deploy/aa_docker/patches/taskmonitor/urls.py /usr/local/lib/python3.12/site-packages/taskmonitor/urls.py
 COPY deploy/aa_docker/taskmonitor_patch.py /app/deploy/aa_docker/taskmonitor_patch.py

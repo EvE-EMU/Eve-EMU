@@ -7,7 +7,13 @@ wiki.{$SITE_HOST} {
 }
 
 wh.{$SITE_HOST} {
-	reverse_proxy wanderer:8000
+	reverse_proxy wanderer:8000 {
+		transport http {
+			resolvers 127.0.0.11
+		}
+		lb_try_duration 90s
+		lb_try_interval 500ms
+	}
 }
 
 auth.{$SITE_HOST} {

@@ -2,6 +2,13 @@
 # FastAPI core is the canonical EVE SSO callback host (`ESI_CALLBACK_URL` → `/v1/auth/eve/callback`).
 # Alliance Auth submodule is required to build `aa-*` images; optional bind-mount refreshes `/opt/allianceauth` at runtime.
 
+x-aa-discord-environment: &aa-discord-environment
+  DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+  DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+  DISCORD_APP_ID: ${DISCORD_APP_ID:-}
+  DISCORD_APP_SECRET: ${DISCORD_APP_SECRET:-}
+  DISCORD_CALLBACK_URL: ${DISCORD_CALLBACK_URL:-}
+
 services:
   db:
     image: postgres:16-alpine
@@ -119,10 +126,28 @@ services:
   wanderer:
     image: wandererltd/community-edition:latest
     restart: unless-stopped
-    command: >
-      sh -c "sleep 5 &&
-      /app/entrypoint.sh db migrate &&
-      /app/entrypoint.sh run"
+    env_file:
+      - path: .env
+        required: false
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        # CCP removed esi-search.search_structures.v1; strip from runtime.exs (plain text) and
+        # sys.config (Erlang byte-list form: ,32,101,115,105,...structures.v1).
+        if [ -f /app/releases/1.0.0/runtime.exs ]; then
+          sed -i 's/ esi-search.search_structures.v1//g' /app/releases/1.0.0/runtime.exs
+        fi
+        if [ -f /app/releases/1.0.0/sys.config ]; then
+          sed -i 's/ esi-search.search_structures.v1//g' /app/releases/1.0.0/sys.config
+          sed -i 's/,32,101,115,105,45,115,101,97,114,99,104,46,115,101,97,114,99,104,95,115,116,114,117,99,116,117,114,101,115,46,118,49//g' /app/releases/1.0.0/sys.config
+        fi
+        if [ -f /app/releases/1.0.0/runtime.exs ] && ! grep -q 'plug_init_mode: :runtime' /app/releases/1.0.0/runtime.exs; then
+          printf '\nconfig :phoenix, plug_init_mode: :runtime\n' >> /app/releases/1.0.0/runtime.exs
+        fi
+        sleep 5
+        /app/entrypoint.sh db migrate
+        /app/entrypoint.sh run
     depends_on:
       db:
         condition: service_healthy
@@ -311,6 +336,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
       AA_DEBUG: ${AA_DEBUG:-0}
+      <<: *aa-discord-environment
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
       - eve_emu_aa_static:/app/site/staticfiles
@@ -339,6 +365,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
       AA_DEBUG: ${AA_DEBUG:-0}
+      <<: *aa-discord-environment
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
     depends_on:
@@ -348,7 +375,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Alliance Auth Discord bot (allianceauth-discordbot). Requires AA Discord service + bot token in admin.
+  # Alliance Auth Discord bot (allianceauth-discordbot). Requires DISCORD_BOT_TOKEN + AA Discord OAuth settings.
   aa-discordbot:
     build:
       context: .
@@ -374,6 +401,7 @@ services:
       AA_DEBUG: ${AA_DEBUG:-0}
       AA_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
       AA_INSTALL_AADISCORDBOT: "1"
+      <<: *aa-discord-environment
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
     depends_on:
