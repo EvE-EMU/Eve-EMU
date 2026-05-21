@@ -255,6 +255,9 @@ services:
       AA_CSRF_TRUSTED_ORIGINS: ${AA_CSRF_TRUSTED_ORIGINS:-}
       ESI_CLIENT_ID: ${ESI_CLIENT_ID:-}
       ESI_CLIENT_SECRET: ${ESI_CLIENT_SECRET:-}
+      MARKET_INTERNAL_SECRET: ${MARKET_INTERNAL_SECRET:-}
+      MARKET_ESI_TOKEN_ID: ${MARKET_ESI_TOKEN_ID:-41}
+      MARKET_ESI_CHARACTER_NAME: ${MARKET_ESI_CHARACTER_NAME:-Sevey}
       ESI_CALLBACK_URL: ${ESI_CALLBACK_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}/sso/callback}
       WIKIJS_URL: ${WIKIJS_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
       WIKIJS_API_URL: ${WIKIJS_API_URL:-http://wikijs:3000}
@@ -282,8 +285,52 @@ services:
       retries: 30
       start_period: 120s
 
+  # Public market tools — eve-emu.com/margin_finder, /market-browser, … (see docs/MARKET_TOOLS.md).
+  market-api:
+    build:
+      context: .
+      dockerfile: market-tools/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MARKET_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/${POSTGRES_DB_MARKET:-eve_emu_market}
+      MARKET_REDIS_URL: ${REDIS_URL:-redis://redis:6379/2}
+      MARKET_PUBLIC_BASE_URL: https://${DOMAIN_NAME:-eve-emu.com}
+      MARKET_USE_AA_TOKEN: ${MARKET_USE_AA_TOKEN:-1}
+      MARKET_AA_TOKEN_BRIDGE_URL: ${MARKET_AA_TOKEN_BRIDGE_URL:-http://aa-web:8080/internal/market/access-token}
+      MARKET_INTERNAL_SECRET: ${MARKET_INTERNAL_SECRET:-}
+      MARKET_ESI_TOKEN_ID: ${MARKET_ESI_TOKEN_ID:-41}
+      MARKET_ESI_CHARACTER_NAME: ${MARKET_ESI_CHARACTER_NAME:-Sevey}
+      MARKET_ESI_CLIENT_ID: ${MARKET_ESI_CLIENT_ID:-}
+      MARKET_ESI_CLIENT_SECRET: ${MARKET_ESI_CLIENT_SECRET:-}
+      MARKET_ESI_REFRESH_TOKEN: ${MARKET_ESI_REFRESH_TOKEN:-}
+      MARKET_WOMPSTAR_STRUCTURE_ID: ${MARKET_WOMPSTAR_STRUCTURE_ID:-1050645565626}
+      MARKET_WOMPSTAR_STRUCTURE_NAME: ${MARKET_WOMPSTAR_STRUCTURE_NAME:-3-FKCZ - W O M P S T A R}
+      MARKET_BUYBACK_PUBLIC_URL: ${MARKET_BUYBACK_PUBLIC_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}/buyback_v2/}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      aa-web:
+        condition: service_healthy
+    expose:
+      - "8010"
+    restart: unless-stopped
+
+  market-web:
+    build:
+      context: .
+      dockerfile: market-web/Dockerfile
+    depends_on:
+      - market-api
+    expose:
+      - "8088"
+    restart: unless-stopped
+
   # Terminates TLS on 443 (and HTTP on 80 for ACME + redirects).
-  # eve-emu.com → core-web; auth.eve-emu.com → aa-web; wiki.eve-emu.com → wikijs.
+  # eve-emu.com → market tools + core-web; auth.eve-emu.com → aa-web; wiki.eve-emu.com → wikijs.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -307,6 +354,10 @@ services:
       wanderer:
         condition: service_started
       core-web:
+        condition: service_started
+      market-api:
+        condition: service_started
+      market-web:
         condition: service_started
 
   aa-worker:

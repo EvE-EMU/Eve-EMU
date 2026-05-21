@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market — EVE-EMU</title>
+  <meta name="description" content="WOMPSTAR market data, spreads, contracts, and buyback links for EVE-EMU." />
+  <meta name="theme-color" content="#0a0d11" />
+  <style>html,body{background:#0a0d11;margin:0}</style>
+  <link rel="preconnect" href="https://images.evetech.net" crossorigin>
+  <link rel="dns-prefetch" href="https://images.evetech.net">
+  <link rel="stylesheet" href="/static/css/theme.css?v=5" />
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-brand">
+    <a href="/"><span class="app-title">eve-emu</span></a><span class="beta-badge">MARKET</span>
+  </div>
+  <nav class="top-nav" id="top-nav"></nav>
+  <div class="topbar-main">
+    <div class="status-pill">
+      <div class="status-dot" id="dot-esi"></div>
+      <span id="text-esi">API</span>
+    </div>
+    <a href="#" id="link-buyback" class="nav-btn">Buyback</a>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <p class="welcome-msg" style="margin:0 0 12px;font-size:var(--sz-label);">
+      <strong id="hub-name">WOMPSTAR</strong><br>
+      <span id="hub-meta">Player-owned market</span>
+    </p>
+    <div id="sidebar-filters" class="filter-bar hidden"></div>
+  </aside>
+  <main class="main-panel" id="main-panel">
+    <div class="loading-msg">Loading…</div>
+  </main>
+</div>
+
+<footer class="site-footer">
+  EVE Online and the EVE logo are registered trademarks of CCP hf. Market data via ESI; not affiliated with CCP.
+</footer>
+
+<script src="/static/js/app.js?v=5" type="module"></script>
+</body>
+</html>

@@ -70,6 +70,7 @@ COPY deploy/aa_docker/patches/taskmonitor/urls.py /usr/local/lib/python3.12/site
 COPY deploy/aa_docker/taskmonitor_patch.py /app/deploy/aa_docker/taskmonitor_patch.py
 COPY deploy/aa_docker/repair_indy_hub_migrations.py /app/deploy/aa_docker/repair_indy_hub_migrations.py
 COPY deploy/aa_docker/extensions /app/deploy/aa_docker/extensions
+COPY deploy/aa_docker/market_bridge /app/deploy/aa_docker/market_bridge
 COPY deploy/aa_docker/esi_compat_app /app/deploy/aa_docker/esi_compat_app
 COPY deploy/aa_docker/templates /app/deploy/aa_docker/templates
 COPY deploy/aa_docker/static /app/deploy/aa_docker/static

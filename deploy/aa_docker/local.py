@@ -50,6 +50,12 @@ if _domain and "*" not in ALLOWED_HOSTS:
         if _extra not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(_extra)
 
+# Docker service names (market-api → aa-web token bridge, health checks).
+if "*" not in ALLOWED_HOSTS:
+    for _internal in ("aa-web", "market-api", "localhost", "127.0.0.1"):
+        if _internal not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_internal)
+
 CSRF_TRUSTED_ORIGINS = []
 _extra_csrf = os.environ.get("AA_CSRF_TRUSTED_ORIGINS", "").strip()
 if _extra_csrf:
@@ -128,6 +134,7 @@ INSTALLED_APPS += [
     "corp_orders.apps.CorpOrdersConfig",
     "standing_fleet_tracker",
     "sde_wiki.apps.SdeWikiConfig",
+    "market_bridge.apps.MarketBridgeConfig",
 ]
 
 # Community apps: deploy/aa_docker/extensions/ + requirements-aa-extensions.txt

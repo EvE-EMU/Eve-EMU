@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "EvE-EMU",
   description:
-    "Industrial, PvP, and automation suite for EVE Online organizations — Discord-first workflows with FastAPI core and optional Alliance Auth.",
+    "Public market tools for WOMPSTAR (3-FKCZ), plus member services via Alliance Auth — spreads, browser, and corp integrations.",
 };
 
 export default function RootLayout({

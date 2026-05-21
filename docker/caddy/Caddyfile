@@ -33,7 +33,29 @@ auth.{$SITE_HOST} {
 }
 
 {$SITE_HOST} {
-	reverse_proxy core-web:3000
+	@market_api path /api/market/*
+	handle @market_api {
+		reverse_proxy market-api:8010 {
+			transport http {
+				read_timeout 10m
+				write_timeout 10m
+			}
+		}
+	}
+
+	@market_pages path /margin_finder* /market_trends* /contract_price* /tradeVol_type* /price_compare* /pi_rank* /market-browser* /appraisal*
+	handle @market_pages {
+		reverse_proxy market-web:8088
+	}
+
+	@market_static path /static/*
+	handle @market_static {
+		reverse_proxy market-web:8088
+	}
+
+	handle {
+		reverse_proxy core-web:3000
+	}
 }
 
 www.{$SITE_HOST} {
