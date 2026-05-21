@@ -105,9 +105,10 @@ DATABASES["default"] = {
     "PORT": os.environ.get("POSTGRES_PORT", "5432"),
 }
 
-# Must match your CCP callback URL exactly (django-esi route is /sso/callback/).
-_esi_callback = os.environ.get("ESI_CALLBACK_URL", "").strip()
-ESI_SSO_CALLBACK_URL = _esi_callback or f"{SITE_URL}/sso/callback/"
+# Must match your CCP developer app callback URL exactly (django-esi: /sso/callback).
+# Alliance Auth upstream uses no trailing slash; normalize so .env typos do not break SSO.
+_esi_callback = os.environ.get("ESI_CALLBACK_URL", "").strip().rstrip("/")
+ESI_SSO_CALLBACK_URL = _esi_callback or f"{SITE_URL}/sso/callback"
 ESI_SSO_CLIENT_ID = os.environ.get("AA_ESI_SSO_CLIENT_ID", os.environ.get("ESI_CLIENT_ID", ""))
 ESI_SSO_CLIENT_SECRET = os.environ.get("AA_ESI_SSO_CLIENT_SECRET", os.environ.get("ESI_CLIENT_SECRET", ""))
 ESI_USER_CONTACT_EMAIL = os.environ.get("AA_ESI_USER_CONTACT_EMAIL", os.environ.get("ESI_USER_CONTACT_EMAIL", ""))

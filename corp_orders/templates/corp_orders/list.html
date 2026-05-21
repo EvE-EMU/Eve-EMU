@@ -24,7 +24,12 @@
                 <td>{{ o.character_name }}</td>
                 <td>{{ o.get_speed_display }}</td>
                 <td>{{ o.contract_price_isk|floatformat:0 }} ISK</td>
-                <td>{{ o.get_status_display }}</td>
+                <td>
+                    {{ o.get_status_display }}
+                    {% if o.claimed_character_name %}
+                    <br><small class="text-muted">Claimed: {{ o.claimed_character_name }}</small>
+                    {% endif %}
+                </td>
                 <td><a href="{% url 'corp_orders:order_detail' o.pk %}">View</a></td>
             </tr>
             {% empty %}

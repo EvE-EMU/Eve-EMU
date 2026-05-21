@@ -23,7 +23,7 @@ git submodule update --init --recursive allianceauth
 Configure root **`.env`** (see **`.env.example`**):
 
 - **`AA_SITE_URL`** — public base URL of the auth site (no trailing slash), e.g. **`https://auth.eve-emu.com`**. For local-only HTTP without Caddy, set an explicit **`http://…`** URL that matches how you reach the app.
-- **`ESI_CLIENT_ID`** / **`ESI_CLIENT_SECRET`** — passed into the container so AA can use the same EVE app as **`core-api`** if you choose; in the CCP developer portal set callback **`{AA_SITE_URL}/sso/callback/`** (trailing slash; must match **`ESI_CALLBACK_URL`**) (see [Alliance Auth installation](https://allianceauth.readthedocs.io/en/v5.0.1/installation/index.html)).
+- **`ESI_CLIENT_ID`** / **`ESI_CLIENT_SECRET`** — same EVE developer app as **`core-api`** (or a dedicated app). **`ESI_CALLBACK_URL`** must match CCP **character-for-character** (default **`https://auth.<domain>/sso/callback`** — **no trailing slash**). Add **both** `…/sso/callback` and `…/sso/callback/` on the CCP app only if you intentionally use two URLs; this stack normalizes to **no** trailing slash (see [Alliance Auth installation](https://allianceauth.readthedocs.io/en/v5.0.1/installation/index.html)).
 - **`AA_DJANGO_SECRET_KEY`**, **`POSTGRES_*`**, **`REDIS_URL`** — same Postgres role/database as **`POSTGRES_DB_AA`** (`eve_emu_aa` by default).
 
 On first start, **`docker/django-aa/entrypoint.py`** runs **`repair_indy_hub_migrations.py`** (records Indy Hub `0023` when columns already exist), then **`manage.py migrate`** and **`collectstatic`** before Gunicorn (Alliance Auth touches Redis during `django.setup()`, so static collection is not done at image build time).
@@ -83,7 +83,7 @@ Equivalent to the UI “install all outdated” command for the two common deps:
 
 ```bash
 docker compose exec aa-web pip install "click>=8.4.0,<9" \
-  "django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a6"
+  "django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a7"
 docker compose exec aa-web python manage.py packagemonitorcli refresh
 ```
 

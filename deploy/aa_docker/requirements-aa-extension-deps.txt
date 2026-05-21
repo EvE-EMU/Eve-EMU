@@ -3,9 +3,13 @@ pip==26.1.1
 recurrent>=0.4
 psutil>=5.9
 # Transitive via slixmpp / aioxmpp stacks — pin so aa-package-monitor stays current.
-aiodns>=4.0.3,<5
+aiodns==4.0.4
+aiohappyeyeballs==2.6.2
+certifi==2026.5.20
+yarl==1.24.2
+telnetlib3==4.0.3
 # PyPI 1.6.x still imports esi.clients (django-esi 8); 2.0.0a* uses esi.openapi_clients (django-esi 9 / AA 5).
-django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a6
+django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a7
 # Celery stack; keep current so aa-package-monitor "Update Available" stays clear.
 click>=8.4.0,<9
 aiopenapi3>=0.10
@@ -42,8 +46,7 @@ pyyaml
 requests-mock
 packaging>=22
 importlib-metadata>=6
-# zipp 4.x is transitive; stay on 3.x until importlib-metadata officially supports 4 (Package Monitor may flag it).
-zipp>=3.23.1,<4
+zipp==4.1.0
 celery-once
 django-bitfield
 python-crontab>=3.0

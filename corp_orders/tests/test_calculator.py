@@ -4,7 +4,12 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from corp_orders.models import FreightOrder, FreightOrdersSettings
-from corp_orders.services.calculator import build_quote, parse_inventory_lines
+from corp_orders.services.calculator import (
+    build_quote,
+    looks_like_ravworks_paste,
+    parse_inventory_lines,
+    parse_ravworks_lines,
+)
 from corp_orders.services.freight import calculate_freight_isk
 
 
@@ -13,6 +18,34 @@ class ParseLinesTests(SimpleTestCase):
         lines, errors = parse_inventory_lines("Tritanium 100")
         self.assertEqual(lines, [])
         self.assertTrue(errors)
+
+    def test_detects_ravworks_header(self):
+        text = "Name\tTo Buy\tTo Buy (Sell-Value)\tTo Buy Volume\tStart Amount\tEnd Amount"
+        self.assertTrue(looks_like_ravworks_paste(text))
+
+    def test_ravworks_skips_zero_to_buy(self):
+        text = (
+            "Name\tTo Buy\tTo Buy (Sell-Value)\tTo Buy Volume\tStart Amount\tEnd Amount\n"
+            "Auto-Integrity Preservation Seal\t0\t0\t0.00\t0\t1\n"
+            "Supertensile Plastics\t443\t5,626,319\t332.25\t0\t0\n"
+            "Hydrogen Fuel Block\t0\t0\t0.00\t0\t25\n"
+            "Tritanium\t8903588\t35,633,695\t89,035.88\t0\t0"
+        )
+        rows, errors = parse_ravworks_lines(text)
+        self.assertEqual(errors, [])
+        self.assertEqual([r[0] for r in rows], ["Supertensile Plastics", "Tritanium"])
+        self.assertEqual(rows[0], ("Supertensile Plastics", 443))
+        self.assertEqual(rows[1][1], 8903588)
+
+    def test_ravworks_all_zero_reports_error(self):
+        text = (
+            "Name\tTo Buy\tTo Buy (Sell-Value)\n"
+            "Auto-Integrity Preservation Seal\t0\t0\n"
+            "Hydrogen Fuel Block\t0\t0"
+        )
+        rows, errors = parse_ravworks_lines(text)
+        self.assertEqual(rows, [])
+        self.assertTrue(any("To Buy > 0" in e for e in errors))
 
 
 class FreightLogicTests(SimpleTestCase):

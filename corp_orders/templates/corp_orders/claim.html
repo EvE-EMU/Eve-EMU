@@ -1,0 +1,36 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="col-lg-8">
+    <h2>Claim contract filling</h2>
+    <p class="text-muted">
+        Order <strong>{{ order.code }}</strong> — {{ order.get_speed_display }} —
+        {{ order.contract_price_isk|floatformat:0 }} ISK —
+        {% if order.final_destination_system %}
+        deliver to <strong>{{ order.final_destination_system }}</strong>
+        {% endif %}
+    </p>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <p>
+                You are volunteering to <strong>fill / deliver</strong> this corp stock order.
+                The officer still creates the in-game item exchange contract; you coordinate delivery.
+            </p>
+            <p class="mb-0">
+                After you confirm, the Discord announcement updates to show you as the claimant.
+            </p>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="t" value="{{ token }}">
+        <button type="submit" class="btn btn-success">Claim filling</button>
+        <a href="{% url 'corp_orders:order_detail' order.pk %}" class="btn btn-link">View order</a>
+    </form>
+</div>
+{% endblock %}

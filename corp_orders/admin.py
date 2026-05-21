@@ -14,6 +14,7 @@ class FreightOrderAdmin(admin.ModelAdmin):
     list_display = (
         "code",
         "character_name",
+        "claimed_character_name",
         "speed",
         "contract_price_isk",
         "status",

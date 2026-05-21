@@ -15,7 +15,9 @@ Alliance Auth plugin at **`https://auth.<domain>/corp-orders/`** for officer/dir
 
 Contract: **I will pay** = total; **I will receive** = 0. Description includes speed label and unique code (`ORD-XXXXXXXX`).
 
-**Discord (new order webhook)** includes contract fields (pay amount, description, expiration, assignee), the full item list, final destination, and freight route.
+**Discord (new order webhook)** includes contract fields (pay amount, description, expiration, assignee), the full item list, final destination, freight route, and a **Claim filling** link button (opens Alliance Auth to volunteer). After someone claims, the same Discord message is edited to show **Filling claimed by (character name)** and the button is removed.
+
+Requires `AA_SITE_URL` in `.env` so claim links point at your auth site.
 
 **Performance:** Janice prices are batched (DB cache + parallel API); create reuses the last calculated quote from session; Discord notify runs on Celery.
 
@@ -45,10 +47,20 @@ Contract: **I will pay** = total; **I will receive** = 0. Description includes s
 | `corp_orders.create_order` | Create quotes/orders |
 | `corp_orders.create_corp_contract` | Issue as **corporation** contract (corp wallet) |
 | `corp_orders.manage_orders` | View all users' orders; cancel open orders |
+| `corp_orders.claim_fulfillment` | Claim filling via Discord button / AA (logistics) |
+
+Grant claim permission for members who fill orders:
+
+```bash
+docker compose exec aa-web python manage.py corp_orders_grant_claimers
+# or: CORP_ORDERS_CLAIM_GROUPS=Members,Logistics docker compose exec ...
+```
 
 ## Workflow
 
-1. **Corp stock orders** → paste inventory → **Calculate quote** → **Create order**.
+1. **Corp stock orders** → paste items → **Calculate quote** → **Create order**.
+   - **In-game inventory:** copy from hangar (Ctrl+C), tab-separated.
+   - **Ravworks:** copy the plan **Stocks/Materials** table (includes `Name`, `To Buy`, …). Only rows with **To Buy > 0** are quoted; zero-buy lines are dropped.
 2. Follow in-game steps on the order detail page (ESI does not create item exchange contracts via API).
 3. Paste the **EVE contract ID** to link tracking.
 4. Celery polls contract status; **payback** webhook fires when complete if personal wallet + payback enabled.

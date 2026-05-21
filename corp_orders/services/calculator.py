@@ -12,31 +12,88 @@ from corp_orders.services.pricing import (
 )
 
 
-def parse_inventory_lines(items_text: str) -> tuple[list[dict], list[str]]:
-    """Parse in-game inventory paste (tab-separated), same pattern as buyback."""
-    lines_out: list[dict] = []
-    errors: list[str] = []
+def _parse_quantity_cell(value: str) -> int:
+    return int("".join(c for c in (value or "") if c.isdigit()) or "0")
 
+
+def _is_ravworks_header(parts: list[str]) -> bool:
+    if len(parts) < 2:
+        return False
+    col0 = parts[0].strip().lower()
+    col1 = parts[1].strip().lower()
+    return col0 == "name" and "to buy" in col1
+
+
+def looks_like_ravworks_paste(items_text: str) -> bool:
+    """Ravworks Stocks/Materials table: Name, To Buy, … (tab-separated)."""
     if "\t" not in items_text:
-        errors.append("Paste must be tab-separated (copy from in-game inventory).")
-        return lines_out, errors
-
-    raw_rows: list[tuple[str, int]] = []
-    names: list[str] = []
+        return False
     for raw in items_text.splitlines():
         if not raw.strip():
             continue
         parts = raw.split("\t")
-        name = parts[0].replace("*", "").strip()
-        qty = 1
-        if len(parts) >= 2 and parts[1].strip():
-            qty = int("".join(c for c in parts[1] if c.isdigit()) or "0")
-        if qty < 1:
-            errors.append(f"Invalid quantity for {name}.")
-            continue
-        names.append(name)
-        raw_rows.append((name, qty))
+        if _is_ravworks_header(parts):
+            return True
+        if len(parts) >= 6 and parts[0].strip() and parts[1].strip():
+            name = parts[0].strip()
+            if name.lower() == "name":
+                continue
+            qty_cell = parts[1].strip()
+            if any(c.isdigit() for c in qty_cell):
+                return True
+        break
+    return False
 
+
+def parse_ravworks_lines(items_text: str) -> tuple[list[tuple[str, int]], list[str]]:
+    """
+    Parse Ravworks Stocks/Materials export. Uses the **To Buy** column as quantity;
+    rows with To Buy 0 are omitted.
+    """
+    raw_rows: list[tuple[str, int]] = []
+    errors: list[str] = []
+    skipped_zero = 0
+
+    if "\t" not in items_text:
+        errors.append(
+            "Ravworks paste must be tab-separated — copy the Stocks/Materials table from Ravworks."
+        )
+        return raw_rows, errors
+
+    for raw in items_text.splitlines():
+        if not raw.strip():
+            continue
+        parts = raw.split("\t")
+        if _is_ravworks_header(parts):
+            continue
+        if len(parts) < 2:
+            continue
+        name = parts[0].replace("*", "").strip()
+        if not name:
+            continue
+        to_buy = _parse_quantity_cell(parts[1])
+        if to_buy < 1:
+            skipped_zero += 1
+            continue
+        raw_rows.append((name, to_buy))
+
+    if not raw_rows and skipped_zero:
+        errors.append(
+            "No Ravworks rows with To Buy > 0 — all materials are already covered by stock."
+        )
+    elif not raw_rows:
+        errors.append(
+            "No Ravworks material rows found — paste the Stocks/Materials table (with header)."
+        )
+    return raw_rows, errors
+
+
+def _lines_from_name_qty_rows(
+    raw_rows: list[tuple[str, int]],
+) -> tuple[list[dict], list[str]]:
+    lines_out: list[dict] = []
+    errors: list[str] = []
+    names = [name for name, _ in raw_rows]
     types_by_name = resolve_types_by_names(names)
     for name, qty in raw_rows:
         eve_type = types_by_name.get(name)
@@ -56,6 +113,43 @@ def parse_inventory_lines(items_text: str) -> tuple[list[dict], list[str]]:
             }
         )
     return lines_out, errors
+
+
+def parse_inventory_lines(items_text: str) -> tuple[list[dict], list[str]]:
+    """Parse in-game inventory or Ravworks Stocks/Materials paste (tab-separated)."""
+    if looks_like_ravworks_paste(items_text):
+        raw_rows, errors = parse_ravworks_lines(items_text)
+        if errors and not raw_rows:
+            return [], errors
+        lines_out, line_errors = _lines_from_name_qty_rows(raw_rows)
+        return lines_out, errors + line_errors
+
+    lines_out: list[dict] = []
+    errors: list[str] = []
+
+    if "\t" not in items_text:
+        errors.append(
+            "Paste must be tab-separated — in-game inventory (Ctrl+C) or Ravworks Stocks/Materials."
+        )
+        return lines_out, errors
+
+    raw_rows: list[tuple[str, int]] = []
+    names: list[str] = []
+    for raw in items_text.splitlines():
+        if not raw.strip():
+            continue
+        parts = raw.split("\t")
+        name = parts[0].replace("*", "").strip()
+        qty = 1
+        if len(parts) >= 2 and parts[1].strip():
+            qty = _parse_quantity_cell(parts[1])
+        if qty < 1:
+            errors.append(f"Invalid quantity for {name}.")
+            continue
+        names.append(name)
+        raw_rows.append((name, qty))
+
+    return _lines_from_name_qty_rows(raw_rows)
 
 
 def build_quote(

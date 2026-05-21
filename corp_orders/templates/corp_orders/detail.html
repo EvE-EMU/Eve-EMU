@@ -7,6 +7,17 @@
 <div class="col-lg-12">
     <h2>{{ order.code }}</h2>
     <p class="text-muted">{{ order.contract_description }} — {{ order.get_status_display }}</p>
+    {% if order.claimed_character_name %}
+    <p class="alert alert-success py-2">
+        Filling claimed by <strong>{{ order.claimed_character_name }}</strong>
+        {% if order.claimed_at %}({{ order.claimed_at }}){% endif %}
+    </p>
+    {% elif can_claim and claim_token %}
+    <p class="alert alert-info py-2 mb-3">
+        No one has claimed filling yet — use the <strong>Claim filling</strong> button on the Discord message
+        or <a href="{% url 'corp_orders:order_claim' order.pk %}?t={{ claim_token }}">claim here</a> (must be logged in).
+    </p>
+    {% endif %}
     {% if order.final_destination_system %}
     <p class="text-muted mb-3">
         Final destination: <strong>{{ order.final_destination_system }}</strong>

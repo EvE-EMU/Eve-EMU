@@ -12,11 +12,13 @@ from corp_orders.constants import SPEED_DESCRIPTION_LABEL
 from corp_orders.forms import LinkContractForm, QuoteForm
 from corp_orders.models import FreightOrder, FreightOrdersSettings
 from corp_orders.services.calculator import build_quote
+from corp_orders.services.claim_tokens import make_claim_token, read_claim_token
+from corp_orders.services.claims import can_claim_order, claim_order
 from corp_orders.services.contracts import contract_creation_instructions, poll_order_contract
 from corp_orders.services.lifecycle import can_cancel_order, cancel_order
 from corp_orders.services.quote_session import load_quote, quote_fingerprint, store_quote
 from corp_orders.services.systems import default_destination_system_name, search_solar_system_names
-from corp_orders.tasks import notify_new_order_task
+from corp_orders.tasks import notify_new_order_task, refresh_order_discord_task
 
 
 def _main_character(request: HttpRequest):
@@ -124,13 +126,73 @@ def order_quote(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+@permission_required("corp_orders.claim_fulfillment", raise_exception=True)
+@require_http_methods(["GET", "POST"])
+def order_claim(request: HttpRequest, pk: int) -> HttpResponse:
+    token = (request.GET.get("t") or request.POST.get("t") or "").strip()
+    if read_claim_token(token) != pk:
+        return HttpResponseForbidden("Invalid or expired claim link. Use the button on the latest Discord message.")
+
+    order = get_object_or_404(FreightOrder, pk=pk)
+    main = _main_character(request)
+    if not main:
+        messages.error(request, "Set a main character before claiming orders.")
+        return redirect("authentication:dashboard")
+
+    if order.claimed_by_id:
+        messages.info(
+            request,
+            f"Already claimed by {order.claimed_character_name}.",
+        )
+        return redirect("corp_orders:order_detail", pk=order.pk)
+
+    if not can_claim_order(order):
+        messages.error(request, f"Order {order.code} cannot be claimed in its current state.")
+        return redirect("corp_orders:order_detail", pk=order.pk)
+
+    if request.method == "POST":
+        if claim_order(
+            order,
+            user=request.user,
+            character_id=main.character_id,
+            character_name=main.character_name,
+        ):
+            refresh_order_discord_task.delay(order.pk)
+            messages.success(
+                request,
+                f"You claimed filling for {order.code}. Discord has been updated.",
+            )
+            return redirect("corp_orders:order_detail", pk=order.pk)
+        messages.error(request, "Could not claim this order (it may have just been claimed).")
+        return redirect("corp_orders:order_detail", pk=order.pk)
+
+    return render(
+        request,
+        "corp_orders/claim.html",
+        {
+            "order": order,
+            "token": token,
+            "title": f"Claim {order.code}",
+        },
+    )
+
+
+@login_required
 @permission_required("corp_orders.create_order", raise_exception=True)
 def order_detail(request: HttpRequest, pk: int) -> HttpResponse:
     order = get_object_or_404(FreightOrder, pk=pk)
-    if order.created_by_id != request.user.id and not request.user.has_perm("corp_orders.manage_orders"):
+    if (
+        order.created_by_id != request.user.id
+        and not request.user.has_perm("corp_orders.manage_orders")
+        and order.claimed_by_id != request.user.id
+    ):
         return HttpResponseForbidden()
 
     config = FreightOrdersSettings.load()
+    can_claim = (
+        request.user.has_perm("corp_orders.claim_fulfillment")
+        and can_claim_order(order)
+    )
     can_manage = request.user.has_perm("corp_orders.manage_orders")
 
     if request.method == "POST" and request.POST.get("action") == "cancel":
@@ -166,6 +228,8 @@ def order_detail(request: HttpRequest, pk: int) -> HttpResponse:
             "instructions": instructions,
             "link_form": link_form,
             "can_cancel": can_manage and can_cancel_order(order),
+            "can_claim": can_claim,
+            "claim_token": make_claim_token(order.pk) if can_claim else "",
             "title": order.code,
         },
     )

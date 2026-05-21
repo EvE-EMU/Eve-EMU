@@ -2,7 +2,7 @@ from celery import shared_task
 
 from corp_orders.models import FreightOrder, FreightOrdersSettings
 from corp_orders.services.contracts import poll_order_contract
-from corp_orders.services.discord import notify_new_order
+from corp_orders.services.discord import notify_new_order, refresh_new_order_discord_message
 
 
 @shared_task
@@ -12,6 +12,15 @@ def notify_new_order_task(order_id: int) -> bool:
         return False
     config = FreightOrdersSettings.load()
     return notify_new_order(order, config=config)
+
+
+@shared_task
+def refresh_order_discord_task(order_id: int) -> bool:
+    order = FreightOrder.objects.filter(pk=order_id).first()
+    if not order:
+        return False
+    config = FreightOrdersSettings.load()
+    return refresh_new_order_discord_message(order, config=config)
 
 
 @shared_task

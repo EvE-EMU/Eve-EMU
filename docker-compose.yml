@@ -255,6 +255,7 @@ services:
       AA_CSRF_TRUSTED_ORIGINS: ${AA_CSRF_TRUSTED_ORIGINS:-}
       ESI_CLIENT_ID: ${ESI_CLIENT_ID:-}
       ESI_CLIENT_SECRET: ${ESI_CLIENT_SECRET:-}
+      ESI_CALLBACK_URL: ${ESI_CALLBACK_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}/sso/callback}
       WIKIJS_URL: ${WIKIJS_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
       WIKIJS_API_URL: ${WIKIJS_API_URL:-http://wikijs:3000}
       WIKIJS_API_KEY: ${WIKIJS_API_KEY:-}

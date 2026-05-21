@@ -43,10 +43,13 @@
         <div class="row g-3">
             <div class="col-lg-7">
                 <div class="card h-100">
-                    <div class="card-header">Inventory</div>
+                    <div class="card-header">Items</div>
                     <div class="card-body">
                         {% if form.items_text.errors %}
                         <div class="text-danger small">{{ form.items_text.errors }}</div>
+                        {% endif %}
+                        {% if form.items_text.help_text %}
+                        <p class="form-text">{{ form.items_text.help_text }}</p>
                         {% endif %}
                         {{ form.items_text }}
                     </div>

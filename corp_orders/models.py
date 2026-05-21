@@ -131,6 +131,22 @@ class FreightOrder(models.Model):
     expiration_hours = models.PositiveIntegerField(default=168)
     eve_contract_id = models.BigIntegerField(null=True, blank=True)
     contract_issuer_id = models.BigIntegerField(null=True, blank=True)
+    claimed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="claimed_freight_orders",
+    )
+    claimed_character_id = models.BigIntegerField(null=True, blank=True)
+    claimed_character_name = models.CharField(max_length=128, blank=True, default="")
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    discord_message_id = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Discord message ID for the new-order webhook (used to edit after claim).",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -143,6 +159,7 @@ class FreightOrder(models.Model):
             ("create_order", "Create corp stock orders"),
             ("create_corp_contract", "Create corp stock orders (corporation wallet)"),
             ("manage_orders", "Manage all corp stock orders"),
+            ("claim_fulfillment", "Claim corp stock order filling from Discord / AA"),
         ]
 
     def __str__(self) -> str:

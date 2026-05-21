@@ -48,7 +48,7 @@ COPY deploy/aa_docker/patches/esi_openapi_providers/structures/providers.py /usr
 COPY deploy/aa_docker/corptools_postgres_compat.py /app/deploy/aa_docker/corptools_postgres_compat.py
 COPY deploy/aa_docker/indy_hub_postgres_compat.py /app/deploy/aa_docker/indy_hub_postgres_compat.py
 COPY deploy/aa_docker/top_postgres_compat.py /app/deploy/aa_docker/top_postgres_compat.py
-# Django 5 upsert: bulk_create(update_conflicts=True) requires unique_fields (aa-sov-timer 4.0.3).
+# Django 5 upsert: bulk_create(update_conflicts=True) requires unique_fields (aa-sov-timer 4.1.0).
 COPY deploy/aa_docker/patches/sovtimer/tasks.py /usr/local/lib/python3.12/site-packages/sovtimer/tasks.py
 # aa-ledger 3.0.0 charlink hook still referenced renamed ORM fields (corporation / character).
 COPY deploy/aa_docker/patches/ledger/thirdparty/charlink_hook.py /usr/local/lib/python3.12/site-packages/ledger/thirdparty/charlink_hook.py

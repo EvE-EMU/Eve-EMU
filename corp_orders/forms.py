@@ -6,13 +6,19 @@ from corp_orders.services.systems import resolve_solar_system_name
 
 class QuoteForm(forms.Form):
     items_text = forms.CharField(
-        label="Inventory paste",
+        label="Items paste",
         widget=forms.Textarea(
             attrs={
                 "rows": 12,
                 "class": "form-control font-monospace",
-                "placeholder": "Copy from in-game inventory (Ctrl+C) — tab-separated lines",
+                "placeholder": (
+                    "In-game inventory (Ctrl+C) or Ravworks Stocks/Materials table — tab-separated"
+                ),
             }
+        ),
+        help_text=(
+            "Ravworks: copy the Stocks/Materials list (Name, To Buy, …). "
+            "Rows with To Buy 0 are ignored."
         ),
     )
     final_destination_system = forms.CharField(

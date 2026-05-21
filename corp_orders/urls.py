@@ -8,5 +8,6 @@ urlpatterns = [
     path("", views.order_list, name="order_list"),
     path("new/", views.order_quote, name="order_quote"),
     path("api/systems/", views.system_search, name="system_search"),
+    path("<int:pk>/claim/", views.order_claim, name="order_claim"),
     path("<int:pk>/", views.order_detail, name="order_detail"),
 ]

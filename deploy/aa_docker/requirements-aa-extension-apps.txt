@@ -20,7 +20,7 @@ aa-market-manager==2.0.0
 aa-killtracker==1.4.1
 aa-killstats==3.0.0
 aa-intel-tool==3.0.2
-aa-sov-timer==4.0.3
+aa-sov-timer==4.1.0
 aa-contacts==0.11.1
 aa-inactivity==2.0.1
 allianceauth-blacklist==0.2.0
