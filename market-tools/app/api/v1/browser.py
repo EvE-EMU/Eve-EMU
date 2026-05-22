@@ -6,9 +6,11 @@ from app.services.browser import (
     item_orders,
     listed_types_catalog,
     listed_types_category_tree,
+    market_tree_build,
     resolve_type_id,
-    search_listed_types,
+    search_types,
 )
+from app.services.catalog import group_types
 
 router = APIRouter()
 
@@ -37,8 +39,36 @@ async def browser_catalog(location_id: int | None = None) -> dict:
 
 @router.get("/categories")
 async def browser_categories(location_id: int | None = None) -> dict:
-    """Market-group tree of listed items (expandable category browser)."""
+    """Market-group tree of listed items (orders-only, legacy)."""
     return await listed_types_category_tree(location_id=_location_id(location_id))
+
+
+@router.get("/tree")
+async def browser_tree(
+    location_id: int | None = None,
+    listed_only: bool = False,
+) -> dict:
+    """Market group tree (full catalog); optional listed-only filter."""
+    return await market_tree_build(
+        location_id=_location_id(location_id),
+        listed_only=listed_only,
+    )
+
+
+@router.get("/group/{group_id}/types")
+async def browser_group_types(
+    group_id: int,
+    location_id: int | None = None,
+    listed_only: bool = False,
+) -> dict:
+    """Types in a market group (lazy-loaded sidebar)."""
+    loc = _location_id(location_id)
+    types = await group_types(
+        group_id=group_id,
+        location_id=loc,
+        listed_only=listed_only,
+    )
+    return {"location_id": loc, "group_id": group_id, "types": types}
 
 
 @router.get("/search")
@@ -46,10 +76,13 @@ async def browser_search(
     q: str = Query("", max_length=120),
     limit: int = Query(40, ge=1, le=200),
     location_id: int | None = None,
+    listed_only: bool = False,
 ) -> dict:
     loc = _location_id(location_id)
-    types = await search_listed_types(location_id=loc, query=q, limit=limit)
-    return {"location_id": loc, "query": q, "types": types}
+    types = await search_types(
+        location_id=loc, query=q, limit=limit, listed_only=listed_only
+    )
+    return {"location_id": loc, "query": q, "listed_only": listed_only, "types": types}
 
 
 @router.get("/item/{type_id}")
@@ -69,5 +102,5 @@ async def browser_item_by_name(
     loc = _location_id(location_id)
     tid = await resolve_type_id(location_id=loc, type_id=type_id, name=name)
     if not tid:
-        raise HTTPException(404, f"No listed item matching '{name}' at this hub")
+        raise HTTPException(404, f"No item matching '{name}'")
     return await item_orders(location_id=loc, type_id=tid)

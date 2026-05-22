@@ -1,6 +1,8 @@
 """Market tools configuration (``MARKET_*`` environment variables)."""
 
-from pydantic import field_validator
+import os
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,16 +33,25 @@ class Settings(BaseSettings):
     wompstar_system_id: int = 30004019  # 3-FKCZ → Querious region via ESI
     wompstar_region_id: int = 10000050  # Querious; auto-resolved from system if unset
 
-    # Default import/compare hub (The Forge / Jita).
+    # Default import/compare hub (The Forge / Jita 4-4).
     default_import_region_id: int = 10000002
     default_import_station_id: int = 60003760
 
-    # WOMP alliance contracts (issuer corp id).
+    # Amarr VIII (Domain) — second reference hub.
+    default_amarr_region_id: int = 10000043
+    default_amarr_station_id: int = 60008494
+
+    # WOMP alliance contracts — comma-separated corporation IDs (ESI contracts scope).
     womp_alliance_id: int = 0
     womp_contract_issuer_corp_id: int = 0
+    womp_contract_issuer_corp_ids: str = ""
 
     # Internal buyback (Alliance Auth public calculator).
     buyback_public_url: str = "https://auth.eve-emu.com/buyback_v2/"
+
+    # Janice appraisal (falls back to BUYBACKPROGRAM_PRICE_JANICE_API_KEY in container env).
+    janice_api_key: str = ""
+    janice_instant_prices: bool = True
 
     # ESI pacing (Tranquility error-limit aware).
     esi_max_concurrent: int = 4
@@ -64,6 +75,14 @@ class Settings(BaseSettings):
         if v == "" or v is None:
             return 0
         return v
+
+    @model_validator(mode="after")
+    def _janice_key_from_buyback_env(self) -> "Settings":
+        if not (self.janice_api_key or "").strip():
+            fallback = (os.environ.get("BUYBACKPROGRAM_PRICE_JANICE_API_KEY") or "").strip()
+            if fallback:
+                object.__setattr__(self, "janice_api_key", fallback)
+        return self
 
     def esi_configured(self) -> bool:
         rt = (self.esi_refresh_token or "").strip()

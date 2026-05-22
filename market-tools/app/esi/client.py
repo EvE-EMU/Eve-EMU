@@ -108,11 +108,18 @@ async def esi_get(
     return resp.status_code, data
 
 
-async def esi_get_paged_list(path: str, *, max_pages: int = 20, auth: bool = True) -> list[Any]:
+async def esi_get_paged_list(
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    max_pages: int = 20,
+    auth: bool = True,
+) -> list[Any]:
     out: list[Any] = []
+    base = dict(params or {})
     page = 1
     while page <= max_pages:
-        status, data = await esi_get(path, params={"page": page}, auth=auth)
+        status, data = await esi_get(path, params={**base, "page": page}, auth=auth)
         if status == 404:
             break
         if status != 200 or not isinstance(data, list):

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
-from app.db.models import MarketOrder, MarketType
+from app.db.models import MarketOrder
 from app.db.session import session_scope
+from app.services.name_resolver import attach_type_names
 
 
 async def margin_rows(
@@ -69,18 +70,5 @@ async def margin_rows(
         )
     out.sort(key=lambda x: x["spread_isk"], reverse=True)
     out = out[:limit]
-    if out:
-        tids = [r["type_id"] for r in out]
-        async with session_scope() as session:
-            name_rows = (
-                await session.execute(
-                    select(MarketType.type_id, MarketType.name).where(
-                        MarketType.location_id == location_id,
-                        MarketType.type_id.in_(tids),
-                    )
-                )
-            ).all()
-        names = {int(r.type_id): r.name for r in name_rows}
-        for row in out:
-            row["type_name"] = names.get(row["type_id"]) or f"Type {row['type_id']}"
+    await attach_type_names(out, location_id=location_id)
     return out

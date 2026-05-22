@@ -12,6 +12,7 @@ from app.config import settings
 from app.db.models import MarketOrder, SyncRun
 from app.db.session import session_scope
 from app.esi.client import esi_get, esi_get_paged_list
+from app.services.import_prices import schedule_import_price_sync
 from app.services.market_groups import sync_listed_market_groups
 from app.services.type_names import sync_listed_type_names
 
@@ -124,6 +125,7 @@ async def sync_wompstar_orders() -> dict[str, int]:
 
     type_count = await sync_listed_type_names(location_id=sid)
     schedule_market_groups_sync(sid)
+    schedule_import_price_sync(sid)
     return {
         "structure_id": sid,
         "orders": len(rows),

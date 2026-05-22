@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 
 from app.config import settings
+from app.services.hub_prices import enrich_rows_with_hubs
 from app.services.margin import margin_rows
 
 router = APIRouter()
@@ -22,6 +23,7 @@ async def margin_finder(
         min_isk_volume=min_isk_volume,
         limit=limit,
     )
+    await enrich_rows_with_hubs(rows)
     return {
         "location_id": loc,
         "location_name": settings.wompstar_structure_name,

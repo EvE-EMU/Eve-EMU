@@ -4,9 +4,21 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
-from app.db.models import MarketGroup, MarketOrder, MarketType, TypeAppraisal
+from app.db.models import (
+    MarketCatalogType,
+    MarketGroup,
+    MarketOrder,
+    MarketType,
+    TypeAppraisal,
+)
 from app.db.session import session_scope
+from app.services.catalog import (
+    catalog_type_name,
+    group_types,
+    search_catalog_types,
+)
 from app.services.market_history import resolve_hub_region_id, type_history
+from app.services.market_tree import build_market_tree
 
 
 async def listed_types_catalog(*, location_id: int) -> dict:
@@ -137,10 +149,34 @@ async def search_listed_types(
         {
             "type_id": t.type_id,
             "name": t.name,
+            "listed": True,
             **prices.get(t.type_id, {}),
         }
         for t in types
     ]
+
+
+async def search_types(
+    *,
+    location_id: int,
+    query: str,
+    limit: int = 40,
+    listed_only: bool = False,
+) -> list[dict]:
+    if listed_only:
+        return await search_listed_types(
+            location_id=location_id, query=query, limit=limit
+        )
+    hits = await search_catalog_types(
+        location_id=location_id, query=query, limit=limit, listed_only=False
+    )
+    if not hits:
+        return []
+    async with session_scope() as session:
+        prices = await _type_rows_with_prices(
+            session, location_id, [h["type_id"] for h in hits]
+        )
+    return [{**h, **prices.get(h["type_id"], {})} for h in hits]
 
 
 async def resolve_type_id(
@@ -156,6 +192,21 @@ async def resolve_type_id(
         return None
     async with session_scope() as session:
         exact = await session.scalar(
+            select(MarketCatalogType.type_id)
+            .where(MarketCatalogType.name_lower == needle)
+            .limit(1)
+        )
+        if exact:
+            return int(exact)
+        partial = await session.scalar(
+            select(MarketCatalogType.type_id)
+            .where(MarketCatalogType.name_lower.contains(needle))
+            .order_by(MarketCatalogType.name)
+            .limit(1)
+        )
+        if partial:
+            return int(partial)
+        hub_exact = await session.scalar(
             select(MarketType.type_id)
             .where(
                 MarketType.location_id == location_id,
@@ -163,9 +214,9 @@ async def resolve_type_id(
             )
             .limit(1)
         )
-        if exact:
-            return int(exact)
-        partial = await session.scalar(
+        if hub_exact:
+            return int(hub_exact)
+        hub_partial = await session.scalar(
             select(MarketType.type_id)
             .where(
                 MarketType.location_id == location_id,
@@ -174,7 +225,7 @@ async def resolve_type_id(
             .order_by(MarketType.name)
             .limit(1)
         )
-        return int(partial) if partial else None
+        return int(hub_partial) if hub_partial else None
 
 
 async def item_orders(
@@ -199,6 +250,8 @@ async def item_orders(
             )
             .limit(1)
         )
+    if not type_name:
+        type_name = await catalog_type_name(type_id)
     sells = sorted(
         [o for o in orders if not o.is_buy],
         key=lambda x: x.price,
@@ -244,7 +297,13 @@ async def listed_types_category_tree(*, location_id: int) -> dict:
     catalog = await listed_types_catalog(location_id=location_id)
     types = catalog["types"]
     if not types:
-        return {"location_id": location_id, "tree": []}
+        return {
+            "location_id": location_id,
+            "tree": [],
+            "children": [],
+            "count": 0,
+            "total_types": 0,
+        }
 
     group_ids = {t["market_group_id"] for t in types if t.get("market_group_id")}
     groups: dict[int, MarketGroup] = {}
@@ -330,4 +389,21 @@ async def listed_types_category_tree(*, location_id: int) -> dict:
     roots = [r for r in roots if _prune(r)]
     roots.sort(key=lambda x: x["name"].lower())
 
-    return {"location_id": location_id, "count": len(types), "tree": roots}
+    n = len(types)
+    return {
+        "location_id": location_id,
+        "count": n,
+        "total_types": n,
+        "tree": roots,
+        "children": roots,
+    }
+
+
+async def market_tree_build(
+    *, location_id: int, listed_only: bool = False
+) -> dict:
+    """Full market group hierarchy with catalog type counts."""
+    async with session_scope() as session:
+        return await build_market_tree(
+            location_id, session, listed_only=listed_only
+        )

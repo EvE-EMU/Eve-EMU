@@ -11,6 +11,10 @@ async def _migrate(conn) -> None:
             "ADD COLUMN IF NOT EXISTS market_group_id INTEGER"
         )
     )
+    for col in ("amarr_sell", "amarr_buy"):
+        await conn.execute(
+            text(f"ALTER TABLE type_appraisals ADD COLUMN IF NOT EXISTS {col} DOUBLE PRECISION")
+        )
 
 
 async def init_schema() -> None:

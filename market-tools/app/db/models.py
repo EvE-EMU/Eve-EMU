@@ -71,6 +71,18 @@ class MarketGroup(Base):
     parent_group_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
+class MarketCatalogType(Base):
+    """All published marketable types (EVE Ref), grouped by market_group_id."""
+
+    __tablename__ = "market_catalog_types"
+    __table_args__ = (Index("ix_market_catalog_types_group", "market_group_id"),)
+
+    type_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    market_group_id: Mapped[int] = mapped_column(Integer, index=True)
+    name: Mapped[str] = mapped_column(String(256))
+    name_lower: Mapped[str] = mapped_column(String(256))
+
+
 class MarketType(Base):
     """Inventory type names for items listed at a hub (from ESI universe/names)."""
 
@@ -102,6 +114,45 @@ class MarketHistoryDay(Base):
     lowest: Mapped[float] = mapped_column(Float, default=0)
     volume: Mapped[int] = mapped_column(BigInteger, default=0)
     order_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class MarketContract(Base):
+    """Cached corporation contracts (WOMP shop / alliance sales)."""
+
+    __tablename__ = "market_contracts"
+
+    contract_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    issuer_corp_id: Mapped[int] = mapped_column(Integer, index=True)
+    contract_type: Mapped[str] = mapped_column(String(32), index=True)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    availability: Mapped[str] = mapped_column(String(32), default="")
+    title: Mapped[str] = mapped_column(String(512), default="")
+    price: Mapped[float] = mapped_column(Float, default=0)
+    date_issued: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    date_expired: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    synced_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class MarketContractItem(Base):
+    __tablename__ = "market_contract_items"
+    __table_args__ = (
+        Index("ix_market_contract_items_contract", "contract_id"),
+        Index("ix_market_contract_items_type", "type_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    contract_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    type_id: Mapped[int] = mapped_column(Integer, index=True)
+    quantity: Mapped[int] = mapped_column(BigInteger, default=1)
+    is_blueprint_copy: Mapped[bool] = mapped_column(Boolean, default=False)
+    me: Mapped[int] = mapped_column(Integer, default=0)
+    te: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class ContractPriceDay(Base):
@@ -137,6 +188,8 @@ class TypeAppraisal(Base):
     wompstar_buy: Mapped[float | None] = mapped_column(Float, nullable=True)
     jita_sell: Mapped[float | None] = mapped_column(Float, nullable=True)
     jita_buy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    amarr_sell: Mapped[float | None] = mapped_column(Float, nullable=True)
+    amarr_buy: Mapped[float | None] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

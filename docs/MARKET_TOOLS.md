@@ -10,10 +10,10 @@ Dark-mode market suite inspired by [Adam4EVE](https://www.adam4eve.eu/margin_fin
 | `/market-browser` | isk.gg-style browser | Live API + UI (per-type orders) |
 | `/market_trends` | [market_trends.php](https://www.adam4eve.eu/market_trends.php) | UI stub; sync TBD |
 | `/contract_price` | [contract_price.php](https://www.adam4eve.eu/contract_price.php) | UI stub; WOMP contracts sync TBD |
-| `/tradeVol_type` | [tradeVol_type.php](https://www.adam4eve.eu/tradeVol_type.php) | UI stub |
+| `/tradeVol_type` | [tradeVol_type.php](https://www.adam4eve.eu/tradeVol_type.php) | Live API + charts (30d default, hub vs Jita/Amarr) |
 | `/price_compare` | [price_compare.php](https://www.adam4eve.eu/price_compare.php) | UI stub |
-| `/pi_rank` | [pi_rank.php](https://www.adam4eve.eu/pi_rank.php) | UI stub (PI chart + WOMPSTAR selector) |
-| `/appraisal` | — | UI stub → buyback link |
+| `/pi_rank` | [pi_rank.php](https://www.adam4eve.eu/pi_rank.php) | Live API + charts (EVE Ref schematics, Jita/Amarr/WOMP) |
+| `/appraisal` | [Janice](https://janice.e-351.com) | Paste appraisal + WOMPSTAR hub columns |
 
 API: `GET /api/market/v1/...` (OpenAPI at `/api/market/docs` when enabled).
 
@@ -82,5 +82,6 @@ curl -s https://eve-emu.com/api/market/v1/meta
 1. Region/station import picker (Jita default) on margin finder and price compare.
 2. `market_trends` category boards + history rollups from `market_history_days`.
 3. Corporation contract ingest for WOMP (`esi-contracts.*`) → `contract_price_days`.
-4. Trade volume aggregates (`tradeVol_type`) and PI profitability (`pi_rank`) using SDE + cached prices.
 5. Appraisal paste → line items + deep link to buyback_v2 with pre-filled paste.
+
+Market group hierarchy is loaded from [EVE Ref reference data](https://ref-data.everef.net/market_groups) (same tree as [everef.net/market-groups](https://everef.net/market-groups)). Refresh: `POST /api/market/v1/sync/groups`.

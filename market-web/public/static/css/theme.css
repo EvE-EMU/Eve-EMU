@@ -124,6 +124,29 @@ a:hover { text-decoration: underline; }
   border-right: 1px solid var(--border);
   padding: 12px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-toolbar {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-total-label {
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.sidebar .search-wrap {
+  padding: 0 10px 8px;
+}
+
+.sidebar .loading-msg {
+  padding: 8px 10px;
 }
 
 .main-panel {
@@ -189,6 +212,24 @@ table.data th {
   top: 0;
   background: var(--bg-elevated);
   vertical-align: bottom;
+}
+
+table.data th.th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+table.data th.th-sortable:hover,
+table.data th.th-sortable:focus-visible {
+  color: var(--text);
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+table.data th.th-sortable .sort-indicator {
+  font-size: 10px;
+  opacity: 0.9;
+  margin-left: 2px;
 }
 
 table.data th.num,
@@ -288,10 +329,68 @@ footer.site-footer {
 .mb-sidebar {
   flex: 0 0 280px;
   max-height: 75vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
+}
+
+.mb-sidebar-toolbar {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mb-total-label {
+  display: block;
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.mb-filter-listed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mb-filter-listed input {
+  accent-color: var(--accent);
+}
+
+.mb-sidebar .search-wrap {
+  max-width: none;
+}
+
+.type-link.unlisted {
+  opacity: 0.55;
+}
+
+.type-link.unlisted:hover {
+  opacity: 0.85;
+}
+
+.mb-sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.mb-sidebar-tree .loading-msg {
+  padding: 8px 10px;
+}
+
+.mb-grp-count {
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+  font-weight: normal;
 }
 
 .mb-sidebar ul {
@@ -508,6 +607,25 @@ img.type-icon {
   margin-bottom: 8px;
 }
 
+.hub-charts-wrap {
+  margin-bottom: 16px;
+}
+
+.chart-section-title {
+  margin: 0 0 6px;
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+}
+
+canvas.hub-chart-canvas {
+  width: 100%;
+  height: 200px;
+  display: block;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
 canvas.mb-chart {
   width: 100%;
   display: block;
@@ -617,6 +735,119 @@ canvas.mb-chart {
   border-radius: var(--radius);
   background: var(--bg-panel);
   color: var(--text-dim);
+}
+
+.nav-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent-dim);
+  color: #fff;
+}
+
+.nav-btn.primary:hover {
+  background: var(--accent-dim);
+}
+
+.appraisal-panel {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  margin-bottom: 16px;
+}
+
+.appraisal-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: var(--sz-label);
+}
+
+.appraisal-route select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
+
+.appraisal-arrow {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.appraisal-dest {
+  color: var(--buy);
+  font-weight: 600;
+}
+
+.appraisal-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+}
+
+.appraisal-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 160px;
+  padding: 10px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.appraisal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.appraisal-results {
+  margin-top: 16px;
+}
+
+.appraisal-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.appraisal-stat {
+  padding: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.appraisal-stat .label {
+  display: block;
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.appraisal-stat strong {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.appraisal-meta-line {
+  font-size: var(--sz-label);
+  color: var(--text-dim);
+  margin: 0 0 10px;
+}
+
+.hidden {
+  display: none !important;
 }
 
 @media (max-width: 900px) {

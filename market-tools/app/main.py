@@ -14,6 +14,7 @@ from app.api.v1.router import api_v1
 from app.config import settings
 from app.db.init_schema import init_schema
 from app.db.session import get_engine
+from app.services.market_groups import schedule_full_market_group_sync
 from app.sync.runner import run_structure_sync_job, schedule_structure_sync
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
     global _scheduler
     get_engine()
     await init_schema()
+    schedule_full_market_group_sync()
     if settings.sync_enabled and settings.wompstar_structure_id:
         _scheduler = AsyncIOScheduler()
         _scheduler.add_job(

@@ -5,8 +5,20 @@ from app.config import settings
 from app.services.market_history import resolve_hub_region_id
 from app.db.models import MarketOrder, SyncRun
 from app.db.session import session_scope
+from app.services.catalog import catalog_sync_running, catalog_type_count
+from app.services.contracts import issuer_corp_ids
+from app.services.janice import janice_configured
 
 router = APIRouter()
+
+
+async def _catalog_status() -> dict:
+    count = await catalog_type_count()
+    return {
+        "loaded": count > 0,
+        "type_count": count,
+        "sync_running": catalog_sync_running(),
+    }
 
 
 @router.get("/meta")
@@ -54,7 +66,14 @@ async def meta() -> dict:
             "region_id": settings.default_import_region_id,
             "station_id": settings.default_import_station_id,
         },
+        "amarr": {
+            "region_id": settings.default_amarr_region_id,
+            "station_id": settings.default_amarr_station_id,
+        },
+        "contracts": {"issuer_corp_ids": issuer_corp_ids()},
+        "janice": {"configured": janice_configured()},
         "buyback_url": settings.buyback_public_url,
+        "catalog": await _catalog_status(),
         "tools": [
             {"path": "/margin_finder", "label": "Margin finder"},
             {"path": "/market_trends", "label": "Market trends"},
