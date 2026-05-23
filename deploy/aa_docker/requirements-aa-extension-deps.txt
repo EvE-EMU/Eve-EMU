@@ -9,9 +9,11 @@ certifi==2026.5.20
 yarl==1.24.2
 telnetlib3==4.0.3
 # PyPI 1.6.x still imports esi.clients (django-esi 8); 2.0.0a* uses esi.openapi_clients (django-esi 9 / AA 5).
-django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a7
+django-eveuniverse==2.0.0
 # Celery stack; keep current so aa-package-monitor "Update Available" stays clear.
-click>=8.4.0,<9
+click>=8.4.1,<9
+idna>=3.16,<4
+more-itertools>=11.1.0,<12
 aiopenapi3>=0.10
 bravado
 bravado-core
