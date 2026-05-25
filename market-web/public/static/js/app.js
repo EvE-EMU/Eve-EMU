@@ -301,6 +301,150 @@ function hubPriceColumns(includeWomp = true) {
   return cols;
 }
 
+function fmtPct(v) {
+  if (v == null || Number.isNaN(Number(v))) return "—";
+  const n = Number(v);
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n}%`;
+}
+
+function fmtAgeHours(h) {
+  if (h == null) return "—";
+  const n = Number(h);
+  if (n < 1) return `${Math.round(n * 60)}m`;
+  if (n < 48) return `${n.toFixed(1)}h`;
+  return `${(n / 24).toFixed(1)}d`;
+}
+
+function marginFinderColumns(includeHubRefs = false) {
+  const hub = meta?.wompstar?.name || "WOMPSTAR";
+  const cols = [
+    {
+      label: "",
+      col: "col-icon",
+      sortKey: false,
+      render: (r) => typeIconImg(r.type_id, 32),
+    },
+    {
+      label: "Commodity",
+      col: "col-item",
+      sortKey: "type_name",
+      sortValue: (r) => (r.type_name || `Type ${r.type_id}`).toLowerCase(),
+      defaultSortDir: "asc",
+      render: (r) => {
+        const name = r.type_name || `Type ${r.type_id}`;
+        return `<a href="/market-browser?name=${encodeURIComponent(name)}">${escapeHtml(name)}</a>`;
+      },
+    },
+    {
+      label: "Spread",
+      sortKey: "spread_isk",
+      sortValue: (r) => Number(r.spread_isk ?? r.spread ?? 0),
+      defaultSort: true,
+      defaultSortDir: "desc",
+      class: "num",
+      render: (r) => fmtIsk(r.spread_isk ?? r.spread),
+    },
+    {
+      label: "Spread %",
+      sortKey: "spread_pct",
+      class: "num",
+      defaultSortDir: "desc",
+      render: (r) => (r.spread_pct != null ? `${r.spread_pct}%` : "—"),
+    },
+    {
+      label: "Buy price",
+      sortKey: "buy_price",
+      class: "num buy",
+      defaultSortDir: "desc",
+      render: (r) => fmtIsk(r.buy_price),
+    },
+    {
+      label: "Sell price",
+      sortKey: "sell_price",
+      class: "num sell",
+      defaultSortDir: "desc",
+      render: (r) => fmtIsk(r.sell_price),
+    },
+    {
+      label: "Avg. trades",
+      sortKey: "avg_trades",
+      class: "num",
+      defaultSortDir: "desc",
+      render: (r) =>
+        r.avg_trades != null ? Number(r.avg_trades).toLocaleString(undefined, { maximumFractionDigits: 1 }) : "—",
+    },
+    {
+      label: "Avg. ISK traded",
+      sortKey: "avg_isk_traded",
+      class: "num",
+      defaultSortDir: "desc",
+      render: (r) => fmtIsk(r.avg_isk_traded),
+    },
+    {
+      label: "7d Buy",
+      sortKey: "d7_buy_pct",
+      class: "num",
+      render: (r) => fmtPct(r.d7_buy_pct),
+    },
+    {
+      label: "7d Sell",
+      sortKey: "d7_sell_pct",
+      class: "num",
+      render: (r) => fmtPct(r.d7_sell_pct),
+    },
+    {
+      label: "7d BuyVol",
+      sortKey: "d7_buy_vol_pct",
+      class: "num",
+      render: (r) => fmtPct(r.d7_buy_vol_pct),
+    },
+    {
+      label: "7d SellVol",
+      sortKey: "d7_sell_vol_pct",
+      class: "num",
+      render: (r) => fmtPct(r.d7_sell_vol_pct),
+    },
+    {
+      label: "S2B vol",
+      sortKey: "s2b_volume",
+      class: "num",
+      title: "Volume on buy orders (sell-to-buy book)",
+      render: (r) => fmtVol(r.s2b_volume),
+    },
+    {
+      label: "S2B num",
+      sortKey: "s2b_num",
+      class: "num",
+      render: (r) => fmtVol(r.s2b_num),
+    },
+    {
+      label: "BfS vol",
+      sortKey: "bfs_volume",
+      class: "num",
+      title: "Volume on sell orders (buy-from-sell book)",
+      render: (r) => fmtVol(r.bfs_volume),
+    },
+    {
+      label: "BfS num",
+      sortKey: "bfs_num",
+      class: "num",
+      render: (r) => fmtVol(r.bfs_num),
+    },
+    {
+      label: "Age",
+      sortKey: "order_age_hours",
+      class: "num",
+      defaultSortDir: "asc",
+      render: (r) => fmtAgeHours(r.order_age_hours),
+    },
+  ];
+  if (includeHubRefs) {
+    cols.push(...hubPriceColumns());
+  }
+  return cols;
+}
+
 function drawHubGroupedChart(canvas, rows, side) {
   const isSell = side === "sell";
   const seriesKeys = isSell
@@ -470,16 +614,24 @@ function setStatus(ok) {
   text.textContent = ok ? "API ready" : "API offline";
 }
 
+function siteHomeUrl() {
+  return (meta?.site_home_url || "https://eve-emu.com").replace(/\/$/, "");
+}
+
 function renderNav() {
   const nav = document.getElementById("top-nav");
   if (!nav || !meta?.tools) return;
   const cur = "/" + (route() === "home" ? "" : route());
-  nav.innerHTML = meta.tools
-    .map((t) => {
-      const active = cur === t.path || cur === t.path + "/" ? " active" : "";
-      return `<a class="nav-btn${active}" href="${t.path}">${t.label}</a>`;
-    })
-    .join("");
+  const home = siteHomeUrl();
+  const homeBtn = `<a class="nav-btn" href="${escapeAttr(home + "/")}">Home</a>`;
+  nav.innerHTML =
+    homeBtn +
+    meta.tools
+      .map((t) => {
+        const active = cur === t.path || cur === t.path + "/" ? " active" : "";
+        return `<a class="nav-btn${active}" href="${t.path}">${t.label}</a>`;
+      })
+      .join("");
 }
 
 async function loadMeta() {
@@ -489,12 +641,8 @@ async function loadMeta() {
   document.getElementById("hub-meta").textContent = meta.wompstar?.structure_id
     ? `Structure ${meta.wompstar.structure_id}`
     : "Configure MARKET_WOMPSTAR_STRUCTURE_ID";
-  const bb = document.getElementById("link-buyback");
-  if (bb && meta.buyback_url) {
-    bb.href = meta.buyback_url;
-    bb.target = "_blank";
-    bb.rel = "noopener";
-  }
+  const brand = document.getElementById("brand-home");
+  if (brand) brand.href = siteHomeUrl() + "/";
   renderNav();
   setStatus(true);
 }
@@ -508,10 +656,6 @@ function pageHome(panel) {
       and <a href="https://isk.gg/market-browser" target="_blank" rel="noopener">isk.gg</a>.
       Prices are cached from ESI with rate limits; configure import regions in settings (coming soon).</p>
       <div class="tool-grid" id="tool-grid"></div>
-      <div class="buyback-cta">
-        <strong>Corp buyback</strong> — paste your loot list on our internal calculator.
-        <a href="${meta?.buyback_url || "#"}" target="_blank" rel="noopener">Open buyback →</a>
-      </div>
     </div>`;
   const grid = panel.querySelector("#tool-grid");
   (meta?.tools || []).forEach((t) => {
@@ -545,7 +689,8 @@ function tableHtml(columns, rows, sortState = null) {
       const tds = columns
         .map((c) => {
           const v = c.render ? c.render(row) : row[c.key];
-          const cls = [c.col, c.class].filter(Boolean).join(" ");
+          const extra = c.cellClass ? c.cellClass(row) : "";
+          const cls = [c.col, c.class, extra].filter(Boolean).join(" ");
           return `<td class="${cls}">${v ?? ""}</td>`;
         })
         .join("");
@@ -646,59 +791,9 @@ async function pageMarginFinder(panel) {
     const minTrades = document.getElementById("mf-trades").value;
     const minIsk = document.getElementById("mf-isk").value;
     const data = await api(
-      `/margin/finder?min_trades=${minTrades}&min_isk_volume=${minIsk}&limit=150`
+      `/margin/finder?min_trades=${minTrades}&min_isk_volume=${minIsk}&limit=200`
     );
-    const cols = [
-      {
-        label: "",
-        col: "col-icon",
-        sortKey: false,
-        render: (r) => typeIconImg(r.type_id, 32),
-      },
-      {
-        label: "Item",
-        col: "col-item",
-        sortKey: "type_name",
-        sortValue: (r) => (r.type_name || `Type ${r.type_id}`).toLowerCase(),
-        defaultSortDir: "asc",
-        render: (r) => {
-          const name = r.type_name || `Type ${r.type_id}`;
-          const q = encodeURIComponent(name);
-          return `<a href="/market-browser?name=${q}">${escapeHtml(name)}</a>`;
-        },
-      },
-      {
-        label: "Spread (ISK)",
-        sortKey: "spread_isk",
-        sortValue: (r) => Number(r.spread_isk ?? r.spread ?? 0),
-        defaultSort: true,
-        defaultSortDir: "desc",
-        class: "num",
-        render: (r) => fmtIsk(r.spread_isk ?? r.spread),
-      },
-      {
-        label: "Spread %",
-        sortKey: "spread_pct",
-        class: "num",
-        defaultSortDir: "desc",
-        render: (r) => (r.spread_pct != null ? `${r.spread_pct}%` : "—"),
-      },
-      {
-        label: "Buy",
-        sortKey: "buy_price",
-        class: "num buy",
-        defaultSortDir: "desc",
-        render: (r) => fmtIsk(r.buy_price),
-      },
-      {
-        label: "Sell",
-        sortKey: "sell_price",
-        class: "num sell",
-        defaultSortDir: "desc",
-        render: (r) => fmtIsk(r.sell_price),
-      },
-      ...hubPriceColumns(false),
-    ];
+    const cols = marginFinderColumns(false);
     const el = document.getElementById("mf-table");
     if (!data.rows?.length) {
       el.innerHTML =
@@ -1233,59 +1328,121 @@ function pageStub(panel, title, blurb) {
 }
 
 async function pageMarketTrends(panel) {
+  const hub = meta?.wompstar?.name || "WOMPSTAR";
   panel.innerHTML = `<h2 style="margin:0 0 8px">Market trends</h2>
-    <p style="color:var(--text-dim)">Top spreads at ${meta?.wompstar?.name} with Jita / Amarr / hub sell &amp; buy on chart and table.</p>
-    <div id="mt-charts"></div>
-    <div id="mt-table"><div class="loading-msg">Loading…</div></div>`;
+    <p style="color:var(--text-dim);margin:0 0 12px">Spreads and hub reference prices at ${escapeHtml(hub)}. Filter by market category.</p>
+    <div class="mt-layout">
+      <aside class="mb-sidebar" id="mt-sidebar">
+        <div class="mb-sidebar-toolbar">
+          <span class="mb-total-label" id="mt-cat-label">Categories</span>
+          <div class="search-wrap">
+            <input type="search" id="mt-cat-filter" placeholder="Filter groups…" autocomplete="off"/>
+          </div>
+        </div>
+        <div class="mb-sidebar-tree" id="mt-cat-tree"><div class="loading-msg">Loading…</div></div>
+      </aside>
+      <div class="mt-main">
+        <div id="mt-charts"></div>
+        <div id="mt-table"><div class="loading-msg">Loading…</div></div>
+      </div>
+    </div>`;
+
   const chartsEl = document.getElementById("mt-charts");
   const tableEl = document.getElementById("mt-table");
-  try {
-    const data = await api("/margin/finder?limit=80");
-    if (data.rows?.length) mountHubCompareCharts(chartsEl, data.rows);
-    const cols = [
-      {
-        label: "",
-        col: "col-icon",
-        sortKey: false,
-        render: (r) => typeIconImg(r.type_id, 28),
-      },
-      {
-        label: "Item",
-        col: "col-item",
-        sortKey: "type_name",
-        sortValue: (r) => (r.type_name || `Type ${r.type_id}`).toLowerCase(),
-        defaultSortDir: "asc",
-        render: (r) => {
-          const n = r.type_name || `Type ${r.type_id}`;
-          return `<a href="/market-browser?name=${encodeURIComponent(n)}">${escapeHtml(n)}</a>`;
-        },
-      },
-      {
-        label: "Spread (ISK)",
-        sortKey: "spread_isk",
-        sortValue: (r) => Number(r.spread_isk ?? 0),
-        defaultSort: true,
-        defaultSortDir: "desc",
-        class: "num",
-        render: (r) => fmtIsk(r.spread_isk),
-      },
-      {
-        label: "Spread %",
-        sortKey: "spread_pct",
-        defaultSortDir: "desc",
-        class: "num",
-        render: (r) => (r.spread_pct != null ? `${r.spread_pct}%` : "—"),
-      },
-      ...hubPriceColumns(),
-    ];
-    if (!data.rows?.length) {
-      tableEl.innerHTML = '<p class="loading-msg">No data.</p>';
+  const treeEl = document.getElementById("mt-cat-tree");
+  let allRows = [];
+  let activeGroupId = null;
+  let activeTypeIds = null;
+  let treeNodes = [];
+
+  function rowsForGroup() {
+    if (!activeTypeIds) return allRows;
+    return allRows.filter((r) => activeTypeIds.has(r.type_id));
+  }
+
+  function paintTable() {
+    const rows = rowsForGroup();
+    if (!rows.length) {
+      tableEl.innerHTML = '<p class="loading-msg">No items in this category.</p>';
       return;
     }
-    mountSortableTable(tableEl, cols, data.rows, {
+    mountSortableTable(tableEl, marginFinderColumns(true), rows, {
       defaultSortKey: "spread_isk",
       defaultSortDir: "desc",
     });
+  }
+
+  function renderCatTree(nodes, needle = "") {
+    const filtered = needle ? filterMarketTree(nodes, needle) : nodes;
+    if (!filtered.length) {
+      treeEl.innerHTML = '<p class="loading-msg">No groups</p>';
+      return;
+    }
+    const renderNode = (node) => {
+      if (node.kind === "group") {
+        const kids = (node.children || []).map(renderNode).join("");
+        const active = node.group_id === activeGroupId ? " active" : "";
+        return `<li class="mb-grp${active}"><button type="button" class="mb-grp-btn" data-gid="${node.group_id}">${escapeHtml(node.name || "Group")}</button><ul class="mb-cat-tree">${kids}</ul></li>`;
+      }
+      return "";
+    };
+    treeEl.innerHTML = `<ul class="mb-cat-tree"><li class="mb-grp${activeGroupId ? "" : " active"}"><button type="button" class="mb-grp-btn" data-gid="">All listed</button></li>${filtered.map(renderNode).join("")}</ul>`;
+    treeEl.querySelectorAll(".mb-grp-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const raw = btn.dataset.gid;
+        activeGroupId = raw ? Number(raw) : null;
+        activeTypeIds = null;
+        if (activeGroupId) {
+          try {
+            const gt = await api(`/browser/group/${activeGroupId}/types?listed_only=true`);
+            activeTypeIds = new Set((gt.types || []).map((t) => t.type_id));
+          } catch {
+            activeTypeIds = new Set(
+              allRows
+                .filter((r) => Number(r.market_group_id) === activeGroupId)
+                .map((r) => r.type_id)
+            );
+          }
+        }
+        renderCatTree(treeNodes, document.getElementById("mt-cat-filter").value.trim().toLowerCase());
+        const subset = rowsForGroup();
+        if (subset.length) mountHubCompareCharts(chartsEl, subset);
+        else chartsEl.innerHTML = "";
+        paintTable();
+      });
+    });
+  }
+
+  function filterMarketTree(nodes, needle) {
+    const out = [];
+    for (const node of nodes) {
+      if (node.kind !== "group") continue;
+      const nameHit = (node.name || "").toLowerCase().includes(needle);
+      const kids = filterMarketTree(node.children || [], needle);
+      if (nameHit || kids.length) {
+        out.push({ ...node, children: nameHit ? node.children || [] : kids });
+      }
+    }
+    return out;
+  }
+
+  document.getElementById("mt-cat-filter").addEventListener(
+    "input",
+    debounce((e) => {
+      renderCatTree(treeNodes, e.target.value.trim().toLowerCase());
+    }, 200)
+  );
+
+  try {
+    const [data, tree] = await Promise.all([
+      api("/margin/finder?limit=200"),
+      api("/browser/tree?listed_only=true"),
+    ]);
+    allRows = data.rows || [];
+    treeNodes = tree.children || [];
+    renderCatTree(treeNodes);
+    if (allRows.length) mountHubCompareCharts(chartsEl, allRows);
+    paintTable();
   } catch (e) {
     tableEl.innerHTML = `<p class="loading-msg">${escapeHtml(e.message)}</p>`;
   }
@@ -1299,6 +1456,7 @@ async function pagePriceCompare(panel) {
   panel.innerHTML = `<h2 style="margin:0 0 8px">Price compare</h2>
     <p style="color:var(--text-dim);margin:0 0 12px;font-size:var(--sz-label)">
       <span id="pc-subtitle">Loading ${escapeHtml(hub)} vs ${escapeHtml(importLabel)}…</span>
+      Lowest sell and highest buy per row are highlighted.
     </p>
     <div id="pc-table"><div class="loading-msg">Loading…</div></div>`;
   const subtitleEl = document.getElementById("pc-subtitle");
@@ -1306,6 +1464,17 @@ async function pagePriceCompare(panel) {
 
   function itemLabel(r) {
     return r.name || r.type_name || `Type ${r.type_id}`;
+  }
+
+  function priceCompareCellClass(row, key, side) {
+    const keys =
+      side === "sell" ? ["best_sell", "jita_sell", "amarr_sell"] : ["best_buy", "jita_buy", "amarr_buy"];
+    const vals = keys.map((k) => row[k]).filter((v) => v != null && v > 0);
+    if (!vals.length || row[key] == null || row[key] <= 0) return "";
+    const best =
+      side === "sell" ? Math.min(...vals) : Math.max(...vals);
+    if (row[key] !== best) return "";
+    return side === "sell" ? "price-best-sell" : "price-best-buy";
   }
 
   function renderTable(rows, label, janiceUsed) {
@@ -1332,6 +1501,7 @@ async function pagePriceCompare(panel) {
         sortKey: "best_sell",
         class: "num sell",
         defaultSortDir: "desc",
+        cellClass: (r) => priceCompareCellClass(r, "best_sell", "sell"),
         render: (r) => fmtIsk(r.best_sell),
       },
       {
@@ -1339,6 +1509,7 @@ async function pagePriceCompare(panel) {
         sortKey: "best_buy",
         class: "num buy",
         defaultSortDir: "desc",
+        cellClass: (r) => priceCompareCellClass(r, "best_buy", "buy"),
         render: (r) => fmtIsk(r.best_buy),
       },
       {
@@ -1346,6 +1517,7 @@ async function pagePriceCompare(panel) {
         sortKey: "jita_sell",
         class: "num sell",
         defaultSortDir: "desc",
+        cellClass: (r) => priceCompareCellClass(r, "jita_sell", "sell"),
         render: (r) => fmtIsk(r.jita_sell),
       },
       {
@@ -1353,6 +1525,7 @@ async function pagePriceCompare(panel) {
         sortKey: "jita_buy",
         class: "num buy",
         defaultSortDir: "desc",
+        cellClass: (r) => priceCompareCellClass(r, "jita_buy", "buy"),
         render: (r) => fmtIsk(r.jita_buy),
       },
       {
@@ -1360,6 +1533,7 @@ async function pagePriceCompare(panel) {
         sortKey: "amarr_sell",
         class: "num sell",
         defaultSortDir: "desc",
+        cellClass: (r) => priceCompareCellClass(r, "amarr_sell", "sell"),
         render: (r) => fmtIsk(r.amarr_sell),
       },
       {
@@ -1367,6 +1541,7 @@ async function pagePriceCompare(panel) {
         sortKey: "amarr_buy",
         class: "num buy",
         defaultSortDir: "desc",
+        cellClass: (r) => priceCompareCellClass(r, "amarr_buy", "buy"),
         render: (r) => fmtIsk(r.amarr_buy),
       },
     ];
@@ -1415,18 +1590,96 @@ async function pageContractPrices(panel) {
   const corps = (meta?.contracts?.issuer_corp_ids || []).join(", ") || "not configured";
   panel.innerHTML = `<h2 style="margin:0 0 8px">Contract prices</h2>
     <p style="color:var(--text-dim);margin:0 0 12px">
-      Outstanding corp item-exchange contracts (issuer corps: <code>${escapeHtml(corps)}</code>).
-      Margins vs contract unit price if you sell on ${escapeHtml(hub)} market or fulfill the contract.
+      Alliance corp item-exchange contracts (issuer corps: <code>${escapeHtml(corps)}</code>).
+      Trends show description, contents, unit price, and volume; margins compare to ${escapeHtml(hub)} / Jita / Amarr.
     </p>
     <div class="filter-bar">
-      <button class="nav-btn" id="cp-sync">Sync contracts</button>
-      <span id="cp-status" style="color:var(--text-dim);font-size:var(--sz-label)"></span>
+      <div class="filter-bar-row">
+        <label>View
+          <select id="cp-view">
+            <option value="trends" selected>Contract trends</option>
+            <option value="margins">Price margins</option>
+          </select>
+        </label>
+        <button class="nav-btn" id="cp-sync">Sync contracts</button>
+        <span id="cp-status" style="color:var(--text-dim);font-size:var(--sz-label)"></span>
+      </div>
     </div>
     <div id="cp-table"><div class="loading-msg">Loading…</div></div>`;
   const tableEl = document.getElementById("cp-table");
   const statusEl = document.getElementById("cp-status");
+  const viewEl = document.getElementById("cp-view");
 
-  async function load() {
+  async function loadTrends() {
+    const data = await api("/contracts/trends?limit=200");
+    const cols = [
+      {
+        label: "Description",
+        col: "col-item",
+        sortKey: "description",
+        sortValue: (r) => (r.description || "").toLowerCase(),
+        defaultSortDir: "asc",
+        render: (r) => escapeHtml(r.description || r.title || "—"),
+      },
+      {
+        label: "Contents",
+        sortKey: "contents",
+        render: (r) => `<span class="dim">${escapeHtml(r.contents || "—")}</span>`,
+      },
+      {
+        label: "Unit ISK",
+        sortKey: "unit_isk",
+        class: "num",
+        defaultSort: true,
+        defaultSortDir: "desc",
+        render: (r) => fmtIsk(r.unit_isk),
+      },
+      {
+        label: "Total ISK",
+        sortKey: "total_isk",
+        class: "num",
+        render: (r) => fmtIsk(r.total_isk),
+      },
+      {
+        label: "Qty",
+        sortKey: "quantity_total",
+        class: "num",
+        render: (r) => fmtVol(r.quantity_total),
+      },
+      {
+        label: "Items",
+        sortKey: "item_count",
+        class: "num",
+        render: (r) => fmtVol(r.item_count),
+      },
+      {
+        label: "Issued",
+        sortKey: "date_issued",
+        render: (r) => (r.date_issued ? escapeHtml(r.date_issued.slice(0, 10)) : "—"),
+      },
+      {
+        label: "Expires",
+        sortKey: "date_expired",
+        render: (r) => (r.date_expired ? escapeHtml(r.date_expired.slice(0, 10)) : "—"),
+      },
+      {
+        label: "Contract",
+        sortKey: "contract_id",
+        render: (r) => `<span class="dim">#${r.contract_id}</span>`,
+      },
+    ];
+    if (!data.rows?.length) {
+      tableEl.innerHTML =
+        '<p class="loading-msg">No active alliance contracts. Set MARKET_WOMP_CONTRACT_ISSUER_CORP_ID(S) and sync.</p>';
+      return;
+    }
+    mountSortableTable(tableEl, cols, data.rows, {
+      defaultSortKey: "date_issued",
+      defaultSortDir: "desc",
+    });
+  }
+
+  async function loadMargins() {
     const data = await api("/contracts/margins?limit=500");
     const cols = [
       {
@@ -1513,6 +1766,15 @@ async function pageContractPrices(panel) {
       statusEl.textContent = e.message;
     }
   });
+
+  async function load() {
+    if (viewEl.value === "margins") await loadMargins();
+    else await loadTrends();
+  }
+
+  viewEl.addEventListener("change", () => load().catch((e) => {
+    tableEl.innerHTML = `<p class="loading-msg">${escapeHtml(e.message)}</p>`;
+  }));
 
   try {
     await load();
@@ -1638,16 +1900,16 @@ async function pagePiRank(panel) {
             <option value="4">P4</option>
           </select>
         </label>
-        <label>Buy from
+        <label>Import from
           <select id="pi-buy">
-            <option value="sell_orders">Sell orders</option>
+            <option value="sell_orders">Sell orders (import cost)</option>
             <option value="buy_orders">Buy orders</option>
           </select>
         </label>
         <label>Sell to
           <select id="pi-sell">
             <option value="sell_orders">Sell orders</option>
-            <option value="buy_orders">Buy orders</option>
+            <option value="buy_orders">Buy orders (export revenue)</option>
           </select>
         </label>
         <label>Customs %
@@ -1676,7 +1938,7 @@ async function pagePiRank(panel) {
       sell_to: document.getElementById("pi-sell").value,
       customs_pct: document.getElementById("pi-customs").value,
       market_pct: document.getElementById("pi-market").value,
-      limit: "200",
+      limit: "500",
     });
     const tier = document.getElementById("pi-tier").value;
     if (tier) q.set("tier", tier);
@@ -1726,7 +1988,13 @@ async function pagePiRank(panel) {
         render: (r) => fmtIsk(r.profit_iph),
       },
       {
-        label: "Sell",
+        label: "Import",
+        sortKey: "buy_unit",
+        class: "num buy",
+        render: (r) => fmtIsk(r.buy_unit ?? r.material_cost),
+      },
+      {
+        label: "Sell to",
         sortKey: "sell_unit",
         class: "num sell",
         render: (r) => fmtIsk(r.sell_unit),
@@ -1772,7 +2040,7 @@ async function pagePiRank(panel) {
   }
 }
 
-function drawVolumeCompareChart(canvas, rows) {
+function drawVolumeCompareChart(canvas, rows, compareLabel = "Import") {
   const slice = rows.slice(0, 12);
   if (!slice.length || !canvas) return;
   const pad = 44;
@@ -1789,7 +2057,7 @@ function drawVolumeCompareChart(canvas, rows) {
   const max = Math.max(...hubVals, ...cmpVals, 1);
   const groupW = (cw - pad * 2) / Math.max(slice.length, 1);
   const barW = Math.max(3, (groupW * 0.72) / 2);
-  const hubName = meta?.wompstar?.name?.split(" ")[0] || "Hub";
+  const hubName = "3-F hub";
   slice.forEach((row, i) => {
     const gx = pad + i * groupW + groupW * 0.12;
     const label = (row.type_name || "").slice(0, 14);
@@ -1818,7 +2086,7 @@ function drawVolumeCompareChart(canvas, rows) {
   ctx.fillText(hubName, cw - pad - 86, 17);
   ctx.fillStyle = "#e85d5d";
   ctx.fillRect(cw - pad - 48, 8, 10, 10);
-  ctx.fillText("Compare", cw - pad - 34, 17);
+  ctx.fillText(compareLabel || "Import", cw - pad - 34, 17);
 }
 
 function mountTradeVolCharts(container, rows, compareLabel) {
@@ -1831,7 +2099,7 @@ function mountTradeVolCharts(container, rows, compareLabel) {
   );
   container.innerHTML = `
     <div class="hub-charts-wrap">
-      <p class="chart-section-title">Hub trade volume (units, top items)</p>
+      <p class="chart-section-title">3-F / hub region trade volume (top items)</p>
       <div class="chart-host"><canvas class="hub-chart-canvas" id="tv-chart-hub"></canvas></div>
       <p class="chart-section-title">Hub vs ${escapeHtml(compareLabel || "compare")} volume</p>
       <div class="chart-host"><canvas class="hub-chart-canvas" id="tv-chart-compare"></canvas></div>
@@ -1845,7 +2113,8 @@ function mountTradeVolCharts(container, rows, compareLabel) {
     );
     drawVolumeCompareChart(
       container.querySelector("#tv-chart-compare"),
-      sorted
+      sorted,
+      compareLabel
     );
   };
   paint();
@@ -1856,10 +2125,16 @@ function mountTradeVolCharts(container, rows, compareLabel) {
 }
 
 async function pageTradeVolType(panel) {
-  const hub = meta?.wompstar?.name || "WOMPSTAR region";
+  const hubName = meta?.wompstar?.name || "WOMPSTAR";
+  const hubRegion = meta?.wompstar?.region_id
+    ? `region ${meta.wompstar.region_id} (3-F / Querious)`
+    : "hub region (3-FKCZ area)";
   panel.innerHTML = `<h2 style="margin:0 0 8px">Trade volume by type</h2>
     <p style="color:var(--text-dim);margin:0 0 12px;font-size:var(--sz-label)">
-      Regional ESI market history — <strong>${escapeHtml(hub)}</strong> vs import hub (structure-only volume is not published by ESI).
+      ESI <strong>regional</strong> trade history — not per-structure volume.
+      <strong>Hub vol.</strong> = ${escapeHtml(hubRegion)} around ${escapeHtml(hubName)}.
+      <strong>Compare vol.</strong> = selected import hub (Jita or Amarr).
+      Live ${escapeHtml(hubName)} orders are on <a href="/margin_finder">Margin finder</a>.
     </p>
     <div class="filter-bar">
       <div class="filter-bar-row">
@@ -1896,7 +2171,8 @@ async function pageTradeVolType(panel) {
     const data = await api(`/volume/types?days=${days}&compare=${compare}&limit=500`);
     const rows = data.rows || [];
     if (subtitleEl) {
-      subtitleEl.textContent = `${rows.length.toLocaleString()} types with volume — last ${data.days} days (${data.since} → today) · hub region ${data.hub_region_id} vs ${data.compare_label}`;
+      const hubLbl = data.hub_region_label || `region ${data.hub_region_id} (3-F area)`;
+      subtitleEl.textContent = `${rows.length.toLocaleString()} types — last ${data.days} days · Hub: ${hubLbl} · Compare: ${data.compare_label}`;
     }
     mountTradeVolCharts(chartsEl, rows, data.compare_label);
     const cols = [
@@ -1918,7 +2194,7 @@ async function pageTradeVolType(panel) {
         },
       },
       {
-        label: "Hub vol.",
+        label: "3-F / hub vol.",
         sortKey: "hub_volume",
         class: "num",
         defaultSort: true,
@@ -1926,33 +2202,33 @@ async function pageTradeVolType(panel) {
         render: (r) => fmtVol(r.hub_volume),
       },
       {
-        label: "Hub ISK vol.",
+        label: "3-F ISK vol.",
         sortKey: "hub_isk_volume",
         class: "num",
         defaultSortDir: "desc",
         render: (r) => fmtIsk(r.hub_isk_volume),
       },
       {
-        label: "Hub avg/day",
+        label: "3-F avg/day",
         sortKey: "hub_avg_daily_volume",
         class: "num",
         render: (r) => fmtVol(r.hub_avg_daily_volume),
       },
       {
-        label: "Compare vol.",
+        label: "Import hub vol.",
         sortKey: "compare_volume",
         class: "num",
         defaultSortDir: "desc",
         render: (r) => fmtVol(r.compare_volume),
       },
       {
-        label: "Compare ISK vol.",
+        label: "Import ISK vol.",
         sortKey: "compare_isk_volume",
         class: "num",
         render: (r) => fmtIsk(r.compare_isk_volume),
       },
       {
-        label: "Hub / cmp",
+        label: "3-F / import",
         sortKey: "volume_ratio",
         class: "num",
         render: (r) =>
@@ -2032,7 +2308,6 @@ async function pageAppraisal(panel) {
       <textarea id="ap-text" class="appraisal-textarea" rows="10" placeholder="Navy Cap Booster 3200 x248"></textarea>
       <div class="appraisal-actions">
         <button class="nav-btn primary" id="ap-run">Appraise</button>
-        <a class="nav-btn" href="${escapeAttr(meta?.buyback_url || "#")}" target="_blank" rel="noopener">Corp buyback →</a>
       </div>
     </div>
     <div id="ap-results" class="hidden"></div>`;

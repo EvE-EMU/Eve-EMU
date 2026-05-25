@@ -168,12 +168,17 @@ async def trade_volume_rows(
     rows.sort(key=lambda r: r["hub_volume"], reverse=True)
     rows = rows[:limit]
 
+    hub_region_label = (
+        f"{settings.wompstar_structure_name or '3-F hub'} region ({hub_rid})"
+    )
+
     return {
         "location_id": location_id,
         "location_name": settings.wompstar_structure_name,
         "days": days,
         "since": since.isoformat(),
         "hub_region_id": hub_rid,
+        "hub_region_label": hub_region_label,
         "compare_region_id": cmp_rid,
         "compare_label": cmp_label,
         "compare_hub": compare,

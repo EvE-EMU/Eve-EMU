@@ -1,3 +1,7 @@
+# YouTrack / TLS keystores (generate with deploy/youtrack/keystore/generate-keystore.*)
+deploy/youtrack/keystore/*.p12
+deploy/youtrack/keystore/*.jks
+
 # =============================================================================
 # Secrets — never commit real tokens (Discord will reset if leaked on GitHub)
 # =============================================================================

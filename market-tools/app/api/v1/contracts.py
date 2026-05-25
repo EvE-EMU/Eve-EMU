@@ -4,12 +4,25 @@ from app.config import settings
 from app.services.contracts import (
     contract_margin_rows,
     contract_sync_running,
+    contract_trend_rows,
     issuer_corp_ids,
     schedule_contract_sync,
     sync_all_contracts,
 )
 
 router = APIRouter()
+
+
+@router.get("/trends")
+async def contract_trends(
+    limit: int = Query(200, ge=1, le=500),
+) -> dict:
+    """Outstanding alliance corp contracts with description, contents, and pricing."""
+    rows = await contract_trend_rows(limit=limit)
+    return {
+        "issuer_corp_ids": issuer_corp_ids(),
+        "rows": rows,
+    }
 
 
 @router.get("/margins")

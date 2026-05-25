@@ -73,6 +73,7 @@ async def meta() -> dict:
         "contracts": {"issuer_corp_ids": issuer_corp_ids()},
         "janice": {"configured": janice_configured()},
         "buyback_url": settings.buyback_public_url,
+        "site_home_url": (settings.public_base_url or "https://eve-emu.com").rstrip("/"),
         "catalog": await _catalog_status(),
         "tools": [
             {"path": "/margin_finder", "label": "Margin finder"},

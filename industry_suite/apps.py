@@ -28,6 +28,34 @@ class IndustrySuiteConfig(AppConfig):
             pass
 
         try:
+            from corptools_corp_token import patch_corp_token_overrides
+
+            patch_corp_token_overrides()
+        except Exception:
+            pass
+
+        try:
+            from structures_corp_token import patch_structures_fetch_token
+
+            patch_structures_fetch_token()
+        except Exception:
+            pass
+
+        try:
+            from indy_hub_django_compat import patch_indy_hub_for_django5
+
+            patch_indy_hub_for_django5()
+        except Exception:
+            pass
+
+        try:
+            from indy_hub_corp_token import patch_indy_hub_corp_tokens
+
+            patch_indy_hub_corp_tokens()
+        except Exception:
+            pass
+
+        try:
             from indy_hub_postgres_compat import patch_indy_hub_for_postgresql
 
             patch_indy_hub_for_postgresql()
@@ -46,5 +74,19 @@ class IndustrySuiteConfig(AppConfig):
             from metenox_compat import patch_metenox_for_runtime
 
             patch_metenox_for_runtime()
+        except Exception:
+            pass
+
+        try:
+            from oidc_provider import patch_oidc_urls
+
+            patch_oidc_urls()
+        except Exception:
+            pass
+
+        try:
+            from corp_project_discord import ensure_corp_project_esi_scope_in_db
+
+            ensure_corp_project_esi_scope_in_db()
         except Exception:
             pass

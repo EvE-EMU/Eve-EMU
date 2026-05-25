@@ -1,5 +1,5 @@
 # SITE_HOST = public apex (e.g. eve-emu.com), from compose env DOMAIN_NAME.
-# Alliance Auth: auth.<SITE_HOST> (e.g. auth.eve-emu.com) — set AA_SITE_URL to match.
+# Alliance Auth: auth.<SITE_HOST> — YouTrack: pm.<SITE_HOST> (see docs/YOUTRACK.md).
 # Caddy obtains certificates when DNS points here and ports 80/443 reach this host.
 
 wiki.{$SITE_HOST} {
@@ -7,7 +7,30 @@ wiki.{$SITE_HOST} {
 }
 
 wh.{$SITE_HOST} {
-	reverse_proxy wanderer:8000 {
+	handle /intel/* {
+		uri strip_prefix /intel
+		reverse_proxy wh-intel:8020 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
+	}
+	handle {
+		reverse_proxy wanderer:8000 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+			lb_try_duration 90s
+			lb_try_interval 500ms
+		}
+	}
+}
+
+pm.{$SITE_HOST} {
+	reverse_proxy youtrack:8080 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
 		transport http {
 			resolvers 127.0.0.11
 		}
@@ -24,6 +47,30 @@ auth.{$SITE_HOST} {
 			refresh 3s
 			resolvers 127.0.0.11
 		}
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		lb_try_duration 90s
+		lb_try_interval 500ms
+		transport http {
+			resolvers 127.0.0.11
+		}
+	}
+}
+
+# YouTrack Hub may cache http:// OIDC endpoints from discovery; POST + 308 redirect
+# returns an empty body and breaks token exchange. Proxy plain HTTP directly to AA.
+http://auth.{$SITE_HOST} {
+	reverse_proxy {
+		dynamic a {
+			name aa-web
+			port 8080
+			refresh 3s
+			resolvers 127.0.0.11
+		}
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto https
 		lb_try_duration 90s
 		lb_try_interval 500ms
 		transport http {

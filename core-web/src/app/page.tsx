@@ -2,15 +2,6 @@ const authUrl =
   process.env.NEXT_PUBLIC_AUTH_URL?.replace(/\/$/, "") ||
   "https://auth.eve-emu.com";
 
-const marketTools = [
-  { href: "/margin_finder", label: "Margin finder" },
-  { href: "/market-browser", label: "Market browser" },
-  { href: "/market_trends", label: "Market trends" },
-  { href: "/price_compare", label: "Price compare" },
-  { href: "/contract_price", label: "Contract prices" },
-  { href: "/appraisal", label: "Appraisal & buyback" },
-] as const;
-
 export default function HomePage() {
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 px-6 py-20">
@@ -40,21 +31,6 @@ export default function HomePage() {
         >
           Member login &amp; services
         </a>
-      </section>
-      <section className="rounded-lg border border-white/10 bg-white/5 p-4">
-        <p className="text-sm font-medium text-white">Market suite</p>
-        <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-          {marketTools.map((tool) => (
-            <li key={tool.href}>
-              <a
-                href={tool.href}
-                className="text-[var(--accent)] hover:underline"
-              >
-                {tool.label}
-              </a>
-            </li>
-          ))}
-        </ul>
       </section>
       <section className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-[var(--muted)]">
         <p>

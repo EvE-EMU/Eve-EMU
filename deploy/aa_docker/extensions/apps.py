@@ -63,6 +63,8 @@ GRAPHQL_APPS: list[str] = [
     "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
 ]
 
+OIDC_PROVIDER_APPS: list[str] = ["oauth2_provider", "allianceauth_oidc"]
+
 
 def _extensions_enabled() -> bool:
     return os.environ.get("AA_EXTENSIONS_ENABLED", "1").strip().lower() in (
@@ -75,6 +77,15 @@ def _extensions_enabled() -> bool:
 
 def _graphql_enabled() -> bool:
     return os.environ.get("AA_EXTENSIONS_GRAPHQL", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def _oidc_enabled() -> bool:
+    return os.environ.get("AA_OIDC_ENABLED", "1").strip().lower() in (
         "1",
         "true",
         "yes",
@@ -102,6 +113,8 @@ def extension_installed_apps() -> list[str]:
         apps.append("aadiscordbot")
     if _graphql_enabled():
         apps.extend(GRAPHQL_APPS)
+    if _oidc_enabled():
+        apps.extend(OIDC_PROVIDER_APPS)
 
     # De-dupe preserving order
     seen: set[str] = set()

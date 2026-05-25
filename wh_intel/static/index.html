@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WOMP Intel Map</title>
+  <link rel="stylesheet" href="/intel/static/theme.css?v=1" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>WOMP Intel Overlay</h1>
+      <p class="sub">intel.womp · OnlyQuerious · 5m system rings · gate bubbles · sov tags</p>
+    </div>
+    <div class="status" id="status">Loading…</div>
+  </header>
+  <main class="layout">
+    <section class="map-panel">
+      <canvas id="map" width="1200" height="800"></canvas>
+      <div class="map-hint">Click a gate line to place a bubble (from / to side). Scroll to zoom, drag to pan.</div>
+    </section>
+    <aside class="feed" id="feed"></aside>
+  </main>
+  <script src="/intel/static/app.js?v=1"></script>
+</body>
+</html>

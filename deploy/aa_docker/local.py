@@ -46,7 +46,7 @@ if _host and _host not in ALLOWED_HOSTS and "*" not in ALLOWED_HOSTS:
 # When auth is on auth.<DOMAIN_NAME> but AA_ALLOWED_HOSTS was not updated yet.
 _domain = os.environ.get("DOMAIN_NAME", "").strip().lstrip(".")
 if _domain and "*" not in ALLOWED_HOSTS:
-    for _extra in (f"auth.{_domain}", _domain, f"www.{_domain}"):
+    for _extra in (f"auth.{_domain}", f"pm.{_domain}", _domain, f"www.{_domain}"):
         if _extra not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(_extra)
 
@@ -67,6 +67,13 @@ _site = urlparse(SITE_URL)
 if _site.scheme == "http":
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+
+# Caddy terminates TLS and forwards X-Forwarded-Proto. Without this, OIDC discovery
+# advertises http:// endpoints; clients POST to http, get a 308 with an empty body,
+# and fail token exchange with a JSON parse error.
+if os.environ.get("AA_BEHIND_PROXY", "1").strip().lower() in ("1", "true", "yes", "on"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
 
 STATIC_ROOT = os.environ.get("AA_STATIC_ROOT", os.path.join(BASE_DIR, "staticfiles"))
 

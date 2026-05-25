@@ -14,7 +14,7 @@ async def pi_rank(
     tier: int | None = Query(None, ge=1, le=4),
     customs_pct: float = Query(10.0, ge=0, le=50),
     market_pct: float = Query(7.5, ge=0, le=50),
-    limit: int = Query(200, ge=1, le=500),
+    limit: int = Query(500, ge=1, le=1000),
 ) -> dict:
     """PI schematic profitability ranked by ISK per hour."""
     if mode == "both":

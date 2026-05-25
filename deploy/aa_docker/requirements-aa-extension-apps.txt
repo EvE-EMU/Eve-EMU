@@ -15,7 +15,7 @@ aa-structuretimers==3.0.0
 aa-moonmining==3.0.0
 aa-metenox==1.6.3
 aa-buybackprogram==2.3.4
-indy-hub==1.16.2
+indy-hub==1.17.0
 aa-market-manager==2.0.0
 aa-killtracker==2.0.0
 aa-killstats==3.0.0

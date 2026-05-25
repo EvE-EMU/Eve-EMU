@@ -316,4 +316,41 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
             "schedule": _env_int("CORP_ORDERS_POLL_SECONDS", 600),
         }
 
+    if _has_app(apps, "structures") and _celery_enabled("AA_STRUCTURES_CELERY", "1"):
+        # aa-structures checks.py requires numeric schedule (seconds), not crontab.
+        structures_seconds = _env_int("AA_BEAT_STRUCTURES_SECONDS", 600)
+        schedule["structures_update_all_structures"] = {
+            "task": "structures.tasks.update_all_structures",
+            "schedule": structures_seconds,
+        }
+        notif_seconds = _env_int("AA_BEAT_STRUCTURES_NOTIF_SECONDS", 300)
+        schedule["structures_fetch_all_notifications"] = {
+            "task": "structures.tasks.fetch_all_notifications",
+            "schedule": notif_seconds,
+        }
+
+    if _has_app(apps, "corptools"):
+        try:
+            from corp_project_discord import corp_project_discord_enabled
+
+            _corp_project_discord = corp_project_discord_enabled()
+        except ImportError:
+            _corp_project_discord = False
+        if _corp_project_discord:
+            poll_seconds = _env_int("AA_CORP_PROJECT_DISCORD_POLL_SECONDS", 1800)
+            schedule["industry_suite_corp_project_created_discord"] = {
+                "task": "industry_suite.tasks.dispatch_corp_project_created_discord_alerts",
+                "schedule": poll_seconds,
+            }
+            schedule["industry_suite_corp_project_completed_discord"] = {
+                "task": "industry_suite.tasks.dispatch_corp_project_completed_discord_alerts",
+                "schedule": poll_seconds,
+            }
+            daily_hour = _env_int("AA_CORP_PROJECT_DISCORD_DAILY_HOUR", 14)
+            daily_minute = _env_int("AA_CORP_PROJECT_DISCORD_DAILY_MINUTE", 30)
+            schedule["industry_suite_corp_project_daily_digest"] = {
+                "task": "industry_suite.tasks.dispatch_corp_project_daily_digest",
+                "schedule": crontab(minute=daily_minute, hour=daily_hour),
+            }
+
     return schedule

@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 
 from app.db.models import MarketOrder
 from app.db.session import session_scope
+from app.services.margin_stats import enrich_margin_stats
 from app.services.name_resolver import attach_type_names
 
 
@@ -71,4 +72,5 @@ async def margin_rows(
     out.sort(key=lambda x: x["spread_isk"], reverse=True)
     out = out[:limit]
     await attach_type_names(out, location_id=location_id)
+    await enrich_margin_stats(out, location_id=location_id)
     return out

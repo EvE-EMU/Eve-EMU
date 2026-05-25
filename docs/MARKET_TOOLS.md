@@ -43,7 +43,7 @@ Copy from `.env.example` section `[MARKET_TOOLS]`:
 |----------|---------|
 | `MARKET_INTERNAL_SECRET` | Shared secret for `aa-web` → `market-api` token bridge (required) |
 | `MARKET_USE_AA_TOKEN` | `1` (default) — use Sevey's AA token via internal bridge |
-| `MARKET_ESI_TOKEN_ID` | django-esi token pk (**41** = Sevey, `esi-markets.structure_markets.v1`) |
+| `MARKET_ESI_TOKEN_ID` | django-esi token pk (**58** = Lamaashtu, False Gods corp + structure markets) |
 | `MARKET_ESI_CHARACTER_NAME` | Fallback lookup if token id unset (**Sevey**) |
 | `MARKET_WOMPSTAR_STRUCTURE_ID` | **1050645565626** (from CorpTools `EveLocation` / show info) |
 | `MARKET_BUYBACK_PUBLIC_URL` | e.g. `https://auth.eve-emu.com/buyback_v2/` |

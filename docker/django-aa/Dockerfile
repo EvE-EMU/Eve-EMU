@@ -46,13 +46,27 @@ COPY deploy/aa_docker/patches/esi_openapi_providers/moonmining/providers.py /usr
 COPY deploy/aa_docker/patches/esi_openapi_providers/buybackprogram/providers.py /usr/local/lib/python3.12/site-packages/buybackprogram/providers.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/structures/providers.py /usr/local/lib/python3.12/site-packages/structures/providers.py
 COPY deploy/aa_docker/corptools_postgres_compat.py /app/deploy/aa_docker/corptools_postgres_compat.py
+COPY deploy/aa_docker/corptools_corp_token.py /app/deploy/aa_docker/corptools_corp_token.py
+COPY deploy/aa_docker/structures_corp_token.py /app/deploy/aa_docker/structures_corp_token.py
+COPY deploy/aa_docker/structures_bootstrap.py /app/deploy/aa_docker/structures_bootstrap.py
+COPY deploy/aa_docker/structures_hr_webhook.py /app/deploy/aa_docker/structures_hr_webhook.py
+COPY deploy/aa_docker/indy_hub_corp_token.py /app/deploy/aa_docker/indy_hub_corp_token.py
+COPY deploy/aa_docker/indy_hub_django_compat.py /app/deploy/aa_docker/indy_hub_django_compat.py
 COPY deploy/aa_docker/indy_hub_postgres_compat.py /app/deploy/aa_docker/indy_hub_postgres_compat.py
+COPY deploy/aa_docker/oidc_provider.py /app/deploy/aa_docker/oidc_provider.py
+COPY deploy/aa_docker/corp_project_discord.py /app/deploy/aa_docker/corp_project_discord.py
+# allianceauth-oidc-provider 0.0.1: safe OIDC claims, JSON token errors, state M2M fix.
+COPY deploy/aa_docker/patches/allianceauth_oidc/auth_provider.py /usr/local/lib/python3.12/site-packages/allianceauth_oidc/auth_provider.py
+COPY deploy/aa_docker/patches/allianceauth_oidc/views.py /usr/local/lib/python3.12/site-packages/allianceauth_oidc/views.py
+COPY deploy/aa_docker/patches/allianceauth_oidc/admin.py /usr/local/lib/python3.12/site-packages/allianceauth_oidc/admin.py
 COPY deploy/aa_docker/top_postgres_compat.py /app/deploy/aa_docker/top_postgres_compat.py
 # Django 5 upsert: bulk_create(update_conflicts=True) requires unique_fields (aa-sov-timer 4.1.0).
 COPY deploy/aa_docker/patches/sovtimer/tasks.py /usr/local/lib/python3.12/site-packages/sovtimer/tasks.py
 # aa-ledger 3.0.0 charlink hook still referenced renamed ORM fields (corporation / character).
 COPY deploy/aa_docker/patches/ledger/thirdparty/charlink_hook.py /usr/local/lib/python3.12/site-packages/ledger/thirdparty/charlink_hook.py
 COPY deploy/aa_docker/patches/ledger/auth_hooks.py /usr/local/lib/python3.12/site-packages/ledger/auth_hooks.py
+# aa-contacts: upstream admin omits AllianceToken / CorporationToken (Charlink ESI slots).
+COPY deploy/aa_docker/patches/aa_contacts/admin.py /usr/local/lib/python3.12/site-packages/aa_contacts/admin.py
 # aa-metenox 1.6.3: SDE gap + DataTables GET edge cases → 500 on /metenox/moons.
 COPY deploy/aa_docker/patches/metenox/views/moons.py /usr/local/lib/python3.12/site-packages/metenox/views/moons.py
 # aa-market-manager 2.0.0: eve_sde ItemType uses group/market_group/parent_group, not item_* names.

@@ -28,7 +28,7 @@ Configure root **`.env`** (see **`.env.example`**):
 
 On first start, **`docker/django-aa/entrypoint.py`** runs **`repair_indy_hub_migrations.py`** (records Indy Hub `0023` when columns already exist), then **`manage.py migrate`** and **`collectstatic`** before Gunicorn (Alliance Auth touches Redis during `django.setup()`, so static collection is not done at image build time).
 
-**Indy Hub on PostgreSQL:** upstream migrations `0023`, `0026`, `0049`, and `0050` assume MySQL/SQLite for some schema steps; patched copies live under **`deploy/aa_docker/patches/indy_hub/`** and are copied into the **`aa-*`** image at build time. **`repair_indy_hub_migrations.py`** (runs before migrate on web boot) fixes partial states. If migrate still fails, rebuild **`aa-web`** and run:
+**Indy Hub** is pinned at **`indy-hub==1.17.0`** ([PyPI](https://pypi.org/project/indy-hub/1.17.0/)). **Indy Hub on PostgreSQL:** upstream migrations `0023`, `0026`, `0049`, and `0050` assume MySQL/SQLite for some schema steps; patched copies live under **`deploy/aa_docker/patches/indy_hub/`** and are copied into the **`aa-*`** image at build time. **`repair_indy_hub_migrations.py`** (runs before migrate on web boot) fixes partial states. If migrate still fails, rebuild **`aa-web`** and run:
 
 ```bash
 docker compose exec aa-web python /app/deploy/aa_docker/repair_indy_hub_migrations.py
@@ -50,7 +50,7 @@ Community apps are installed from **`deploy/aa_docker/requirements-aa-extension-
 
 **Bundled extensions** (enabled when **`AA_EXTENSIONS_ENABLED=1`**): [Standings Sync](https://apps.allianceauth.org/apps/detail/aa-standingssync), [Structures](https://apps.allianceauth.org/apps/detail/aa-structures), [Structure Timers II](https://apps.allianceauth.org/apps/detail/aa-structuretimers), [Moon Mining](https://apps.allianceauth.org/apps/detail/aa-moonmining), [Metenox](https://apps.allianceauth.org/apps/detail/aa-metenox), [Buyback Program](https://apps.allianceauth.org/apps/detail/aa-buybackprogram), [Indy Hub](https://apps.allianceauth.org/apps/detail/indy-hub), [Market Manager](https://apps.allianceauth.org/apps/detail/aa-market-manager), [Kill Tracker](https://apps.allianceauth.org/apps/detail/aa-killtracker), [Killstats](https://apps.allianceauth.org/apps/detail/aa-killstats), [Intel Tool](https://apps.allianceauth.org/apps/detail/aa-intel-tool), [Sov Timer](https://apps.allianceauth.org/apps/detail/aa-sov-timer), [CorpTools](https://apps.allianceauth.org/apps/detail/allianceauth-corptools), [Secure Groups](https://apps.allianceauth.org/apps/detail/allianceauth-securegroups), [Blacklist](https://apps.allianceauth.org/apps/detail/allianceauth-blacklist), [Contacts](https://apps.allianceauth.org/apps/detail/aa-contacts), [Alumni](https://apps.allianceauth.org/apps/detail/aa-alumni), [Inactivity](https://apps.allianceauth.org/apps/detail/aa-inactivity), [AA-SRP](https://apps.allianceauth.org/apps/detail/aa-srp), [AFAT](https://apps.allianceauth.org/apps/detail/allianceauth-afat), [Fleet Pings](https://apps.allianceauth.org/apps/detail/aa-fleetpings), [Fittings](https://apps.allianceauth.org/apps/detail/fittings), [Timezones](https://apps.allianceauth.org/apps/detail/aa-timezones), [Ledger](https://apps.allianceauth.org/apps/detail/aa-ledger), [Skillfarm](https://apps.allianceauth.org/apps/detail/aa-skillfarm), [CharLink](https://apps.allianceauth.org/apps/detail/aa-charlink), [ESI Status](https://apps.allianceauth.org/apps/detail/aa-esi-status), [Routing](https://apps.allianceauth.org/apps/detail/aa-routing), [Top](https://apps.allianceauth.org/apps/detail/aa-top), [Package Monitor](https://apps.allianceauth.org/apps/detail/aa-package-monitor), [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor), [Celery Analytics](https://apps.allianceauth.org/apps/detail/allianceauth-celeryanalytics).
 
-Also enabled in the image: [Discord bot](https://apps.allianceauth.org/apps/detail/allianceauth-discordbot) (`aa-discordbot` Compose service), [Discord Notify](https://apps.allianceauth.org/apps/detail/aa-discordnotify) (needs [Discord Proxy](https://gitlab.com/ErikKalkoken/discordproxy)), [Wiki.js](https://apps.allianceauth.org/apps/detail/allianceauth-wiki-js) (`wikijs` Compose service + [WIKIJS.md](./WIKIJS.md)), [Slate theme](https://apps.allianceauth.org/apps/detail/aa-theme-slate), [Skip Email](https://apps.allianceauth.org/apps/detail/aa-skip-email). Optional: [GraphQL](https://apps.allianceauth.org/apps/detail/allianceauth-graphql) via **`AA_EXTENSIONS_GRAPHQL=1`**.
+Also enabled in the image: [Discord bot](https://apps.allianceauth.org/apps/detail/allianceauth-discordbot) (`aa-discordbot` Compose service), [Discord Notify](https://apps.allianceauth.org/apps/detail/aa-discordnotify) (needs [Discord Proxy](https://gitlab.com/ErikKalkoken/discordproxy)), [Wiki.js](https://apps.allianceauth.org/apps/detail/allianceauth-wiki-js) (`wikijs` Compose service + [WIKIJS.md](./WIKIJS.md)), [Slate theme](https://apps.allianceauth.org/apps/detail/aa-theme-slate), [Skip Email](https://apps.allianceauth.org/apps/detail/aa-skip-email). **YouTrack** at `pm.<DOMAIN_NAME>` uses [allianceauth-oidc-provider](https://github.com/Solar-Helix-Independent-Transport/allianceauth-oidc-provider) for SSO — see [YOUTRACK.md](./YOUTRACK.md). Optional: [GraphQL](https://apps.allianceauth.org/apps/detail/allianceauth-graphql) via **`AA_EXTENSIONS_GRAPHQL=1`**.
 
 After **`docker compose build aa-web aa-worker aa-beat`** and **`docker compose up -d`**, migrations run on **`aa-web`** boot. One-time data loads (run as needed):
 
@@ -82,12 +82,66 @@ docker compose exec aa-web python manage.py packagemonitorcli refresh
 Equivalent to the UI “install all outdated” command for the two common deps:
 
 ```bash
-docker compose exec aa-web pip install "click>=8.4.0,<9" \
-  "django-eveuniverse @ git+https://gitlab.com/ErikKalkoken/django-eveuniverse.git@2.0.0a7"
+docker compose exec aa-web pip install "click>=8.4.1,<9" \
+  "django-eveuniverse==2.0.0"
 docker compose exec aa-web python manage.py packagemonitorcli refresh
 ```
 
 Prefer the **rebuild** path so **`aa-worker`** / **`aa-beat`** stay in sync with **`aa-web`**.
+
+### Corp project Discord routing
+
+When a corporation **project** is opened or completed, EVE sends character notifications that **CorpTools** stores. This stack can post those events to **different Discord channels** based on the **project name** (case-insensitive substring match).
+
+Configure in root **`.env`** (requires **CorpTools** and **`aa-beat`**):
+
+| Variable | Meaning |
+|----------|---------|
+| **`AA_CORP_PROJECT_DISCORD_ROUTES`** | Comma-separated `pattern:destination`. **Pattern** must appear inside the EVE **goal_name** (case-insensitive). Example goal names: `D0 Manufacturing \| Maulus` → use patterns `d0 manufacturing`, `d1 manufacturing`, and `d2 manufacturing`. **Use [webhook URLs](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks) for D1/D2** so alerts include a **Claim** button; channel IDs only post a sheet link in the embed (needs **`aa-discordbot`**). First match wins. |
+| **`AA_CORP_PROJECT_CLAIM_SHEET_URL`** | Google Sheet for **D1/D2** **Confirm availability** button (open projects only). **D0** has no button. |
+| **`AA_CORP_PROJECT_DISCORD_DEDUPE_BY_GOAL`** | Default `1` — one Discord message per `goal_id` + event (opened/completed/…) even when CorpTools stores duplicate notification rows. |
+| **`AA_CORP_PROJECT_DISCORD_DEFAULT_WEBHOOK_URL`** | Optional fallback webhook for unmatched project names. |
+| **`AA_CORP_PROJECT_DISCORD_DEFAULT_CHANNEL_ID`** | Optional fallback channel ID (requires bot in channel). |
+| **`AA_CORP_PROJECT_DISCORD_POLL_SECONDS`** | How often Celery checks **new** and **completed** projects (default **`1800`** = 30 min). |
+| **`AA_CORP_PROJECT_DISCORD_EVENT_LOOKBACK_MINUTES`** | Notification lookback per 30‑min run (default **`45`**). |
+| **`AA_CORP_PROJECT_DISCORD_DAILY_HOUR`** / **`DAILY_MINUTE`** / **`DAILY_TZ`** | Daily **open project** digest (default **`14:30`** **`America/New_York`**). Progress + **Confirm availability** on D1/D2. |
+| **`AA_CORP_PROJECT_DISCORD_ENABLED`** | Set `0` to disable without removing routes. |
+| **`AA_CORP_PROJECT_DISCORD_ESI_TOKEN_ID`** | Optional django-esi token pk with `read_projects` (e.g. sevey). |
+| **`AA_ESI_COMPATIBILITY_DATE`** | ESI header for corp projects (default **`2026-05-19`** in `corp_project_discord`). |
+
+Implementation: **`deploy/aa_docker/corp_project_discord.py`**.
+
+Celery beat (requires **`aa-beat`**):
+
+| Task | Schedule | What it posts |
+|------|----------|----------------|
+| `dispatch_corp_project_created_discord_alerts` | Every 30 min | **Project created** (D1/D2: **Confirm availability** button) |
+| `dispatch_corp_project_completed_discord_alerts` | Every 30 min | **Completed / closed / expired** (no button) |
+| `dispatch_corp_project_daily_digest` | Daily 2:30 PM Eastern | **Still-open** projects + progress + **Confirm availability** (D1/D2) |
+
+Manual test:
+
+```bash
+docker compose exec aa-worker python manage.py shell -c "from corp_project_discord import process_corp_project_created_alerts; print(process_corp_project_created_alerts())"
+docker compose exec aa-worker python manage.py shell -c "from corp_project_discord import process_corp_project_completed_alerts; print(process_corp_project_completed_alerts())"
+docker compose exec aa-worker python manage.py corp_project_discord_daily --force
+```
+
+**Webhooks (recommended for D1/D2 button):** channel → Integrations → Webhooks. Embeds include ESI **Progress**, qty, and ISK when `esi-corporations.read_projects.v1` is on a corp token (Charlink).
+
+**First-time backfill** (post every **still-open** D0/D1 project once — created in CorpTools, not completed/closed):
+
+```bash
+# Preview
+docker compose exec aa-worker python manage.py corp_project_discord_backfill --dry-run
+
+# Post (after AA_CORP_PROJECT_DISCORD_ROUTES uses patterns like d0 manufacturing / d1 manufacturing)
+docker compose exec aa-worker python manage.py corp_project_discord_backfill
+```
+
+Optional: `--days 90` (limit history), `--force` (ignore dedupe cache). Default lookback: **`AA_CORP_PROJECT_DISCORD_BACKFILL_DAYS`** (365) in `.env`.
+
+(`manage.py` lives in `/app/site` in the image; the worker container’s working directory is already set there.)
 
 ### Corp stock orders (`corp_orders`)
 
@@ -113,6 +167,97 @@ Each app needs **permissions**, **ESI scopes** on your CCP application, and some
 **Auto groups by corp + Director title/role:** use **Secure Groups** + **CorpTools** filters (already in the Docker image). Step-by-step: [SECURE_GROUPS_BY_TITLE.md](./SECURE_GROUPS_BY_TITLE.md). Run `setup_securegroup_task` and `corptools ct_setup` once; add `esi-characters.read_corporation_roles.v1` and `esi-characters.read_titles.v1` on your CCP app and Charlink.
 
 **Market Manager:** After deploy, configure **Admin → Marketmanager → Public configs** (select regions, e.g. The Forge), then run `docker compose exec aa-web python manage.py shell -c "from marketmanager.tasks import fetch_public_market_orders; fetch_public_market_orders.delay()"`. The browser shows orders only after you **search an item** (3+ characters) and pick a region. Structure admin add was broken on `eve_sde` field names (`group` vs `item_group`) — fixed via `deploy/aa_docker/patches/marketmanager/` (rebuild `aa-web`).
+
+### False Gods corp ESI token (Lamaashtu #58)
+
+CorpTools and Market Manager normally pick the first corp character token whose ESI roles include **`Director`**. On the private EVE server, role names often differ (e.g. **`Config_Starbase_Equipment`** instead of **`Director`**), so corp structure/starbase sync never runs.
+
+Set **`AA_FALSE_GODS_CORP_TOKEN_ID=58`** (django-esi token for **Lamaashtu**, corp **98799892**) in **`.env`** or Compose defaults. At boot, **`deploy/aa_docker/corptools_corp_token.py`** pins that token for CorpTools and Market Manager corp tasks when scopes match, skipping the Alliance Auth role check.
+
+**ESI still enforces roles server-side.** Lamaashtu must hold **Director** (structures/starbases) or **Station_Manager** (structures only) in False Gods in-game; otherwise ESI returns `403 Character does not have required role(s)` even with the token override.
+
+After rebuild **`aa-web`** + **`aa-worker`**, kick an initial CorpTools pull:
+
+```powershell
+docker compose exec aa-web python manage.py shell -c "from corptools.tasks.corporation.structures import corp_structure_update, corp_starbase_update; corp_structure_update.delay(98799892, force_refresh=True); corp_starbase_update.delay(98799892, force_refresh=True)"
+```
+
+Token admin: `https://auth.eve-emu.com/admin/esi/token/58/change/`. For other corps, use **`AA_CORP_TOKEN_OVERRIDES=corp_id:token_pk`** (comma-separated).
+
+### aa-structures (`/structures/list`)
+
+The **Structures** app ([aa-structures](https://aa-structures.readthedocs.io/en/latest/operations.html)) is separate from CorpTools. It needs:
+
+1. **Celery Beat** entries for `structures.tasks.update_all_structures` and `structures.tasks.fetch_all_notifications` (added in `deploy/aa_docker/extensions/celerybeat.py`).
+2. A **structure owner** for False Gods — auto-created on `aa-web` boot when `AA_ENSURE_STRUCTURE_OWNER=1` and `AA_FALSE_GODS_CORP_TOKEN_ID=58` are set (`deploy/aa_docker/structures_corp_token.py`).
+3. **ESI scopes** on your CCP app (see aa-structures install docs): `esi-corporations.read_structures.v1`, `esi-universe.read_structures.v1`, `esi-characters.read_notifications.v1`, `esi-assets.read_corporation_assets.v1`, plus starbase/customs scopes if enabled.
+4. **Director** or **Station_Manager** in-game on Lamaashtu for corp structure endpoints (same ESI 403 as CorpTools if missing).
+
+One-time (or set `AA_STRUCTURES_LOAD_EVE=1` on next `aa-web` boot):
+
+```powershell
+docker compose exec aa-web python manage.py structures_load_eve
+```
+
+Force a sync after deploy:
+
+```powershell
+docker compose exec aa-web python manage.py shell -c "from structures.tasks import update_all_for_owner; from structures.models import Owner; o=Owner.objects.filter(corporation__corporation_id=98799892).first(); update_all_for_owner.delay(o.pk) if o else print('no owner')"
+```
+
+Rebuild **`aa-web`**, **`aa-worker`**, and **`aa-beat`** so beat schedule and token patches load.
+
+#### HR / membership Discord channel (joins, applications)
+
+Messages like **“Eveeno joins False Gods”** / **“is now a member of False Gods”** are **`CharAppAcceptMsg`** alerts from **[aa-structures](https://aa-structures.readthedocs.io/)**, not corp project routing. They are sent to every Owner webhook whose **notification types** include that event — often a catch-all webhook (e.g. **ALL WEBHOOKS TESTING**).
+
+To forward HR events to a **dedicated channel**:
+
+1. In Discord: HR channel → **Integrations** → **Webhooks** → copy URL.
+2. In `.env`:
+
+   ```env
+   AA_STRUCTURES_HR_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/…
+   # Optional: remove HR types from this catch-all (default name matches your setup)
+   AA_STRUCTURES_STRIP_HR_FROM_WEBHOOK_NAMES=ALL WEBHOOKS TESTING
+   ```
+
+3. Rebuild and restart **`aa-web`** (sync on boot) or run once:
+
+   ```powershell
+   docker compose exec aa-worker python manage.py structures_hr_webhook_sync
+   docker compose exec aa-worker python manage.py structures_hr_webhook_sync --dry-run
+   ```
+
+Implementation: **`deploy/aa_docker/structures_hr_webhook.py`**. Default HR types: `CharAppAcceptMsg`, `CharLeftCorpMsg`, `CorpAppNewMsg`, `CorpAppInvitedMsg`, `CharAppRejectMsg`, `CorpAppRejectCustomMsg`, `CharAppWithdrawMsg`. Override with **`AA_STRUCTURES_HR_NOTIFICATION_TYPES`** (comma-separated).
+
+You can also edit webhooks under **Structures → Webhooks** in Alliance Auth admin; env sync is idempotent and safe to re-run after deploy.
+
+### Indy Hub (`/indy_hub/esi/`, `/indy_hub/corporation-bp/`)
+
+Corp blueprint/job sync normally uses the logged-in user's characters and ESI role names **`DIRECTOR`** / **`FACTORY_MANAGER`**. With **`AA_FALSE_GODS_CORP_TOKEN_ID=58`**, **`deploy/aa_docker/indy_hub_corp_token.py`** forces **False Gods** (98799892) to use **Lamaashtu's** django-esi token (#58) for:
+
+- the corp row on **`/indy_hub/esi/`**
+- Celery corp blueprint/job sync (including manual refresh on **`/indy_hub/corporation-bp/`**)
+- corp manager visibility on the corporation blueprint list (same token as CorpTools below)
+
+This is the **same** env override as CorpTools structures (**`corptools_corp_token.py`**).
+
+### CorpTools audit structures (`/audit/r/corp/structures`)
+
+The audit UI reads synced **`Structure`** rows from the database. Population uses **`get_corp_token`** in CorpTools Celery tasks (`corp_structure_update`, etc.), which **`corptools_corp_token.py`** pins to token **#58** when **`AA_FALSE_GODS_CORP_TOKEN_ID=58`** is set. Rebuild **`aa-web`** and **`aa-worker`**, then kick a pull (see False Gods corp ESI token section above).
+
+Rebuild **`aa-web`** and **`aa-worker`** after changing the override. Confirm token **#58** includes Indy Hub corp scopes such as `esi-corporations.read_blueprints.v1`, `esi-industry.read_corporation_jobs.v1`, `esi-characters.read_corporation_roles.v1`, and CorpTools structure scopes such as `esi-corporations.read_structures.v1` (plus material-exchange corp scopes if you use that module).
+
+**Django 5:** Indy Hub still uses ``django.utils.timezone.utc`` (removed in Django 5). ``deploy/aa_docker/indy_hub_django_compat.py`` restores it at boot. If [`/indy_hub/corporation-bp/?refresh=1`](https://auth.eve-emu.com/indy_hub/corporation-bp/?refresh=1) shows ``timezone`` has no attribute ``utc``, rebuild **`aa-web`** and **`aa-worker`**.
+
+Manual corp blueprint refresh (users with **`can_manage_corp_bp_requests`**):
+
+```powershell
+docker compose exec aa-web python manage.py shell -c "from indy_hub.tasks.industry import request_manual_refresh, MANUAL_REFRESH_KIND_BLUEPRINTS; from django.contrib.auth import get_user_model; u=get_user_model().objects.filter(is_superuser=True).first(); print(request_manual_refresh(MANUAL_REFRESH_KIND_BLUEPRINTS, u.pk, scope='corporation', priority=5) if u else 'no user')"
+```
+
+The account must have **`indy_hub.can_manage_corp_bp_requests`**. `(True, None, None)` means the Celery task was queued. `(False, None, 'inactive_or_missing_scope')` before rebuild means the user failed Indy Hub’s “active” check (personal `esi-location.read_online.v1`); after rebuild, corp managers with token **#58** skip that check for `scope='corporation'`.
 
 ## Django project naming (`eve_emu` vs `allianceauth`)
 

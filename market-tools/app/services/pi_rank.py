@@ -10,8 +10,10 @@ from app.db.session import session_scope
 from app.services.import_prices import schedule_import_price_sync
 from app.services.pi_schematics import (
     PiSchematic,
+    all_pi_type_ids,
     load_pi_schematics,
     pi_type_name,
+    pi_type_tier,
 )
 
 # Default PI tax assumptions (customs + market broker).
@@ -123,6 +125,9 @@ def _calc_row(
         "cycle_time": schematic.cycle_time,
         "output_quantity": out_qty,
         "sell_unit": round(sell_p, 2),
+        "buy_unit": round(material_cost / out_qty, 2)
+        if mode == "factory" and out_qty and material_cost
+        else None,
         "revenue": round(revenue, 2),
         "material_cost": round(material_cost, 2),
         "profit": round(profit, 2),
@@ -186,7 +191,37 @@ async def pi_rank_rows(
         if row:
             rows.append(row)
 
-    rows.sort(key=lambda r: r.get("profit_iph") or 0, reverse=True)
+    seen_outputs = {int(r["type_id"]) for r in rows}
+    if tier is None:
+        for tid in all_pi_type_ids():
+            if tid in seen_outputs:
+                continue
+            t = pi_type_tier(tid)
+            if not t:
+                continue
+            sell_p = _price(appraisals, tid, sell_field)
+            buy_p = _price(appraisals, tid, buy_field)
+            rows.append(
+                {
+                    "type_id": tid,
+                    "name": pi_type_name(tid),
+                    "tier": t,
+                    "tier_label": f"P{t}",
+                    "mode": "commodity",
+                    "sell_unit": round(sell_p, 2) if sell_p is not None else None,
+                    "buy_unit": round(buy_p, 2) if buy_p is not None else None,
+                    "profit": None,
+                    "profit_pct": None,
+                    "profit_iph": None,
+                    "material_cost": None,
+                }
+            )
+            seen_outputs.add(tid)
+
+    rows.sort(
+        key=lambda r: (r.get("profit_iph") is not None, r.get("profit_iph") or 0),
+        reverse=True,
+    )
     rows = rows[:limit]
 
     hub_labels = {

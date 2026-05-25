@@ -260,6 +260,89 @@ async def contract_margin_rows(*, location_id: int, limit: int = 500) -> list[di
     return out
 
 
+async def contract_trend_rows(*, limit: int = 200) -> list[dict]:
+    """Alliance corp contracts: description, contents, price and volume trends."""
+    corp_ids = issuer_corp_ids()
+    if not corp_ids:
+        return []
+
+    async with session_scope() as session:
+        rows = (
+            await session.execute(
+                select(MarketContractItem, MarketContract)
+                .join(
+                    MarketContract,
+                    MarketContract.contract_id == MarketContractItem.contract_id,
+                )
+                .where(
+                    MarketContract.status.in_(_ACTIVE),
+                    MarketContract.issuer_corp_id.in_(corp_ids),
+                    MarketContract.contract_type.in_(_ITEM_TYPES),
+                )
+                .order_by(MarketContract.date_issued.desc())
+                .limit(limit * 5)
+            )
+        ).all()
+
+    by_contract: dict[int, dict] = {}
+    for item, contract in rows:
+        cid = int(contract.contract_id)
+        slot = by_contract.get(cid)
+        if not slot:
+            slot = {
+                "contract_id": cid,
+                "issuer_corp_id": int(contract.issuer_corp_id),
+                "contract_type": contract.contract_type,
+                "status": contract.status,
+                "title": (contract.title or "").strip(),
+                "description": (contract.title or "").strip(),
+                "total_isk": float(contract.price or 0),
+                "date_issued": contract.date_issued.isoformat()
+                if contract.date_issued
+                else None,
+                "date_expired": contract.date_expired.isoformat()
+                if contract.date_expired
+                else None,
+                "items": [],
+                "quantity_total": 0,
+            }
+            by_contract[cid] = slot
+        tid = int(item.type_id)
+        qty = int(item.quantity or 1)
+        name = await catalog_type_name(tid) or f"Type {tid}"
+        slot["items"].append(
+            {
+                "type_id": tid,
+                "type_name": name,
+                "quantity": qty,
+                "me": item.me,
+                "te": item.te,
+                "is_bpc": item.is_blueprint_copy,
+            }
+        )
+        slot["quantity_total"] += qty
+
+    out: list[dict] = []
+    for slot in by_contract.values():
+        qty = max(1, slot["quantity_total"])
+        total = slot["total_isk"]
+        slot["unit_isk"] = round(total / qty, 2) if qty else total
+        parts = []
+        for it in slot["items"][:8]:
+            label = it["type_name"]
+            if it.get("is_bpc"):
+                label += f" BPC ME{it['me']} TE{it['te']}"
+            parts.append(f"{label} ×{it['quantity']:,}")
+        slot["contents"] = ", ".join(parts)
+        if len(slot["items"]) > 8:
+            slot["contents"] += f" (+{len(slot['items']) - 8} more)"
+        slot["item_count"] = len(slot["items"])
+        out.append(slot)
+
+    out.sort(key=lambda r: r.get("date_issued") or "", reverse=True)
+    return out[:limit]
+
+
 async def _run_contract_sync() -> None:
     global _contract_task
     try:

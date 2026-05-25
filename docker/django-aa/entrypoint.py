@@ -50,10 +50,34 @@ if _manage.is_file():
             check=False,
         )
         subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import django; django.setup(); "
+                "from oidc_provider import ensure_oidc_rsa_key, ensure_oidc_app_algorithms; "
+                "ensure_oidc_rsa_key(); ensure_oidc_app_algorithms()",
+            ],
+            cwd=cwd,
+            env=env,
+            check=False,
+        )
+        subprocess.run(
             [sys.executable, str(_manage), "migrate", "--noinput"],
             cwd=cwd,
             env=env,
             check=True,
+        )
+        subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import django; django.setup(); "
+                "from corp_project_discord import ensure_corp_project_esi_scope_in_db; "
+                "ensure_corp_project_esi_scope_in_db()",
+            ],
+            cwd=cwd,
+            env=env,
+            check=False,
         )
         subprocess.run(
             [sys.executable, str(_manage), "collectstatic", "--noinput"],
@@ -88,6 +112,36 @@ if _manage.is_file():
         ):
             subprocess.run(
                 [sys.executable, str(_manage), "packagemonitorcli", "refresh"],
+                cwd=cwd,
+                env=env,
+                check=False,
+            )
+        if os.environ.get("AA_STRUCTURES_LOAD_EVE", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ):
+            subprocess.run(
+                [sys.executable, str(_manage), "structures_load_eve"],
+                cwd=cwd,
+                env=env,
+                check=False,
+            )
+        if os.environ.get("AA_ENSURE_STRUCTURE_OWNER", "1").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ):
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import django; django.setup(); "
+                    "from structures_bootstrap import maybe_bootstrap_structure_owners; "
+                    "maybe_bootstrap_structure_owners()",
+                ],
                 cwd=cwd,
                 env=env,
                 check=False,

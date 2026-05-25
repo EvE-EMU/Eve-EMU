@@ -1,17 +1,34 @@
-"""
-Celery tasks for heavy ESI pulls (moon ledgers, corp industry, audits).
+"""Celery tasks for industry_suite (eve-emu Alliance Auth extensions)."""
 
-Wire these in your Alliance Auth deployment's Celery app; import paths stay stable
-once ``industry_suite`` is on ``INSTALLED_APPS`` and ``django-eveuniverse`` / your
-ESI client is configured.
+from __future__ import annotations
 
-Example (sketch only)::
+from celery import shared_task
 
-    from celery import shared_task
 
-    @shared_task
-    def refresh_suborder_statuses(project_id: int) -> None:
-        ...
-"""
+@shared_task(name="industry_suite.tasks.dispatch_corp_project_created_discord_alerts")
+def dispatch_corp_project_created_discord_alerts() -> dict:
+    from corp_project_discord import process_corp_project_created_alerts
 
-# Intentionally empty: operators bind tasks to their Celery configuration.
+    return process_corp_project_created_alerts()
+
+
+@shared_task(name="industry_suite.tasks.dispatch_corp_project_completed_discord_alerts")
+def dispatch_corp_project_completed_discord_alerts() -> dict:
+    from corp_project_discord import process_corp_project_completed_alerts
+
+    return process_corp_project_completed_alerts()
+
+
+@shared_task(name="industry_suite.tasks.dispatch_corp_project_daily_digest")
+def dispatch_corp_project_daily_digest() -> dict:
+    from corp_project_discord import post_daily_outstanding_corp_project_digest
+
+    return post_daily_outstanding_corp_project_digest()
+
+
+@shared_task(name="industry_suite.tasks.dispatch_corp_project_discord_alerts")
+def dispatch_corp_project_discord_alerts() -> dict:
+    """Legacy combined task (created + completed). Celery beat uses split tasks."""
+    from corp_project_discord import process_corp_project_discord_alerts
+
+    return process_corp_project_discord_alerts()

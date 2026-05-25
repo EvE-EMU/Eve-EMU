@@ -147,3 +147,4 @@ and temporarily publish **`8000:8000`** on **wanderer** (not recommended for pro
 - Wanderer data lives in Postgres database **`wanderer`**; back it up with your other DBs.
 - Upgrades: `docker compose pull` on the three images, then `docker compose up -d wanderer`.
 - CE support: [GitHub discussions](https://github.com/orgs/wanderer-industries/discussions/4).
+- **Intel overlay (RIFT-style):** companion map at **`/intel/`** on the same host — see [WH_INTEL.md](WH_INTEL.md).

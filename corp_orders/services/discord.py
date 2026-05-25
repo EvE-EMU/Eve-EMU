@@ -37,11 +37,13 @@ def parse_webhook_url(url: str) -> tuple[str, str, str] | None:
 def _post_webhook(url: str, payload: dict[str, Any], *, wait: bool = False) -> dict[str, Any] | None:
     if not url:
         return None
-    post_url = url
-    if wait and "?" not in post_url:
-        post_url = f"{post_url}?wait=true"
+    params: dict[str, str] = {}
+    if wait:
+        params["wait"] = "true"
+    if payload.get("components"):
+        params["with_components"] = "true"
     try:
-        response = requests.post(post_url, json=payload, timeout=15)
+        response = requests.post(url, json=payload, params=params or None, timeout=15)
         response.raise_for_status()
         if wait:
             return response.json()
@@ -55,9 +57,11 @@ def _patch_webhook_message(api_base: str, message_id: str, payload: dict[str, An
     if not api_base or not message_id:
         return False
     try:
+        params = {"with_components": "true"} if payload.get("components") else None
         response = requests.patch(
             f"{api_base}/messages/{message_id}",
             json=payload,
+            params=params,
             timeout=15,
         )
         response.raise_for_status()

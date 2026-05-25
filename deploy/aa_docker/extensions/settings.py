@@ -41,6 +41,17 @@ def _apply_discord_settings(settings: dict) -> None:
     sync = os.environ.get("DISCORD_SYNC_NAMES", "").strip()
     if sync:
         settings["DISCORD_SYNC_NAMES"] = sync.lower() in ("1", "true", "yes", "on")
+    admin_channels = os.environ.get("DISCORD_ADMIN_BOT_CHANNELS", "").strip()
+    if admin_channels:
+        settings["ADMIN_DISCORD_BOT_CHANNELS"] = [
+            int(x.strip()) for x in admin_channels.split(",") if x.strip().isdigit()
+        ]
+    else:
+        settings.setdefault("ADMIN_DISCORD_BOT_CHANNELS", [])
+
+    daily_tz = os.environ.get("AA_CORP_PROJECT_DISCORD_DAILY_TZ", "").strip()
+    if daily_tz:
+        settings.setdefault("CELERY_TIMEZONE", daily_tz)
 
 
 def apply_extension_settings(settings: dict) -> None:
@@ -167,18 +178,49 @@ def apply_extension_settings(settings: dict) -> None:
     if janice_key:
         settings["BUYBACKPROGRAM_PRICE_JANICE_API_KEY"] = janice_key
 
-    if "corptools" in installed:
+    if os.environ.get("AA_OIDC_ENABLED", "1").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        try:
+            from oidc_provider import apply_oidc_settings
+
+            apply_oidc_settings(settings)
+        except Exception:
+            pass
+
+    if _app_installed(installed, "corptools"):
         ct_scopes = [
             s.strip()
             for s in os.environ.get(
                 "AA_CORPTOOLS_LOGIN_SCOPES",
                 "esi-characters.read_titles.v1 "
-                "esi-characters.read_corporation_roles.v1",
+                "esi-characters.read_corporation_roles.v1 "
+                "esi-corporations.read_projects.v1",
             ).split()
             if s.strip()
         ]
         login_scopes = list(settings.get("LOGIN_TOKEN_SCOPES", ["publicData"]))
         for scope in ct_scopes:
+            if scope not in login_scopes:
+                login_scopes.append(scope)
+        settings["LOGIN_TOKEN_SCOPES"] = login_scopes
+
+    if _app_installed(installed, "industry_suite") and os.environ.get(
+        "AA_CORP_PROJECT_DISCORD_ENABLED", "1"
+    ).strip().lower() not in ("0", "false", "no", "off"):
+        cp_scopes = [
+            s.strip()
+            for s in os.environ.get(
+                "AA_CORP_PROJECT_DISCORD_LOGIN_SCOPES",
+                "esi-corporations.read_projects.v1",
+            ).split()
+            if s.strip()
+        ]
+        login_scopes = list(settings.get("LOGIN_TOKEN_SCOPES", ["publicData"]))
+        for scope in cp_scopes:
             if scope not in login_scopes:
                 login_scopes.append(scope)
         settings["LOGIN_TOKEN_SCOPES"] = login_scopes
