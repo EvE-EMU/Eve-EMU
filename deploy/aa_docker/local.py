@@ -136,7 +136,7 @@ if "whitenoise.middleware.WhiteNoiseMiddleware" not in MIDDLEWARE:
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 INSTALLED_APPS += [
-    "industry_suite.apps.IndustrySuiteConfig",
+    "industry_suite",
     "buyback_v2.apps.BuybackV2Config",
     "corp_orders.apps.CorpOrdersConfig",
     "standing_fleet_tracker",

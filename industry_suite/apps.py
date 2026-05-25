@@ -90,3 +90,9 @@ class IndustrySuiteConfig(AppConfig):
             ensure_corp_project_esi_scope_in_db()
         except Exception:
             pass
+
+        # Ensure Celery registers industry_suite tasks (incl. daily digest) on worker boot.
+        try:
+            import industry_suite.tasks  # noqa: F401
+        except Exception:
+            pass

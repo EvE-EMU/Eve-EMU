@@ -31,4 +31,11 @@ app.conf.task_routes = {
 
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
+# industry_suite is installed as IndustrySuiteConfig; autodiscover would look for
+# industry_suite.apps.IndustrySuiteConfig.tasks (missing). Import explicitly.
+try:
+    import industry_suite.tasks  # noqa: F401
+except ImportError:
+    pass
+
 trace.LOG_SUCCESS = "Task %(name)s[%(id)s] succeeded in %(runtime)ss"

@@ -49,8 +49,15 @@ def _apply_discord_settings(settings: dict) -> None:
     else:
         settings.setdefault("ADMIN_DISCORD_BOT_CHANNELS", [])
 
-    daily_tz = os.environ.get("AA_CORP_PROJECT_DISCORD_DAILY_TZ", "").strip()
-    if daily_tz:
+    daily_tz = os.environ.get(
+        "AA_CORP_PROJECT_DISCORD_DAILY_TZ", "America/New_York"
+    ).strip()
+    if daily_tz and os.environ.get("AA_CORP_PROJECT_DISCORD_ENABLED", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    ):
         settings.setdefault("CELERY_TIMEZONE", daily_tz)
 
 
