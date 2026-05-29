@@ -1,0 +1,178 @@
+{% extends 'moonmining/base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block details %}
+<link href="{% static 'moonrentals/css/rentals.css' %}" rel="stylesheet">
+
+<div class="container-fluid moonrentals-page">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">{% translate "Renter Management" %}</h2>
+        {% if is_admin and settings_form %}
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#rentalSettingsModal">
+            <i class="fas fa-cog"></i> {% translate "Settings" %}
+        </button>
+        {% endif %}
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a class="nav-link {% if tab != 'available' %}active{% endif %}" href="?tab=leases">
+                {% translate "Active Leases" %}
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'available' %}active{% endif %}" href="?tab=available">
+                {% translate "Available Moons" %}
+            </a>
+        </li>
+    </ul>
+
+    {% if tab == 'available' %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover" id="available-moons-table">
+            <thead>
+                <tr>
+                    <th>{% translate "Moon" %}</th>
+                    <th>{% translate "Volume (m³)" %}</th>
+                    <th>{% translate "Est. Value" %}</th>
+                    <th>{% translate "Suggested Rent" %}</th>
+                    <th>{% translate "Actions" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in available_moons %}
+                <tr>
+                    <td>{{ row.moon }}</td>
+                    <td>{{ row.volume_m3|floatformat:0 }}</td>
+                    <td>{{ row.estimated_value_isk|floatformat:0 }} ISK</td>
+                    <td>{{ row.suggested_rent_isk|floatformat:0 }} ISK</td>
+                    <td>
+                        {% if is_admin or can_apply %}
+                        <a class="btn btn-sm btn-primary" href="{% url 'moonmining:configure_lease' row.moon_id %}">
+                            {% translate "Rent This Moon" %}
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-muted">{% translate "No available moons (surveyed, no structure, no lease)." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    {% if is_admin and pending_applications %}
+    <div class="mb-4">
+        <h4>{% translate "Pending applications" %}</h4>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead>
+                    <tr>
+                        <th>{% translate "Moon" %}</th>
+                        <th>{% translate "Applicant" %}</th>
+                        <th>{% translate "Corp" %}</th>
+                        <th>{% translate "Proposed rent" %}</th>
+                        <th>{% translate "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in pending_applications %}
+                    <tr>
+                        <td>{{ app.moon.eve_moon.eve_planet.eve_solar_system.name }} - {{ app.moon.eve_moon.name }}</td>
+                        <td>{{ app.applicant.username }}</td>
+                        <td>{{ app.renter_corporation }}</td>
+                        <td>{{ app.proposed_rent_isk|floatformat:0 }} ISK</td>
+                        <td class="text-nowrap">
+                            <form method="post" action="{% url 'moonmining:approve_application' app.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success">{% translate "Approve" %}</button>
+                            </form>
+                            <form method="post" action="{% url 'moonmining:reject_application' app.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">{% translate "Reject" %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover" id="active-leases-table">
+            <thead>
+                <tr>
+                    <th>{% translate "Moon" %}</th>
+                    <th>{% translate "Status" %}</th>
+                    <th>{% translate "Renter Corp" %}</th>
+                    <th>{% translate "Main POC" %}</th>
+                    <th>{% translate "ISK / Month" %}</th>
+                    <th>{% translate "Payment" %}</th>
+                    <th>{% translate "Due" %}</th>
+                    {% if is_admin %}<th>{% translate "Fuel" %}</th><th>{% translate "Actions" %}</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in active_leases %}
+                <tr>
+                    <td>{{ row.moon }}</td>
+                    <td><span class="badge bg-{% if row.status == 'active' %}success{% elif row.status == 'grace' %}warning{% else %}secondary{% endif %}">{{ row.status }}</span></td>
+                    <td>{{ row.renter_corporation }}</td>
+                    <td>{{ row.main_poc|default:"—" }}</td>
+                    <td>{{ row.monthly_rent_isk|floatformat:0 }}</td>
+                    <td>
+                        {% if row.payment_status == 'paid' %}
+                        <span class="text-success">● {% translate "Paid" %}</span>
+                        {% elif row.payment_status == 'overdue' %}
+                        <span class="text-danger">● {% translate "Overdue" %}</span>
+                        {% else %}
+                        <span class="text-warning">● {% translate "Unpaid" %}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ row.payment_due }}</td>
+                    {% if is_admin %}
+                    <td>{% if row.fuel_percent != None %}{{ row.fuel_percent }}%{% else %}—{% endif %}</td>
+                    <td class="text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'moonmining:configure_lease' row.moon_id %}">{% translate "Edit" %}</a>
+                        <form method="post" action="{% url 'moonmining:evict_lease' row.id %}" class="d-inline" onsubmit="return confirm('{% translate "Evict this lease?" %}');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger">{% translate "Evict" %}</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="{% if is_admin %}9{% else %}7{% endif %}" class="text-muted">{% translate "No active leases." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{% if is_admin and settings_form %}
+<div class="modal fade" id="rentalSettingsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'moonmining:renter_settings' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% translate "Renter Module Global Settings" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>{% translate "Wallet compliance" %}</h6>
+                    {{ settings_form.as_p }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% translate "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% translate "Save Changes" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+{% load navactive %}
+{% load settings %}
+{% analytics as allow_analytics %}
+
+{% block extra_css %}
+    {% include "bundles/datatables-css-bs5.html" %}
+{% endblock %}
+
+{% block page_title %}{% translate "Mining" %}{% endblock %}
+
+{% block header_nav_brand %}
+    {% translate "Moon mining" %}
+{% endblock %}
+
+{% block header_nav_collapse_left %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'miningtaxes:index' %}" href="{% url 'miningtaxes:index' %}">{% translate 'Home' %}</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'miningtaxes:launcher' %}" href="{% url 'miningtaxes:launcher' %}">{% translate 'Setup' %}</a>
+    </li>
+    {% if perms.miningtaxes.auditor_access %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'moon_rentals:schedule' %}" href="{% url 'moon_rentals:schedule' %}">{% translate 'Moon schedule' %}</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'miningtaxes_ext:moon_ore_report' %}" href="{% url 'miningtaxes_ext:moon_ore_report' %}">{% translate 'Moon ore report' %}</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'miningtaxes:admin_tables' %}" href="{% url 'miningtaxes:admin_tables' %}">{% translate 'Audit data' %}</a>
+    </li>
+    {% endif %}
+    {% if perms.miningtaxes.admin_access %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'miningtaxes:admin_launcher' %}" href="{% url 'miningtaxes:admin_launcher' %}">{% translate 'Admin setup' %}</a>
+    </li>
+    {% endif %}
+{% endblock header_nav_collapse_left %}
+
+{% block content %}
+<div class="miningtaxes container-fluid">
+    <br/>
+    {% block details %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+{% include "bundles/datatables-js-bs5.html" %}
+{% if allow_analytics %}
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LF8WFVQZSS"></script>
+<script> if (typeof gtag === "function") { gtag('config', 'G-LF8WFVQZSS'); } else { window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-LF8WFVQZSS');} </script>
+{% endif %}
+{% endblock %}

@@ -407,8 +407,12 @@ services:
       - "${CADDY_HTTPS_PUBLISH_PORT:-443}:443"
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy/Caddyfile.test-routes:/etc/caddy/Caddyfile.test-routes:ro
       - eve_emu_caddy_data:/data
       - eve_emu_caddy_config:/config
+    networks:
+      - default
+      - eve_emu_edge
     depends_on:
       aa-web:
         condition: service_healthy
@@ -545,3 +549,8 @@ volumes:
   eve_emu_youtrack_conf: {}
   eve_emu_youtrack_logs: {}
   eve_emu_youtrack_backups: {}
+
+networks:
+  eve_emu_edge:
+    name: eve_emu_edge
+    driver: bridge

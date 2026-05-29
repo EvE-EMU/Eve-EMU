@@ -1,0 +1,42 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+
+{% block page_title %}{% translate "Import moon pops" %}{% endblock %}
+{% block header_nav_brand %}{% translate "Import moon pops" %}{% endblock %}
+
+{% block content %}
+<div class="col-lg-10">
+    <p class="text-muted">
+        {% translate "One moon per line:" %} <code>{% translate "SYSTEM ORBIT - Moon N" %}</code>
+        + tab + <code>MM/DD/YYYY HH:MM:SS</code>.
+        {% translate "Append" %} <code>|username</code> {% translate "for a private rental (e.g." %}
+        <code>9SBB-9 VII - Moon 20	5/28/2026 19:00:00|sevey</code>).
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label" for="paste">{% translate "Paste schedule" %}</label>
+            <textarea class="form-control font-monospace" id="paste" name="paste" rows="12" placeholder="TV8-HS VII - Moon 4	6/2/2026 20:00:00"></textarea>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label class="form-label" for="default_kind">{% translate "Default type" %}</label>
+                <select class="form-select" name="default_kind" id="default_kind">
+                    <option value="corp">{% translate "False Gods corp moon" %}</option>
+                    <option value="private">{% translate "Private rental" %}</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="default_owner">{% translate "Default private owner (Auth username)" %}</label>
+                <input class="form-control" type="text" name="default_owner" id="default_owner" placeholder="sevey">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="program_id">{% translate "Buyback program ID" %}</label>
+                <input class="form-control" type="number" name="program_id" id="program_id" value="{{ default_program_id }}">
+            </div>
+        </div>
+        <button class="btn btn-primary" type="submit" name="redirect" value="list">{% translate "Import" %}</button>
+        <a class="btn btn-outline-secondary" href="{% url 'moon_rentals:schedule' %}">{% translate "Back" %}</a>
+    </form>
+</div>
+{% endblock %}

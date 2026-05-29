@@ -1,0 +1,100 @@
+# Isolated test stack for https://test.eve-emu.com (merge with root docker-compose.yml).
+#
+#   docker network create eve_emu_edge 2>$null; docker network create eve_emu_edge
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file .env.test up -d --build
+#
+# Production Caddy (same host) routes auth.test.* / test.* via docker/caddy/Caddyfile.test-routes
+# after joining network eve_emu_edge (see docs/TEST_ENV.md).
+
+name: eve-emu-test
+
+services:
+  db:
+    volumes:
+      - eve_emu_test_pgdata:/var/lib/postgresql/data
+
+  redis:
+    volumes:
+      - eve_emu_test_redis:/data
+
+  aa-web:
+    container_name: eve-emu-test-aa-web
+    volumes:
+      - eve_emu_test_aa_static:/app/site/staticfiles
+      - eve_emu_test_aa_oidc:/app/site/oidc
+    networks:
+      - default
+      - eve_emu_edge
+
+  core-api:
+    container_name: eve-emu-test-core-api
+    networks:
+      - default
+      - eve_emu_edge
+
+  core-web:
+    container_name: eve-emu-test-core-web
+    networks:
+      - default
+      - eve_emu_edge
+
+  market-api:
+    container_name: eve-emu-test-market-api
+    networks:
+      - default
+      - eve_emu_edge
+
+  market-web:
+    container_name: eve-emu-test-market-web
+    networks:
+      - default
+      - eve_emu_edge
+
+  wikijs:
+    container_name: eve-emu-test-wikijs
+    volumes:
+      - eve_emu_test_wikijs_data:/wiki/data
+      - eve_emu_test_wikijs_config:/wiki/config
+    networks:
+      - default
+      - eve_emu_edge
+
+  # Test stack does not bind 80/443; production Caddy terminates TLS.
+  caddy:
+    profiles:
+      - test-caddy-disabled
+
+  aa-worker:
+    container_name: eve-emu-test-aa-worker
+    volumes:
+      - eve_emu_test_aa_static:/app/site/staticfiles
+
+  aa-beat:
+    container_name: eve-emu-test-aa-beat
+
+  # Optional heavy services — omit on test unless you enable profile `test-heavy`.
+  wanderer:
+    profiles: [test-heavy]
+  wanderer-route-builder:
+    profiles: [test-heavy]
+  wanderer-kills:
+    profiles: [test-heavy]
+  youtrack:
+    profiles: [test-heavy]
+  emu-bot:
+    profiles: [test-heavy]
+  aa-discordbot:
+    profiles: [test-heavy]
+
+volumes:
+  eve_emu_test_pgdata: {}
+  eve_emu_test_redis: {}
+  eve_emu_test_aa_static: {}
+  eve_emu_test_aa_oidc: {}
+  eve_emu_test_wikijs_data: {}
+  eve_emu_test_wikijs_config: {}
+
+networks:
+  eve_emu_edge:
+    external: true
+    name: eve_emu_edge

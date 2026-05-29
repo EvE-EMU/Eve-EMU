@@ -80,6 +80,11 @@ http://auth.{$SITE_HOST} {
 }
 
 {$SITE_HOST} {
+	@aa_dashboard path /dashboard /dashboard/*
+	handle @aa_dashboard {
+		redir https://auth.{host}{uri} temporary
+	}
+
 	@market_api path /api/market/*
 	handle @market_api {
 		reverse_proxy market-api:8010 {
@@ -108,3 +113,6 @@ http://auth.{$SITE_HOST} {
 www.{$SITE_HOST} {
 	redir https://{$SITE_HOST}{uri} permanent
 }
+
+# Optional test stack (eve-emu-test) — see docs/TEST_ENV.md
+import /etc/caddy/Caddyfile.test-routes

@@ -3,6 +3,9 @@
 aa-package-monitor==3.0.0
 aa-taskmonitor==1.0.0
 allianceauth-securegroups==0.10.1
+aa-memberaudit==5.0.0
+aa-memberaudit-securegroups==1.0.1
+aa-miningtaxes==2.0.1
 allianceauth-celeryanalytics==0.1.1
 aa-charlink==1.14.0
 aa-esi-status==3.3.5
@@ -15,7 +18,7 @@ aa-structuretimers==3.0.0
 aa-moonmining==3.0.0
 aa-metenox==1.6.3
 aa-buybackprogram==2.3.4
-indy-hub==1.17.0
+indy-hub==1.17.1
 aa-market-manager==2.0.0
 aa-killtracker==2.0.0
 aa-killstats==3.0.0

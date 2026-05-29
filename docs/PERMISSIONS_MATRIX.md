@@ -1,0 +1,115 @@
+﻿# Alliance Auth permissions matrix
+
+Generated from live DB (States, Django Groups, AuthGroups).
+Yes = permission granted on that state/group.
+
+| Permission | State: Member | State: Blue | State: Guest | Group: <A5OCT> | Group: <A5OCT> Officer | Group: <F4L5E> | Group: Commander | Group: D1 | Group: D2 | Group: D3 | Group: Director | Group: Heavy Industry | Group: Logistics | Group: Members | Group: Officer | Group: Personnel | Group: Project Manager | Group: R&D | Group: Reprocessing | Group: Sales | Group: Staff | Group: Tester | Group: Website team |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| aa_contacts.manage_alliance_contacts |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| aa_contacts.manage_corporation_contacts |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| aasrp.basic_access | Yes |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| aasrp.create_srp |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| aasrp.manage_srp |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| aasrp.manage_srp_requests |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| afat.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| afat.log_view |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| afat.manage_afat |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| afat.stats_corporation_other |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| afat.stats_corporation_own | Yes |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| allianceauth_oidc.access_oidc |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  | Yes |
+| auth.group_management |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| auth.logging_notifications |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| blueprints.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| blueprints.manage_requests |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| blueprints.request_blueprints |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| buybackprogram.basic_access | Yes |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| buybackprogram.manage_programs |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| buybackprogram.see_all_statics |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| buybackprogram.see_leaderboard |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| buybackprogram.see_performance |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corp_orders.claim_fulfillment |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| corp_orders.create_corp_contract |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corp_orders.create_order |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corp_orders.manage_orders |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.alliance_corp_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.alliance_hr |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.corp_hr |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.global_corp_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.global_hr |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.guest_hr |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.holding_corp_assets |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.holding_corp_structures |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.holding_corp_wallets |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.own_corp_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.show_if_director |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.state_corp_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| corptools.state_hr |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| discord.access_discord |  |  |  |  |  | Yes |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  |  |
+| eve_sde.admin_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| fittings.access_fittings |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| fittings.manage |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| fleetpings.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| groupmanagement.request_groups |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| inactivity.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| inactivity.manage_leave |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| indy_hub.can_access_indy_hub | Yes |  |  |  |  | Yes |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| indy_hub.can_manage_corp_bp_requests |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| indy_hub.can_manage_material_hub |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| killstats.admin_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| killstats.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.advanced_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.char_audit_admin_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.char_audit_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.corp_audit_admin_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.corp_audit_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| ledger.manage_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| madc.admin_access |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| madc.alliance_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| madc.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| madc.corp_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| madc.manage_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.advanced_market_browser |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.basic_market_browser |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.basic_market_watches |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.can_add_token_character |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.can_add_token_corporation |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.order_highlight_corporation |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| marketmanager.order_highlight_user |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.characters_access |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.exports_access |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.finder_access |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.notified_on_character_removal |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.reports_access |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| memberaudit.share_characters |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |
+| metenox.auditor |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| metenox.corporation_manager |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| moonmining.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| moonmining.extractions_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| moonmining.reports_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| moonmining.upload_moon_scan |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| package_monitor.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| securegroups.access_sec_group |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| securegroups.audit_sec_group |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| skillfarm.admin_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| skillfarm.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| skillfarm.corp_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| sovtimer.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| srppayouts.admin_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| srppayouts.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| standing_fleet_tracker.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes | Yes |
+| standing_fleet_tracker.manage_standing_fleet |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes | Yes |
+| structures.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| structuretimers.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| structuretimers.create_timer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| structuretimers.manage_timer |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| structuretimers.opsec_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| taxsystem.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| taxsystem.create_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| taxsystem.manage_alliances |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| taxsystem.manage_corps |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| taxsystem.manage_own_alliance |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| taxsystem.manage_own_corp |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| top.basic_access |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | Yes |
+| wikijs.access_wikijs |  |  |  |  |  | Yes |  |  |  |  |  |  |  | Yes |  |  |  |  |  |  |  |  | Yes |

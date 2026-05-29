@@ -1,0 +1,57 @@
+openapi: 3.0.3
+info:
+  title: Alliance Auth Moon Rental System API
+  version: 1.0.0
+paths:
+  /moonmining/api/rentals/leases:
+    get:
+      summary: Retrieve active leases and available moons
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Lease and availability payload
+    post:
+      summary: Create or update a lease (admin) or submit application (renter)
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                moon_id: { type: integer }
+                monthly_rent_isk: { type: integer }
+                renter_corporation: { type: string }
+      responses:
+        "200":
+          description: Lease saved
+        "201":
+          description: Application submitted
+  /moonmining/api/rentals/config:
+    put:
+      summary: Update ledger criteria and webhook targets
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wallet_division: { type: integer }
+                keyword_match: { type: string }
+                fuel_webhook: { type: string, format: uri }
+                payment_webhook: { type: string, format: uri }
+      responses:
+        "200":
+          description: Settings saved
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

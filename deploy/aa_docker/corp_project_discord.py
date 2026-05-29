@@ -69,6 +69,13 @@ CORP_PROJECT_CLOSED_TYPES: frozenset[str] = frozenset(
     }
 )
 
+CORP_PROJECT_COMPLETED_TYPES: frozenset[str] = frozenset(
+    {
+        "CorporationGoalCompleted",
+        "FreelanceProjectCompleted",
+    }
+)
+
 _DISCORD_EVENT_TITLES: dict[str, str] = {
     "CorporationGoalCreated": "Project created",
     "FreelanceProjectCreated": "Project created",
@@ -267,6 +274,21 @@ def manufacturing_tier(goal_name: str) -> str | None:
     if "d0 manufacturing" in name:
         return "d0"
     return None
+
+
+def completed_discord_tiers() -> frozenset[str]:
+    """Manufacturing tiers that post to Discord on **Completed** (default: D0 only)."""
+    raw = os.environ.get("AA_CORP_PROJECT_DISCORD_COMPLETED_TIERS", "d0").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
+
+
+def goal_name_posts_completed_discord(goal_name: str) -> bool:
+    tier = manufacturing_tier(goal_name)
+    if tier is None or tier not in completed_discord_tiers():
+        return False
+    return resolve_corp_project_destination(goal_name) is not None
 
 
 _AVAILABILITY_BUTTON_LABEL = "Confirm availability"
@@ -816,8 +838,15 @@ def fetch_project_detail_from_esi(
 
 def _extract_project_stats(detail: dict[str, Any] | None) -> dict[str, Any]:
     """total_qty, total_isk, isk_per_item from ESI corp project detail."""
+    empty_stats: dict[str, Any] = {
+        "total_qty": None,
+        "total_isk": None,
+        "isk_per_item": None,
+        "progress_current": None,
+        "progress_desired": None,
+    }
     if not detail:
-        return {"total_qty": None, "total_isk": None, "isk_per_item": None}
+        return empty_stats
 
     progress = _as_mapping(detail.get("progress"))
     contribution = _as_mapping(detail.get("contribution"))
@@ -854,7 +883,9 @@ def _format_progress(current: Any, desired: Any) -> str | None:
 def _project_embed_fields(detail: dict[str, Any] | None) -> list[dict[str, Any]]:
     stats = _extract_project_stats(detail)
     fields: list[dict[str, Any]] = []
-    progress = _format_progress(stats["progress_current"], stats["progress_desired"])
+    progress = _format_progress(
+        stats.get("progress_current"), stats.get("progress_desired")
+    )
     if progress:
         fields.append(
             {
@@ -1080,9 +1111,15 @@ def send_corp_project_discord_message(
 
 
 def _event_lookback_minutes() -> int:
-    return int(
-        os.environ.get("AA_CORP_PROJECT_DISCORD_EVENT_LOOKBACK_MINUTES", "45")
-    )
+    """How far back to scan Created/Completed notifications (EVE event time).
+
+    Default is at least 3× the poll interval (min 180 minutes) so a missed beat
+    cycle or delayed CorpTools notification sync still triggers an alert.
+    """
+    if os.environ.get("AA_CORP_PROJECT_DISCORD_EVENT_LOOKBACK_MINUTES"):
+        return int(os.environ["AA_CORP_PROJECT_DISCORD_EVENT_LOOKBACK_MINUTES"])
+    poll_seconds = int(os.environ.get("AA_CORP_PROJECT_DISCORD_POLL_SECONDS", "1800"))
+    return max(180, (poll_seconds // 60) * 3)
 
 
 def collect_outstanding_open_project_notifications(
@@ -1139,6 +1176,7 @@ def _process_corp_project_notifications(
     notification_types: frozenset[str],
     *,
     lookback_minutes: int,
+    goal_filter: Any | None = None,
 ) -> dict[str, int]:
     if not corp_project_discord_enabled():
         return {"skipped": 1, "sent": 0, "examined": 0}
@@ -1178,6 +1216,9 @@ def _process_corp_project_notifications(
             )
             continue
 
+        if goal_filter is not None and not goal_filter(goal_name):
+            continue
+
         destination = resolve_corp_project_destination(goal_name)
         if destination is None:
             continue
@@ -1193,7 +1234,16 @@ def _process_corp_project_notifications(
             _mark_sent(notification.notification_id)
             continue
 
-        embed, components = build_discord_message(notification)
+        try:
+            embed, components = build_discord_message(notification)
+        except Exception:
+            logger.exception(
+                "corp_project_discord: failed to build message for %r (notification %s)",
+                goal_name,
+                notification.notification_id,
+            )
+            continue
+
         if send_corp_project_discord_message(destination, embed, components):
             _mark_sent(notification.notification_id)
             if _dedupe_by_goal_enabled() and goal_id:
@@ -1218,21 +1268,122 @@ def process_corp_project_created_alerts() -> dict[str, int]:
 
 
 def process_corp_project_completed_alerts() -> dict[str, int]:
-    """Completed/closed/expired corp projects, every ~30 minutes."""
+    """Post **Completed** corp projects for configured tiers (default: D0 manufacturing)."""
+    if not completed_discord_tiers():
+        logger.info("corp_project_discord: completed posting disabled (empty COMPLETED_TIERS)")
+        return {"skipped": 1, "sent": 0, "examined": 0}
     return _process_corp_project_notifications(
-        CORP_PROJECT_CLOSED_TYPES,
+        CORP_PROJECT_COMPLETED_TYPES,
         lookback_minutes=_event_lookback_minutes(),
+        goal_filter=goal_name_posts_completed_discord,
     )
 
 
-def process_corp_project_discord_alerts() -> dict[str, int]:
-    """Legacy combined pass (created + completed). Prefer split tasks in Celery beat."""
-    created = process_corp_project_created_alerts()
-    completed = process_corp_project_completed_alerts()
+def backfill_completed_corp_project_discord(
+    *,
+    dry_run: bool = False,
+    days: int | None = None,
+    force: bool = False,
+) -> dict[str, int]:
+    """One-shot: post Discord alerts for recent **Completed** notifications (e.g. missed D0)."""
+    if not corp_project_discord_enabled() or not completed_discord_tiers():
+        return {"skipped": 1, "sent": 0, "examined": 0}
+
+    try:
+        from corptools.models import Notification
+    except ImportError:
+        return {"skipped": 1, "sent": 0, "examined": 0}
+
+    if days is None:
+        days = int(os.environ.get("AA_CORP_PROJECT_DISCORD_BACKFILL_DAYS", "365"))
+    since = timezone.now() - timedelta(days=max(1, days))
+
+    qs = (
+        Notification.objects.filter(
+            notification_type__in=CORP_PROJECT_COMPLETED_TYPES,
+            timestamp__gte=since,
+        )
+        .select_related("notification_text", "character__character")
+        .order_by("timestamp")
+    )
+
+    examined = 0
+    latest_by_goal: dict[str, Any] = {}
+    for notification in qs.iterator(chunk_size=500):
+        examined += 1
+        notif_text = (
+            notification.notification_text.notification_text
+            if notification.notification_text
+            else None
+        )
+        goal_name = parse_goal_name(notif_text)
+        if not goal_name or not goal_name_posts_completed_discord(goal_name):
+            continue
+        goal_id = parse_goal_id(notif_text)
+        if not goal_id:
+            continue
+        prev = latest_by_goal.get(goal_id)
+        if prev is None or notification.timestamp >= prev.timestamp:
+            latest_by_goal[goal_id] = notification
+
+    sent = 0
+    for goal_id, notification in latest_by_goal.items():
+        notif_text = (
+            notification.notification_text.notification_text
+            if notification.notification_text
+            else None
+        )
+        goal_name = parse_goal_name(notif_text) or ""
+        if not force and _already_sent(notification.notification_id):
+            continue
+
+        destination = resolve_corp_project_destination(goal_name)
+        if destination is None:
+            continue
+
+        event_kind = _event_kind(notification.notification_type)
+        if (
+            not force
+            and _dedupe_by_goal_enabled()
+            and _already_sent_goal(goal_id, event_kind)
+        ):
+            continue
+
+        if dry_run:
+            sent += 1
+            continue
+
+        try:
+            embed, components = build_discord_message(notification)
+        except Exception:
+            logger.exception(
+                "corp_project_discord backfill completed: build failed for %r",
+                goal_name,
+            )
+            continue
+
+        if send_corp_project_discord_message(destination, embed, components):
+            _mark_sent(notification.notification_id)
+            if _dedupe_by_goal_enabled():
+                _mark_sent_goal(goal_id, event_kind)
+            sent += 1
+
     return {
-        "skipped": created.get("skipped", 0) or completed.get("skipped", 0),
-        "sent": created.get("sent", 0) + completed.get("sent", 0),
-        "examined": created.get("examined", 0) + completed.get("examined", 0),
+        "skipped": 0,
+        "sent": sent,
+        "examined": examined,
+        "goals": len(latest_by_goal),
+        "dry_run": dry_run,
+    }
+
+
+def process_corp_project_discord_alerts() -> dict[str, int]:
+    """Legacy pass kept for compatibility; only created/open alerts are sent."""
+    created = process_corp_project_created_alerts()
+    return {
+        "skipped": created.get("skipped", 0),
+        "sent": created.get("sent", 0),
+        "examined": created.get("examined", 0),
     }
 
 
@@ -1275,7 +1426,15 @@ def post_daily_outstanding_corp_project_digest(
         if corp_id:
             invalidate_project_esi_cache(int(corp_id), goal_name)
 
-        embed, components = build_discord_message(notification, digest=True)
+        try:
+            embed, components = build_discord_message(notification, digest=True)
+        except Exception:
+            logger.exception(
+                "corp_project_discord daily: failed to build digest for %r",
+                goal_name,
+            )
+            continue
+
         if send_corp_project_discord_message(destination, embed, components):
             _mark_sent_daily_digest(goal_id, digest_date)
             sent += 1
@@ -1354,7 +1513,15 @@ def backfill_outstanding_corp_project_discord(
             if corp_id:
                 invalidate_project_esi_cache(int(corp_id), goal_name)
 
-        embed, components = build_discord_message(notification)
+        try:
+            embed, components = build_discord_message(notification)
+        except Exception:
+            logger.exception(
+                "corp_project_discord backfill: failed to build message for %r",
+                goal_name,
+            )
+            continue
+
         if send_corp_project_discord_message(destination, embed, components):
             _mark_sent(notification.notification_id)
             if _dedupe_by_goal_enabled():

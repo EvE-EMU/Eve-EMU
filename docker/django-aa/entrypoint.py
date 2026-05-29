@@ -21,6 +21,18 @@ if not argv:
 
 def _apply_allianceauth_patches() -> None:
     """Overlay eve-emu patches onto the mounted Alliance Auth tree when writable."""
+    compat = Path("/app/deploy/aa_docker/patch_allianceauth_providers_compat.py")
+    if compat.is_file():
+        try:
+            import subprocess
+
+            subprocess.run(
+                [sys.executable, str(compat)],
+                check=False,
+            )
+        except OSError:
+            pass
+
     patch = Path("/app/deploy/aa_docker/patches/discord/core.py")
     target = Path("/opt/allianceauth/allianceauth/services/modules/discord/core.py")
     if not patch.is_file() or not target.parent.is_dir():

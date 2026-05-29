@@ -1,0 +1,77 @@
+{% extends 'miningtaxes/base.html' %}
+{% load i18n %}
+{% load static %}
+{% load humanize %}
+{% load evelinks %}
+
+{% block details %}
+    <div class="card card-default">
+        <div class="card-header" style="display:flex;">
+            <h5 class="card-title">{% translate 'Combined mining ledger' %}</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small">
+                {% translate 'Quantities in m³ and estimated value in ISK (mining-taxes pricing). Tax balances are not shown here.' %}
+            </p>
+            <div class="table-responsive">
+                <table class="table table-striped table-width-fix" id="tab_mining_ledger">
+                    <thead>
+                        <tr>
+                            <th>{% translate 'Date' %}</th>
+                            <th>{% translate 'Solar System' %}</th>
+                            <th>{% translate 'Ore type' %}</th>
+                            <th class="text-end">{% translate 'Quantity (m³)' %}</th>
+                            <th class="text-end">{% translate 'Value (ISK)' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock details %}
+
+{% block extra_javascript %}
+{{ block.super }}
+{% include 'bundles/datatables-js-bs5.html' %}
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/global.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/miningtaxes.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/launcher.css' %}" type="text/css">
+{% endblock %}
+
+{% block extra_script %}
+$(document).ready(function () {
+    $('#tab_mining_ledger').DataTable({
+        ajax: {
+            url: "{% url 'miningtaxes_ext:user_ledger_ore_json' user_pk %}",
+            dataSrc: 'data',
+            cache: false
+        },
+        pageLength: 25,
+        order: [[0, 'desc']],
+        columns: [
+            { data: 'date' },
+            { data: 'system' },
+            { data: 'ore' },
+            {
+                data: 'quantity',
+                className: 'text-end',
+                render: $.fn.dataTable.render.number(',', '.', 0)
+            },
+            {
+                data: 'value_isk',
+                className: 'text-end',
+                render: function (data) {
+                    return Number(data || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                }
+            },
+        ],
+    });
+});
+{% endblock %}

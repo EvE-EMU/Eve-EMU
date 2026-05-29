@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const marketTools = [
   { href: "/margin_finder", label: "Margin finder" },
   { href: "/market_trends", label: "Market trends" },
@@ -13,9 +15,9 @@ export function SiteNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0d11]/95 backdrop-blur">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2">
-        <a href="/" className="mr-2 text-sm font-semibold tracking-wide text-white">
+        <Link href="/" className="mr-2 text-sm font-semibold tracking-wide text-white">
           eve-emu
-        </a>
+        </Link>
         {marketTools.map((tool) => (
           <a
             key={tool.href}

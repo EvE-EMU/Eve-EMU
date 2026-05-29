@@ -1,0 +1,81 @@
+{% extends 'miningtaxes/base.html' %}
+{% load i18n %}
+{% load static %}
+{% load humanize %}
+{% load evelinks %}
+
+{% block details %}
+    <div class="card card-default">
+        <div class="card-header" style="display:flex;">
+		<span class="card-title mb-0">Ore prices for 1000 units per ore</span>
+        </div>
+        <div class="card-body">
+		<a href="https://evetools.dev/moonlink.html">Click here to see how raw moon ore leads to reaction products.</a><br/>
+		<br/>
+
+    <div class="table-responsive">
+        <table class="table table-striped " id="ore_prices">
+            <thead>
+                <tr>
+                    <th>{% translate 'Ore Group' %}</th>
+                    <th>{% translate 'Ore' %}</th>
+                    <th>{% translate 'Raw' %}</th>
+                    <th>{% translate 'Refined' %}</th>
+                    <th>{% translate 'Tax Rate' %}</th>
+                    <th>{% translate 'Taxes' %}</th>
+                    <th>{% translate 'After Taxes' %}</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+	</div>
+    </div>
+
+{% endblock details %}
+
+{% block extra_javascript %}
+{{ block.super }}
+{% include 'bundles/datatables-js-bs5.html' %}
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/global.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/miningtaxes.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/launcher.css' %}" type="text/css">
+{% endblock %}
+
+{% block extra_script %}
+$(document).ready(function () {
+        $('#ore_prices').DataTable({
+            ajax: {
+                url: "{% url 'miningtaxes:ore_prices_json' %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                { data: 'group' },
+                { data: 'name' },
+                {
+                    data: 'raw',
+                    render: $.fn.dataTable.render.number(',', '.', 2)
+                },
+                {
+                    data: 'refined',
+                    render: $.fn.dataTable.render.number(',', '.', 2)
+                },
+                { data: 'tax_rate', },
+                {
+                    data: 'tax',
+                    render: $.fn.dataTable.render.number(',', '.', 2)
+                },
+                {
+                    data: 'remaining',
+                    render: $.fn.dataTable.render.number(',', '.', 2)
+                },
+            ],
+            order: [[6, "desc"]],
+	    pageLength: 50
+        });
+});
+{% endblock %}

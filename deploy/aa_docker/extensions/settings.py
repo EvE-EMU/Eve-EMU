@@ -4,6 +4,23 @@ from __future__ import annotations
 
 import os
 
+# Alliance Auth built-in Services → Discord (OAuth link + role sync).
+DISCORD_SERVICE_APP = "allianceauth.services.modules.discord"
+
+
+def discord_service_enabled() -> bool:
+    """True when corp Discord service should load (bot token + guild id in env)."""
+    if os.environ.get("AA_DISCORD_SERVICE_ENABLED", "").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
+    ):
+        return False
+    token = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
+    guild = os.environ.get("DISCORD_GUILD_ID", "").strip()
+    return bool(token and guild)
+
 
 def _app_installed(installed: set[str], label: str) -> bool:
     """True if *label* is in INSTALLED_APPS (short name or AppConfig path)."""
@@ -38,9 +55,11 @@ def _apply_discord_settings(settings: dict) -> None:
             settings[key] = val
     if site_url and not str(settings.get("DISCORD_CALLBACK_URL", "")).strip():
         settings.setdefault("DISCORD_CALLBACK_URL", f"{site_url}/discord/callback/")
-    sync = os.environ.get("DISCORD_SYNC_NAMES", "").strip()
+    sync = os.environ.get("DISCORD_SYNC_NAMES", "1").strip()
     if sync:
         settings["DISCORD_SYNC_NAMES"] = sync.lower() in ("1", "true", "yes", "on")
+    else:
+        settings.setdefault("DISCORD_SYNC_NAMES", True)
     admin_channels = os.environ.get("DISCORD_ADMIN_BOT_CHANNELS", "").strip()
     if admin_channels:
         settings["ADMIN_DISCORD_BOT_CHANNELS"] = [
@@ -184,6 +203,37 @@ def apply_extension_settings(settings: dict) -> None:
         settings.setdefault("BUYBACKPROGRAM_PRICE_METHOD", "Janice")
     if janice_key:
         settings["BUYBACKPROGRAM_PRICE_JANICE_API_KEY"] = janice_key
+
+    if _app_installed(installed, "miningtaxes"):
+        mt_method = os.environ.get("MININGTAXES_PRICE_METHOD", "").strip()
+        if mt_method:
+            settings["MININGTAXES_PRICE_METHOD"] = mt_method
+        else:
+            settings.setdefault("MININGTAXES_PRICE_METHOD", "Fuzzwork")
+        mt_janice = (
+            os.environ.get("MININGTAXES_PRICE_JANICE_API_KEY", "").strip() or janice_key
+        )
+        if mt_janice:
+            settings["MININGTAXES_PRICE_JANICE_API_KEY"] = mt_janice
+            if not mt_method:
+                settings["MININGTAXES_PRICE_METHOD"] = "Janice"
+        corp_div = os.environ.get("MININGTAXES_CORP_WALLET_DIVISION", "").strip()
+        if corp_div.isdigit():
+            settings["MININGTAXES_CORP_WALLET_DIVISION"] = int(corp_div)
+        # Corp moon observer logs only (private moons ignored for taxing).
+        settings.setdefault("MININGTAXES_TAX_ONLY_CORP_MOONS", True)
+        if os.environ.get("MININGTAXES_TAX_ONLY_CORP_MOONS", "").strip().lower() in (
+            "0",
+            "false",
+            "no",
+            "off",
+        ):
+            settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = False
+
+    if _app_installed(installed, "moon_rentals"):
+        webhook = os.environ.get("MOON_RENTALS_DISCORD_WEBHOOK_URL", "").strip()
+        if webhook:
+            settings["MOON_RENTALS_DISCORD_WEBHOOK_URL"] = webhook
 
     if os.environ.get("AA_OIDC_ENABLED", "1").strip().lower() in (
         "1",

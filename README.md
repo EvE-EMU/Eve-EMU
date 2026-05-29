@@ -16,7 +16,7 @@ Heavy ESI pulls (moon ledgers, market prices, corp industry) should run in **Cel
 
 ## Quick links
 
-- **Alliance Auth in this repo:** `docs/ALLIANCE_AUTH.md`
+- **Alliance Auth in this repo:** `docs/ALLIANCE_AUTH.md` (includes **Moon Mining** renter leases, pop schedule, corp project Discord, and extension bundle)
 - **Security expectations (ESI tokens, webhooks):** `SECURITY.md`
 - **Privacy / terms:** `PRIVACY.md`, `TERMS.md`
 - **License:** `LICENSE.md` (AGPL-3.0-only for EvE-EMU–origin code; third-party licenses apply to bundled components)
@@ -32,5 +32,6 @@ From the repository root: copy **`.env.example`** to **`.env`**, fill ESI/Discor
 - **Industrial Command:** corp/coalition build plans split into sub-orders; claims via Discord + web; ESI-backed status sync.
 - **Emu-Bot:** industrial alerts, killmail routing, EVE title → Discord role mapping (alongside existing core rank sync).
 - **Web:** moon tax tooling, BPC request index, logistics calculator, per-user Discord alert toggles (see `core-web/src/app/industrial/`).
+- **Moon rentals (AA):** lease tracking, wallet payment matching, fuel alerts — `docs/ALLIANCE_AUTH.md` § Moon renter management; module docs in `deploy/aa_docker/patches/moonmining/rentals/README.md`.
 
 Contributions welcome; open an issue before large architectural changes.

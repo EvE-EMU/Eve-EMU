@@ -15,6 +15,8 @@ WORKDIR /app
 RUN pip install --no-cache-dir "pip==26.1.1"
 
 COPY allianceauth /opt/allianceauth
+COPY deploy/aa_docker/patch_allianceauth_providers_compat.py /app/deploy/aa_docker/patch_allianceauth_providers_compat.py
+RUN python /app/deploy/aa_docker/patch_allianceauth_providers_compat.py
 COPY deploy/aa_docker/requirements-aa-extension-deps.txt /tmp/requirements-aa-extension-deps.txt
 COPY deploy/aa_docker/requirements-aa-extension-apps.txt /tmp/requirements-aa-extension-apps.txt
 RUN pip install --no-cache-dir -e /opt/allianceauth \
@@ -43,7 +45,13 @@ COPY deploy/aa_docker/metenox_compat.py /app/deploy/aa_docker/metenox_compat.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/killtracker/providers.py /usr/local/lib/python3.12/site-packages/killtracker/providers.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/standingssync/providers.py /usr/local/lib/python3.12/site-packages/standingssync/providers.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/moonmining/providers.py /usr/local/lib/python3.12/site-packages/moonmining/providers.py
+COPY deploy/aa_docker/patches/moonmining/rentals/ /usr/local/lib/python3.12/site-packages/moonmining/rentals/
+COPY deploy/aa_docker/patches/moonmining/urls.py /usr/local/lib/python3.12/site-packages/moonmining/urls.py
+COPY deploy/aa_docker/patches/moonmining/templates/moonmining/base.html /usr/local/lib/python3.12/site-packages/moonmining/templates/moonmining/base.html
 COPY deploy/aa_docker/patches/esi_openapi_providers/buybackprogram/providers.py /usr/local/lib/python3.12/site-packages/buybackprogram/providers.py
+COPY deploy/aa_docker/patch_buyback_models.py /app/deploy/aa_docker/patch_buyback_models.py
+RUN python /app/deploy/aa_docker/patch_buyback_models.py
+COPY deploy/aa_docker/buybackprogram_esi_compat.py /app/deploy/aa_docker/buybackprogram_esi_compat.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/structures/providers.py /usr/local/lib/python3.12/site-packages/structures/providers.py
 COPY deploy/aa_docker/corptools_postgres_compat.py /app/deploy/aa_docker/corptools_postgres_compat.py
 COPY deploy/aa_docker/corptools_corp_token.py /app/deploy/aa_docker/corptools_corp_token.py
@@ -79,11 +87,17 @@ COPY deploy/aa_docker/patches/marketmanager/item_details-bs5.html /usr/local/lib
 # aa-taskmonitor: kill single queued Celery task from Django admin
 # Alliance Auth Discord: allow Django boot when DISCORD_BOT_TOKEN is unset (aadiscordbot import).
 COPY deploy/aa_docker/patches/discord/core.py /opt/allianceauth/allianceauth/services/modules/discord/core.py
+# django-esi 9: HTTP 304 on GetUniverseFactions broke SSO add-character (faction lookup).
+COPY allianceauth/allianceauth/eveonline/providers.py /opt/allianceauth/allianceauth/eveonline/providers.py
+COPY allianceauth/allianceauth/eveonline/managers.py /opt/allianceauth/allianceauth/eveonline/managers.py
 COPY deploy/aa_docker/patches/taskmonitor/views.py /usr/local/lib/python3.12/site-packages/taskmonitor/views.py
 COPY deploy/aa_docker/patches/taskmonitor/urls.py /usr/local/lib/python3.12/site-packages/taskmonitor/urls.py
 COPY deploy/aa_docker/taskmonitor_patch.py /app/deploy/aa_docker/taskmonitor_patch.py
 COPY deploy/aa_docker/repair_indy_hub_migrations.py /app/deploy/aa_docker/repair_indy_hub_migrations.py
 COPY deploy/aa_docker/extensions /app/deploy/aa_docker/extensions
+COPY deploy/aa_docker/miningtaxes_ext /app/deploy/aa_docker/miningtaxes_ext
+COPY deploy/aa_docker/moon_rentals /app/deploy/aa_docker/moon_rentals
+COPY deploy/aa_docker/miningtaxes_notify_patch.py /app/deploy/aa_docker/miningtaxes_notify_patch.py
 COPY deploy/aa_docker/market_bridge /app/deploy/aa_docker/market_bridge
 COPY deploy/aa_docker/esi_compat_app /app/deploy/aa_docker/esi_compat_app
 COPY deploy/aa_docker/templates /app/deploy/aa_docker/templates

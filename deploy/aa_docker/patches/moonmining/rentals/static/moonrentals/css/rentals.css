@@ -1,0 +1,7 @@
+.moonrentals-page .table th {
+    white-space: nowrap;
+}
+
+.moonrentals-page .badge {
+    text-transform: capitalize;
+}

@@ -1,0 +1,81 @@
+# Routes for the isolated test Compose project (eve-emu-test).
+# Requires containers on network eve_emu_edge and DNS for test.eve-emu.com.
+
+auth.test.eve-emu.com {
+	reverse_proxy http://eve-emu-test-aa-web:8080 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		transport http {
+			resolvers 127.0.0.11
+		}
+		lb_try_duration 90s
+		lb_try_interval 500ms
+	}
+}
+
+http://auth.test.eve-emu.com {
+	reverse_proxy http://eve-emu-test-aa-web:8080 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto https
+		transport http {
+			resolvers 127.0.0.11
+		}
+		lb_try_duration 90s
+		lb_try_interval 500ms
+	}
+}
+
+test.eve-emu.com {
+	# Member portal (Alliance Auth) — not served by core-web
+	@aa_dashboard path /dashboard /dashboard/*
+	handle @aa_dashboard {
+		redir https://auth.{host}{uri} temporary
+	}
+
+	@market_api path /api/market/*
+	handle @market_api {
+		reverse_proxy http://eve-emu-test-market-api:8010 {
+			transport http {
+				read_timeout 10m
+				write_timeout 10m
+			}
+		}
+	}
+
+	@core_api path /v1/*
+	handle @core_api {
+		reverse_proxy http://eve-emu-test-core-api:8000 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
+	}
+
+	@market_pages path /margin_finder* /market_trends* /contract_price* /tradeVol_type* /price_compare* /pi_rank* /market-browser* /appraisal*
+	handle @market_pages {
+		reverse_proxy http://eve-emu-test-market-web:8088
+	}
+
+	@market_static path /static/*
+	handle @market_static {
+		reverse_proxy http://eve-emu-test-market-web:8088
+	}
+
+	handle {
+		reverse_proxy http://eve-emu-test-core-web:3000 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
+	}
+}
+
+www.test.eve-emu.com {
+	redir https://test.eve-emu.com{uri} permanent
+}
+
+wiki.test.eve-emu.com {
+	reverse_proxy http://eve-emu-test-wikijs:3000
+}

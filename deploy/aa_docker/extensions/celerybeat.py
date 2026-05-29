@@ -81,6 +81,21 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
             "schedule": crontab(minute=30, hour=3),
         }
 
+    if _has_app(apps, "moonrentals"):
+        rental_poll = _env_int("AA_MOONRENTALS_WALLET_POLL_MINUTES", 30)
+        schedule["moonrentals_poll_wallet_payments"] = {
+            "task": "moonmining.rentals.tasks.poll_rental_wallet_payments",
+            "schedule": crontab(minute=f"*/{rental_poll}"),
+        }
+        schedule["moonrentals_sync_fuel_from_structures"] = {
+            "task": "moonmining.rentals.tasks.sync_rental_fuel_from_structures",
+            "schedule": crontab(minute=45, hour="*/1"),
+        }
+        schedule["moonrentals_check_fuel_alerts"] = {
+            "task": "moonmining.rentals.tasks.check_rental_fuel_alerts",
+            "schedule": crontab(minute=15, hour="*/2"),
+        }
+
     if _has_app(apps, "metenox"):
         schedule["metenox_update_prices"] = {
             "task": "metenox.tasks.update_prices",
@@ -180,6 +195,13 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
         schedule["aa_intel_tool_housekeeping"] = {
             "task": "aa_intel_tool.tasks.housekeeping",
             "schedule": crontab(minute="0", hour="1"),
+        }
+
+    if _has_app(apps, "memberaudit") and _celery_enabled("AA_MEMBERAUDIT_CELERY", "1"):
+        ma_seconds = _env_int("AA_BEAT_MEMBERAUDIT_SECONDS", 3600)
+        schedule["memberaudit_run_regular_updates"] = {
+            "task": "memberaudit.tasks.run_regular_updates",
+            "schedule": ma_seconds,
         }
 
     if _has_app(apps, "inactivity"):
@@ -283,6 +305,52 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
             "task": "indy_hub.tasks.sde_sync.sync_sde_compatibility_data",
             "schedule": crontab(minute=0, hour=4),
         }
+
+    if _has_app(apps, "miningtaxes") and _celery_enabled("AA_MININGTAXES_CELERY", "1"):
+        schedule["miningtaxes_update_daily"] = {
+            "task": "miningtaxes.tasks.update_daily",
+            "schedule": crontab(
+                minute=_env_int("AA_BEAT_MININGTAXES_DAILY_MINUTE", 0),
+                hour=_env_int("AA_BEAT_MININGTAXES_DAILY_HOUR", 1),
+            ),
+        }
+        if _celery_enabled("AA_MININGTAXES_NOTIFY_ENABLED", "0"):
+            schedule["miningtaxes_notifications"] = {
+                "task": "miningtaxes.tasks.notify_taxes_due",
+                "schedule": crontab(
+                    minute=0,
+                    hour=0,
+                    day_of_month=str(_env_int("AA_BEAT_MININGTAXES_NOTIFY_DAY", 2)),
+                ),
+            }
+            schedule["miningtaxes_apply_interest"] = {
+                "task": "miningtaxes.tasks.apply_interest",
+                "schedule": crontab(
+                    minute=0,
+                    hour=0,
+                    day_of_month=str(_env_int("AA_BEAT_MININGTAXES_INTEREST_DAY", 15)),
+                ),
+            }
+
+    if _has_app(apps, "moon_rentals") and _celery_enabled("AA_MOON_RENTALS_CELERY", "1"):
+        schedule["moon_rentals_refresh_compliance"] = {
+            "task": "moon_rentals.tasks.moon_rentals_refresh_compliance",
+            "schedule": crontab(
+                minute=_env_int("AA_BEAT_MOON_RENTALS_REFRESH_MINUTE", 30),
+                hour=_env_int("AA_BEAT_MOON_RENTALS_REFRESH_HOUR", 2),
+            ),
+        }
+        if os.environ.get("MOON_RENTALS_DISCORD_WEBHOOK_URL", "").strip() and _celery_enabled(
+            "MOON_RENTALS_DISCORD_ENABLED", "1"
+        ):
+            schedule["moon_rentals_weekly_discord_report"] = {
+                "task": "moon_rentals.tasks.moon_rentals_weekly_discord_report",
+                "schedule": crontab(
+                    minute=_env_int("AA_BEAT_MOON_RENTALS_WEEKLY_MINUTE", 0),
+                    hour=_env_int("AA_BEAT_MOON_RENTALS_WEEKLY_HOUR", 10),
+                    day_of_week=str(_env_int("AA_BEAT_MOON_RENTALS_WEEKLY_DOW", 1)),
+                ),
+            }
 
     if _has_app(apps, "standing_fleet_tracker") and _celery_enabled("SFT_CELERY", "1"):
         poll_seconds = _env_int(

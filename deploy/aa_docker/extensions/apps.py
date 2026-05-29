@@ -10,6 +10,18 @@ EVE_UNIVERSE_APPS: list[str] = ["eveuniverse"]
 
 SECUREGROUPS_APPS: list[str] = ["securegroups"]
 
+MEMBERAUDIT_APPS: list[str] = [
+    "memberaudit",
+    "memberaudit_securegroups",
+]
+
+MININGTAXES_APPS: list[str] = [
+    "django_celery_results",
+    "miningtaxes",
+    "miningtaxes_ext.apps.MiningtaxesExtConfig",
+    "moon_rentals.apps.MoonRentalsConfig",
+]
+
 # django-bootstrap-form (`{% load bootstrap %}`) — required by structures, moonmining, etc.
 EXTENSION_SUPPORT_APPS: list[str] = ["bootstrapform"]
 
@@ -18,6 +30,8 @@ FULL_EXTENSION_APPS: list[str] = [
     *EVE_SDE_APPS,
     *EVE_UNIVERSE_APPS,
     *SECUREGROUPS_APPS,
+    *MEMBERAUDIT_APPS,
+    *MININGTAXES_APPS,
     "package_monitor",
     "taskmonitor",
     "celeryanalytics",
@@ -25,6 +39,7 @@ FULL_EXTENSION_APPS: list[str] = [
     "structures",
     "structuretimers",
     "moonmining",
+    "moonmining.rentals.apps.MoonRentalsConfig",
     "metenox",
     "buybackprogram",
     "indy_hub",

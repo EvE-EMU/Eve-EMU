@@ -2,6 +2,24 @@
 
 See the repository root **`docker-compose.yml`**, **`.env.example`**, and **`setup.sh`**.
 
+## Windows: start stack after reboot
+
+From the repo root (or double-click **`Start-EveEmu.cmd`**):
+
+```powershell
+.\Start-EveEmu.ps1
+```
+
+Waits for Docker Desktop, then runs **`docker compose up -d`**. First-time setup still needs **`setup.sh`** / **`.env`**.
+
+**Run automatically at logon** (Startup folder shortcut, hidden window):
+
+```powershell
+.\Start-EveEmu.ps1 -InstallStartup
+```
+
+Requires **Docker Desktop** set to start with Windows (Settings → General → *Start Docker Desktop when you sign in*).
+
 ## Operational checklist
 
 1. **Alliance Auth submodule**  

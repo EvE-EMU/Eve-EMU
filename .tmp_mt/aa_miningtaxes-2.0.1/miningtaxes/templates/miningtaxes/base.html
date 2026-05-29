@@ -1,0 +1,53 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+{% load navactive %}
+{% load settings %}
+{% analytics as allow_analytics %}
+
+{% block extra_css %}
+    {% include "bundles/datatables-css-bs5.html" %}
+{% endblock %}
+
+{% block page_title %}{% translate "miningtaxes" %}{% endblock %}
+
+{% block header_nav_brand %}
+    {% translate "Mining Taxes" %}
+{% endblock %}
+{% block header_nav_collapse_left %}
+            <li class="nav-item"> <a class="nav-link {% navactive request 'miningtaxes:index' %}" href="{% url 'miningtaxes:index' %}">
+		{% translate 'Home' %}
+	    </a> </li>
+	    <li class="nav-item"> <a class="nav-link {% navactive request 'miningtaxes:ore_prices' %}" href="{% url 'miningtaxes:ore_prices' %}">
+		{% translate 'Current Ore Prices' %}
+	    </a></li>
+	    <li class="nav-item"> <a class="nav-link {% navactive request 'miningtaxes:faq' %}" href="{% url 'miningtaxes:faq' %}">
+		{% translate 'FAQ' %}
+	    </a></li>
+	    <li class="nav-item"> <a class="nav-link {% navactive request 'miningtaxes:launcher' %}" href="{% url 'miningtaxes:launcher' %}">
+		{% translate 'Setup' %}
+	    </a></li>
+	    {% if perms.miningtaxes.auditor_access %}
+		<li class="nav-item">  <a class="nav-link {% navactive request 'miningtaxes:admin_tables' %}" href="{% url 'miningtaxes:admin_tables' %}">
+                            {% translate 'Audit Reports' %}
+			</a></li>
+                {% endif %}
+		{% if perms.miningtaxes.admin_access %}
+		<li class="nav-item">  <a class="nav-link {% navactive request 'miningtaxes:admin_launcher' %}" href="{% url 'miningtaxes:admin_launcher' %}">
+                            {% translate 'Admin Setup' %}
+			</a></li>
+                {% endif %}
+{% endblock header_nav_collapse_left %}
+
+{% block content %}
+    <div class="miningtaxes">
+	 <br/>
+        {% block details %}{% endblock %}
+    </div>
+{% endblock %}
+{% block extra_javascript %}
+{% include "bundles/datatables-js-bs5.html" %}
+{% if allow_analytics %}
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LF8WFVQZSS"></script>
+<script> if (typeof gtag === "function") { gtag('config', 'G-LF8WFVQZSS'); } else { window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-LF8WFVQZSS');} </script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,532 @@
+{% extends 'miningtaxes/base.html' %}
+{% load i18n %}
+{% load static %}
+{% load humanize %}
+{% load evelinks %}
+
+{% block details %}
+<div class="row">
+	<div class="col-md-12">
+    		<div class="card card-default">
+			<div class="card-header" style="display:flex;">
+			    <h5 class="card-title mb-0">Current Month: Top 10 Miners</h5>
+			</div>
+			<div class="card-body">
+				<div id="curmonthgraph" style="text-align:center">
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-md-6">
+    		<div class="card card-default">
+			<div class="card-header" style="display:flex;">
+			    <h5 class="card-title mb-0">Taxes Summary</h5>
+			</div>
+			<div class="card-body">
+				<dl class="dl-horizontal">
+					<dt>Taxes past due:</dt>
+					{% if taxes_due > 0 %}
+						<dd class="nowrap text-red">
+					{% else %}
+						<dd class="nowrap text-green">
+					{% endif %}
+					<span data-toggle="tooltip" data-placement="bottom" title="Green means that you do not owe taxes or have overpaid, red means that you owe taxes. Taxes past due refers to the amount needed to be paid currently to avoid interest (frozen at the end of the previous month).">
+						{{ taxes_due|floatformat:2|intcomma }} ISK</span> </dd>
+					<dt>Current Taxes owed:</dt>
+					{% if balance_raw > 0 %}
+						<dd class="nowrap text-red">
+					{% else %}
+						<dd class="nowrap text-green">
+					{% endif %}
+					<span data-toggle="tooltip" data-placement="bottom" title="Green means that you do not owe taxes or have overpaid, red means that you owe taxes. Current taxes refers to the tax balance taking into consideration the amount of mining performed in the current month.">
+						{{ balance }} ISK</dd>
+					<dt>Current Taxes exact:</dt>
+					{% if balance_raw > 0 %}
+						<dd class="nowrap text-red">
+					{% else %}
+						<dd class="nowrap text-green">
+					{% endif %}
+					<span data-toggle="tooltip" data-placement="bottom" title="Green means that you do not owe taxes or have overpaid, red means that you owe taxes. Current taxes refers to the tax balance taking into consideration the amount of mining performed in the current month.">
+						{{ balance_raw|floatformat:2|intcomma }} ISK</dd>
+					<dt>Last paid:</dt>
+					<dd class="nowrap"> {{ last_paid|timesince }}</dd>
+					<dt>Characters:</dt>
+					{% for char in auth_characters %}
+					<dd class="nowrap"><a href="{% url 'miningtaxes:character_viewer' char.pk %}"> {{ char.name }}</a></dd>
+					{% endfor %}
+					<dd class="nowrap"><a href="{% url 'miningtaxes:user_ledger' user_pk%}">All ledgers</a></dd>
+				</dl>
+			</div>
+		</div>
+    <br/>
+
+    <div class="card card-default">
+        <div class="card-header" style="display:flex;">
+            <h5 class="card-title mb-0">90 day Mining distribution</h5>
+        </div>
+        <div class="card-body">
+		<div id="polar90"></div>
+        </div>
+    </div>
+    <br/>
+    <div class="card card-default">
+        <div class="card-header" style="display:flex;">
+            <h5 class="card-title mb-0">Percent of mining days</h5>
+        </div>
+        <div class="card-body">
+		<div id="gauge"></div>
+        </div>
+    </div>
+
+
+	</div>
+
+	<div class="col-md-6">
+    		<div class="card card-default">
+			<div class="card-header" style="display:flex;">
+				<button class="btn btn-primary item-icon-button"  style="height:2em" onclick="prior()"><i class="bi bi-chevron-double-left"></i></button>
+				<h5 class="card-title mb-0">  &nbsp; Leaderboard: <span id='leaderboard-month'> </span> &nbsp; </h5>
+				<button class="btn btn-primary item-icon-button" style="height:2em" onclick="next()"><i class="bi bi-chevron-double-right"></i></button>
+			</div>
+			<div class="card-body">
+			    <div class="table-responsive">
+				<table class="table table-striped table-width-fix" id="leaderboard">
+				    <thead>
+					<tr>
+					    <th>{% translate 'Rank' %}</th>
+					    <th>{% translate 'Character' %}</th>
+					    <th>{% translate 'Mined Total (ISK)' %}</th>
+					</tr>
+				    </thead>
+				    <tbody></tbody>
+				</table>
+			    </div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<div class="row">
+    <div class="col-md-12">
+    <div class="card card-default">
+        <div class="card-header" style="display:flex;">
+            <h5 class="card-title mb-0">90 day Daily Mining Totals</h5>
+        </div>
+        <div class="card-body">
+		<div id="day90"></div>
+        </div>
+    </div>
+    </div>
+</div>
+
+
+<div class="row">
+    <div class="col-md-12">
+    <div class="card card-default">
+        <div class="card-header" style="display:flex;">
+            <h5 class="card-title mb-0">Monthly Taxes</h5>
+        </div>
+        <div class="card-body">
+		<div id="isk"></div>
+        </div>
+    </div>
+    </div>
+</div>
+<div class="row">
+	<div class="col-md-12">
+    		<div class="card card-default">
+			<div class="card-header" style="display:flex;">
+			    <h5 class="card-title mb-0">Tax Payments</h5>
+			</div>
+			<div class="card-body">
+			    <div class="table-responsive">
+				<table class="table table-striped table-width-fix" id="tax_credits">
+				    <thead>
+					<tr>
+					    <th>{% translate 'Date' %}</th>
+					    <th>{% translate 'Character' %}</th>
+					    <th>{% translate 'Amount (ISK)' %}</th>
+					    <th>{% translate 'Reason' %}</th>
+					</tr>
+				    </thead>
+				    <tbody></tbody>
+				</table>
+			    </div>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock details %}
+
+{% block extra_javascript %}
+{{ block.super }}
+{% include 'bundles/datatables-js-bs5.html' %}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.6.1/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/billboard.js/3.5.1/billboard.min.js" integrity="sha512-D8lwQ1l9jYC7cgPTITQkT2LZYlyx0kc+oBuLMfh1HGxwoO84e3U/RDuvbNJR1+A7HGmAIf5LMqWIlSl2UfKr7Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript">
+{% autoescape off %}
+
+var lbi = -1;
+var lb_table;
+var lb_data;
+
+function next() {
+	lbi++;
+	if (lbi >= lb_data.length) { lbi--; return; }
+	render_lb();
+}
+
+function prior() {
+	lbi--
+	if (lbi < 0) { lbi++; return; }
+	render_lb();
+}
+
+function escapeQuotes(text) {
+    return text
+	.replace(/'/g, "\\'")   // Escape single quotes
+	.replace(/"/g, '\\"');  // Escape double quotes
+}
+
+function sanitizeClassName(name) {
+    return name.replace(/['"]/g, "").replace(/\s+/g, '-');
+}
+
+function render_lb() {
+	$("#leaderboard-month").html(lb_data[lbi]["month"]);
+	lb_table.clear();
+	lb_data[lbi]["table"].forEach(function(d) {
+		lb_table.row.add(d);
+	});
+	lb_table.draw();
+}
+
+    const margin = { top: 20, right: 150, bottom: 30, left: 90 },
+          width = 900 - margin.left - margin.right,
+          height = 500 - margin.top - margin.bottom;
+
+    const svg = d3.select("#curmonthgraph")
+                  .append("svg")
+                  .attr("width", width + margin.left + margin.right)
+                  .attr("height", height + margin.top + margin.bottom)
+                  .append("g")
+                  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const parseDate = d3.timeParse("%Y-%m-%d");
+
+    const x = d3.scaleTime().range([0, width]),
+          y = d3.scaleLinear().range([height, 0]);
+
+    const lineGenerator = d3.line().x(d => x(d.date)).y(d => y(d.value));
+    const tooltip = d3.select(".ayltooltip");
+
+const update = (data, minx, maxx, maxy) => {
+    x.domain([minx, maxx]);
+    y.domain([1, maxy]);
+
+    var seriesInfo = [];
+    var keys = Object.keys(data);
+    for (var i = 0; i < keys.length; i++) {
+	    seriesInfo.push({name: keys[i], color: d3.schemeCategory10[i]});
+    }
+
+    // Render axes
+    svg.selectAll(".axis").remove();
+    svg.append("g")
+       .attr("class", "axis")
+       .attr("transform", `translate(0,${height})`)
+       .call(d3.axisBottom(x));
+
+    svg.append("g")
+       .attr("class", "axis")
+       .attr("stroke-dasharray","4")
+       .call(d3.axisLeft(y).tickSizeInner(-width).tickSizeOuter(0));
+
+
+    seriesInfo.forEach(series => {
+        const seriesData = data[series.name];
+	const sanitizedClassName = sanitizeClassName(series.name);
+
+
+        // For lines
+        const lines = svg.selectAll(`.line-${sanitizedClassName}`)
+                         .data([seriesData]);
+
+        lines.enter()
+             .append("path")
+             .attr("class", `d3lines g-${sanitizedClassName}`)
+             .attr("fill", "none")
+             .attr("stroke", series.color)
+             .attr("d", lineGenerator(seriesData.map(d => ({ date: d.date, value: 0 }))))
+             .merge(lines)
+             .transition().duration(1000)
+             .attr("d", lineGenerator(seriesData));
+
+        // For dots
+        const dots = svg.selectAll(`.dot-${sanitizedClassName}`).data(seriesData);
+
+        dots.enter()
+            .append("circle")
+	    .attr("class", `d3lines g-${sanitizedClassName}`)
+            .attr("r", 5)
+            .attr("fill", series.color)
+            .attr("cx", d => x(d.date))
+            .attr("cy", y(0))
+            .on("mouseover", (event, d) => {
+		 const getname = event.srcElement.getAttribute("class")
+		 d3.selectAll('.d3lines').filter(function (d) { return getname != this.getAttribute("class"); })
+		   .style("opacity",.2);
+	    })
+	    .on("mouseout", () => d3.selectAll('.d3lines').style('opacity', 1.0))
+            //.on("mouseout", () => tooltip.style("opacity", 0))
+	    /*
+            .on("mouseover", (event, d) => {
+		    var rect = event.target.getBoundingClientRect();
+		    console.log(event);
+		    console.log(rect);
+                tooltip.style("opacity", 1)
+                       .html(`Series: ${series.name}<br/>Value: ${d.value}`)
+                       .style("left", (event.clientX - rect.left + 90) + "px")
+                       .style("top", (event.clientY - rect.top + 120) + "px");
+            })
+            .on("mouseout", () => tooltip.style("opacity", 0))
+	    */
+            .merge(dots)
+            .transition().duration(1000)
+            .attr("cx", d => x(d.date))
+            .attr("cy", d => y(d.value));
+
+	const text = svg.selectAll(`.text-${sanitizedClassName}`).data([series.name]);
+	text.enter()
+	    .append("text")
+	    .attr("class", `d3lines g-${sanitizedClassName}`)
+	    .text(d => d)
+            .attr("fill", series.color)
+            .attr("font-weight", "bold")
+            .attr("x", x(maxx) + 10)
+            .attr("y", y(0))
+            .transition().duration(1000)
+	    .attr("x", x(maxx)+10)
+	    .attr("y", y(seriesData[seriesData.length-1].value));
+
+    });
+};
+
+
+
+(function() {
+	$.getJSON("{% url 'miningtaxes:curmonthgraph' %}", function (ldata) {
+		let data = ldata["data"];
+		console.log(data);
+		minx = null;
+		maxy = null;
+		maxx = null;
+		Object.keys(data).forEach(function(v) {
+			data[v].forEach(function(d) {
+				d.date = d3.timeParse("%Y-%m-%d")(d.date)
+				if (minx === null || minx > d.date) { minx = d.date; }
+				if (maxx === null || maxx < d.date) { maxx = d.date; }
+				if (maxy === null || maxy < d.value) { maxy = d.value; }
+			});
+		});
+		update(data, minx, maxx, maxy);
+	});
+
+	//$('[data-toggle="tooltip"]').tooltip();
+	$.getJSON("{% url 'miningtaxes:user_mining_ledger_90day' user_pk %}", function (d) {
+		var maxpg = 0;
+		d["polargraph"].forEach(function(arr) { if (maxpg < arr[1]) { maxpg = arr[1]; } });
+		var pgs = [];
+		d["stacked"].forEach(function(arr) { if (arr[0] != "x") { pgs.push(arr[0]); } });
+
+		var chart = bb.generate({
+		  data: {
+		    columns: d["polargraph"],
+		    type: "donut",
+		    order: null
+		  },
+		  bindto: "#polar90"
+		});
+
+		bb.generate({
+		  data: {
+		    x: "x",
+		    columns: d["stacked"],
+		    axes: { isk: "y"},
+		    type: "bar",
+		    groups: [pgs],
+		  },
+			axis: {
+                                x: {
+                                        padding: { right: 8000*60*60*12 },
+                                        type: "timeseries",
+                                        tick: { format: "%Y-%m-%d", rotate: 45 }
+                                },
+                                y: {
+                                        tick: { format: function(x) {
+                                                return d3.format(",")(x);
+                                        } },
+                                        label: "ISK"
+                                },
+                        },
+
+		  bindto: "#day90"
+		});
+
+		bb.generate({
+		  data: {
+		    columns: d["days"],
+		    type: "gauge", // for ESM specify as: gauge()
+		    onclick: function(d, i) {
+			console.log("onclick", d, i);
+		   },
+		    onover: function(d, i) {
+			console.log("onover", d, i);
+		   },
+		    onout: function(d, i) {
+			console.log("onout", d, i);
+		   }
+		  },
+		  gauge: {},
+		  color: {
+		    pattern: [
+		      "#FF0000",
+		      "#F97600",
+		      "#F6C600",
+		      "#60B044"
+		    ],
+		    threshold: {
+		      values: [
+			30,
+			60,
+			90,
+			100
+		      ]
+		    }
+		  },
+		  size: {
+		    height: 180
+		  },
+		  bindto: "#gauge"
+		});
+
+
+
+	});
+	$.getJSON("{% url 'miningtaxes:summary_month_json' user_pk %}", function (d) {
+		var iskchart = bb.generate({
+			data: {
+				x: "x",
+				columns: [],
+				axes: { isk: "y"},
+			},
+			axis: {
+				x: {
+					padding: { right: 5000*60*60*12 },
+					type: "timeseries",
+					tick: { format: "%Y-%m", rotate: 45 }
+				},
+				y: {
+					tick: { format: function(x) {
+						return d3.format(",")(x);
+					} },
+					label: "ISK"
+				},
+			},
+			bindto:"#isk"
+		});
+		for (var i = 0 ; i < d["ydata"].length; i++) {
+			iskchart.load({columns: [d['xdata'], d['ydata'][i]]});
+		}
+		console.log(d); } );
+	$.getJSON("{% url 'miningtaxes:leaderboards' %}", function (d) {
+		lb_data = d["data"];
+		lbi = lb_data.length - 1;
+		render_lb();
+	} );
+
+	lb_table = $("#leaderboard").DataTable({
+		    columns: [
+			{ data: 'rank' },
+			{ data: 'character' },
+			{
+			    data: 'amount',
+			    render: $.fn.dataTable.render.number(',', '.', 2)
+			},
+		    ],
+		    pageLength:20,
+		    order: [[0, "asc"]],
+	});
+
+        $('#tax_credits').DataTable({
+            ajax: {
+                url: "{% url 'miningtaxes:all_tax_credits' user_pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                { data: 'date' },
+                { data: 'character' },
+                {
+                    data: 'amount',
+                    render: $.fn.dataTable.render.number(',', '.', 2)
+                },
+                { data: 'reason' },
+            ],
+            order: [[0, "desc"]],
+        });
+	/*
+
+	data = {{stats}};
+        hscaling = {{hscaling}};
+        var iskchart = bb.generate({
+                data: {
+                        x: "x",
+                        columns: [ data["x"], data["overall"]["all"][0], data["donations"]["all"][0] ],
+                        axes: { isk: "y"},
+                },
+                axis: {
+                        x: {
+                                type: "timeseries",
+                                tick: { format: "%Y-%m" }
+                        },
+                        y: {
+                                tick: { format: function(x) {
+                                        if (hscaling["overall"] == "") {
+                                                return d3.format(",")(x);
+                                        } else {
+                                                return d3.format(",")(x) + " " + hscaling["overall"][0]; }
+                                        } },
+                                label: "ISK (" + hscaling["overall"] + ")"
+                        },
+                },
+                bindto:"#isk"
+        });
+	*/
+
+})();
+
+
+{% endautoescape %}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+{% if NIGHT_MODE %}
+        <link rel="stylesheet" type="text/css" href="{% static 'miningtaxes/css/billboards_dark.css' %}">
+{% else %}
+        <link rel="stylesheet" type="text/css" href="{% static 'miningtaxes/css/billboards_light.css' %}">
+{% endif %}
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/global.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/miningtaxes.css' %}" type="text/css">
+    <link rel="stylesheet" href="{% static 'miningtaxes/css/launcher.css' %}" type="text/css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+{% endblock %}
+
+{% block extra_script %}
+{% endblock %}

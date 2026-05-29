@@ -6,14 +6,16 @@ import os
 
 from .apps import EXTENSION_SUPPORT_APPS, extension_installed_apps
 from .celerybeat import extension_celerybeat_schedule
-from .settings import apply_extension_settings
+from .settings import (
+    DISCORD_SERVICE_APP,
+    apply_extension_settings,
+    discord_service_enabled,
+)
 
 # Still present in older deployments / manual local.py overrides — drop to stop orphan tasks.
 DEPRECATED_INSTALLED_APPS: frozenset[str] = frozenset(
     {
         "blueprints",
-        "memberaudit",
-        "memberaudit_securegroups",
         "memberaudit_dashboard",
         "aa_memberaudit_dashboard",
         "taxsystem",
@@ -22,8 +24,6 @@ DEPRECATED_INSTALLED_APPS: frozenset[str] = frozenset(
         "aa_srppayouts",
         "ravworks_exporter",
         "aa_ravworks_exporter",
-        # Requires memberaudit (removed); breaks Celery until reinstalled.
-        "inactivity",
     }
 )
 
@@ -63,9 +63,15 @@ def configure_extensions(settings: dict) -> None:
         if label not in installed:
             installed.append(label)
     installed = [label for label in installed if label not in DEPRECATED_INSTALLED_APPS]
+    if discord_service_enabled() and DISCORD_SERVICE_APP not in installed:
+        installed.append(DISCORD_SERVICE_APP)
     settings["INSTALLED_APPS"] = installed
 
     beat = settings.setdefault("CELERYBEAT_SCHEDULE", {})
     beat.update(extension_celerybeat_schedule(settings["INSTALLED_APPS"]))
 
     apply_extension_settings(settings)
+
+    hooks_app = "extensions.hooks_apps.EveEmuHooksConfig"
+    if hooks_app not in settings.get("INSTALLED_APPS", []):
+        settings["INSTALLED_APPS"] = [hooks_app, *settings.get("INSTALLED_APPS", [])]

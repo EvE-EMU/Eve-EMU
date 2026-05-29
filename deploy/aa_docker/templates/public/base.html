@@ -1,0 +1,57 @@
+{% load theme_tags %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" {% theme_html_tags %}>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        {% include 'allianceauth/opengraph.html' %}
+        {% include 'allianceauth/icons.html' %}
+
+        <title>{% block title %}{% block page_title %}{% endblock page_title %} - {{ SITE_NAME }}{% endblock title %}</title>
+
+        {% theme_css %}
+
+        {% include 'bundles/fontawesome.html' %}
+        {% include 'bundles/auth-framework-css.html' %}
+
+        {% block extra_include %}
+        {% endblock %}
+
+        <style>
+            body {
+                background: url('{% static 'aa_branding/login-background.png' %}') no-repeat center center fixed;
+                -webkit-background-size: cover;
+                -moz-background-size: cover;
+                -o-background-size: cover;
+                background-size: cover;
+                background-color: #1a0a0a;
+            }
+
+            .card-login {
+                background: rgba(12, 8, 8, 0.82);
+                color: rgb(255 255 255);
+                padding-bottom: 21px;
+                border-color: rgba(180, 40, 40, 0.45) !important;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+            }
+
+            #lang-select {
+                width: 40%;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            {% block extra_style %}
+            {% endblock %}
+        </style>
+    </head>
+
+    <body>
+        <div class="container-fluid" style="margin-top:150px;">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </body>
+</html>
