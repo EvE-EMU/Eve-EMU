@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aa-report-bridge"
+version = "0.1.0"
+description = "Alliance Auth 5: webhooks + read-only DB export for external reporting"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "Django>=4.2",
+    "requests>=2.31",
+]
+
+[tool.setuptools.packages.find]
+include = ["aa_report_bridge*", "report_bridge_client*"]

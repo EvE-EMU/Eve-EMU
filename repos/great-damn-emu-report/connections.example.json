@@ -1,0 +1,19 @@
+[
+  {
+    "id": "home",
+    "label": "False Gods (your AA)",
+    "forwarder_url": "https://auth.eve-emu.com",
+    "secret": "your-forwarder-api-key",
+    "webhook_secret": "same-as-REPORT_BRIDGE_WEBHOOK_SECRET-on-AA",
+    "default_token_id": 58,
+    "enabled": true
+  },
+  {
+    "id": "allied-corp",
+    "label": "Friend alliance AA5",
+    "forwarder_url": "https://auth.friend-corp.example.com",
+    "secret": "api-key-they-send-you",
+    "default_token_id": 12,
+    "enabled": true
+  }
+]
