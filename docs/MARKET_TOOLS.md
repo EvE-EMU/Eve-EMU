@@ -15,6 +15,25 @@ Dark-mode market suite inspired by [Adam4EVE](https://www.adam4eve.eu/margin_fin
 | `/pi_rank` | [pi_rank.php](https://www.adam4eve.eu/pi_rank.php) | Live API + charts (EVE Ref schematics, Jita/Amarr/WOMP) |
 | `/appraisal` | [Janice](https://janice.e-351.com) | Paste appraisal + WOMPSTAR hub columns |
 
+**Hub basket compare** (CLI + API): paste a shopping list with quantities and find which of **Jita / Amarr / Hek / Dodixie / Rens** can fill the full qty at lowest cost (walks live ESI sell orders; no Janice key).
+
+```bash
+# On the host (no Docker) — file path is on your machine:
+python market-tools/scripts/hub_basket_compare.py -f market-tools/examples/hub_basket.example.txt
+
+# In Docker: the container does not see C:\... paths unless you copy or pipe:
+Get-Content market-tools/examples/hub_basket.example.txt -Raw |
+  docker compose exec -T market-api python scripts/hub_basket_compare.py
+
+docker compose cp market-tools/examples/hub_basket.example.txt market-api:/tmp/list.txt
+docker compose exec market-api python scripts/hub_basket_compare.py -f /tmp/list.txt -v
+
+# Rebuild after code changes: docker compose build market-api && docker compose up -d market-api
+# Large lists: ~1–3 min with -v; use --hubs jita amarr to skip thin hubs
+
+# API: POST /api/market/v1/hub-basket  {"text": "Broadcast Node x900\nMarines x225"}
+```
+
 API: `GET /api/market/v1/...` (OpenAPI at `/api/market/docs` when enabled).
 
 ## Architecture

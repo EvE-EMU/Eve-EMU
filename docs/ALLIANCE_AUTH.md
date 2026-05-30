@@ -1,6 +1,6 @@
 # Alliance Auth (v5) in EVE-EMU
 
-This repository vendors **[Alliance Auth](https://allianceauth.readthedocs.io/en/v5.0.1/)** as a **[Git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules)** at **`allianceauth/`**, pinned to upstream tag **`v5.0.1`** (Django-based auth hub for EVE organizations: services, groups, fleet tools, SRP apps, etc.—see the [official overview](https://allianceauth.readthedocs.io/en/v5.0.1/)).
+This repository vendors **[Alliance Auth](https://allianceauth.readthedocs.io/en/latest/)** as a **[Git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules)** at **`allianceauth/`**, pinned to upstream tag **`v5.1.2`** ([release notes](https://gitlab.com/allianceauth/allianceauth/-/releases/v5.1.2): translation updates, corporation populate fix, corp shares integer fix, django-esi minimum tag).
 
 Canonical upstream source: **https://gitlab.com/allianceauth/allianceauth** (the GitHub mirror is stale).
 
@@ -18,6 +18,7 @@ Before **`docker compose build aa-web`** (or any **`aa-*`** service), run:
 
 ```bash
 git submodule update --init --recursive allianceauth
+cd allianceauth && git checkout v5.1.2
 ```
 
 Configure root **`.env`** (see **`.env.example`**):
@@ -48,9 +49,25 @@ Community apps are installed from **`deploy/aa_docker/requirements-aa-extension-
 | **`AA_USE_MODELTRANSLATION`** | `1` | Prepend `modeltranslation` (required by fittings, sov-timer, etc.). |
 | **`AA_ESI_COMPATIBILITY_DATE`** | `2025-12-16` | Passed to legacy ESI shims for django-eveuniverse apps. |
 
-**Bundled extensions** (enabled when **`AA_EXTENSIONS_ENABLED=1`**): [Standings Sync](https://apps.allianceauth.org/apps/detail/aa-standingssync), [Structures](https://apps.allianceauth.org/apps/detail/aa-structures), [Structure Timers II](https://apps.allianceauth.org/apps/detail/aa-structuretimers), [Moon Mining](https://apps.allianceauth.org/apps/detail/aa-moonmining), [Metenox](https://apps.allianceauth.org/apps/detail/aa-metenox), [Buyback Program](https://apps.allianceauth.org/apps/detail/aa-buybackprogram), [Indy Hub](https://apps.allianceauth.org/apps/detail/indy-hub), [Market Manager](https://apps.allianceauth.org/apps/detail/aa-market-manager), [Kill Tracker](https://apps.allianceauth.org/apps/detail/aa-killtracker), [Killstats](https://apps.allianceauth.org/apps/detail/aa-killstats), [Intel Tool](https://apps.allianceauth.org/apps/detail/aa-intel-tool), [Sov Timer](https://apps.allianceauth.org/apps/detail/aa-sov-timer), [CorpTools](https://apps.allianceauth.org/apps/detail/allianceauth-corptools), [Secure Groups](https://apps.allianceauth.org/apps/detail/allianceauth-securegroups), [Member Audit](https://gitlab.com/ErikKalkoken/aa-memberaudit) + [Member Audit Secure Groups](https://gitlab.com/ErikKalkoken/aa-memberaudit-securegroups) (PyPI `aa-memberaudit`, `aa-memberaudit-securegroups`), [Blacklist](https://apps.allianceauth.org/apps/detail/allianceauth-blacklist), [Contacts](https://apps.allianceauth.org/apps/detail/aa-contacts), [Alumni](https://apps.allianceauth.org/apps/detail/aa-alumni), [Inactivity](https://apps.allianceauth.org/apps/detail/aa-inactivity), [AA-SRP](https://apps.allianceauth.org/apps/detail/aa-srp), [AFAT](https://apps.allianceauth.org/apps/detail/allianceauth-afat), [Fleet Pings](https://apps.allianceauth.org/apps/detail/aa-fleetpings), [Fittings](https://apps.allianceauth.org/apps/detail/fittings), [Timezones](https://apps.allianceauth.org/apps/detail/aa-timezones), [Ledger](https://apps.allianceauth.org/apps/detail/aa-ledger), [Skillfarm](https://apps.allianceauth.org/apps/detail/aa-skillfarm), [CharLink](https://apps.allianceauth.org/apps/detail/aa-charlink), [ESI Status](https://apps.allianceauth.org/apps/detail/aa-esi-status), [Routing](https://apps.allianceauth.org/apps/detail/aa-routing), [Top](https://apps.allianceauth.org/apps/detail/aa-top), [Package Monitor](https://apps.allianceauth.org/apps/detail/aa-package-monitor), [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor), [Celery Analytics](https://apps.allianceauth.org/apps/detail/allianceauth-celeryanalytics), [Mining Taxes](https://gitlab.com/arctiru/aa-miningtaxes) (`aa-miningtaxes`).
+**Slim bundle** (default when **`AA_EXTENSIONS_ENABLED=1`**): core ops apps only. **Removed** from install (see `deploy/aa_docker/extensions/apps.py` → `SLIM_REMOVED_APP_LABELS`): Killstats, Metenox, AA-SRP (ship replacement), AFAT (fleet activity tracking), Skillfarm, Moon Tsar, Mining Taxes moon-ore report extension (`miningtaxes_ext`).
+
+**Retained** (eve-emu customizations depend on them): [Moon Mining](https://apps.allianceauth.org/apps/detail/aa-moonmining) + **moon rentals** patch, [Mining Taxes](https://gitlab.com/arctiru/aa-miningtaxes) (`aa-miningtaxes`), [Buyback Program](https://apps.allianceauth.org/apps/detail/aa-buybackprogram) + **`buyback_v2`** (tiered public pricing), [Standings Sync](https://apps.allianceauth.org/apps/detail/aa-standingssync), [Structures](https://apps.allianceauth.org/apps/detail/aa-structures), [Structure Timers II](https://apps.allianceauth.org/apps/detail/aa-structuretimers), [Indy Hub](https://apps.allianceauth.org/apps/detail/indy-hub), [Market Manager](https://apps.allianceauth.org/apps/detail/aa-market-manager), [Kill Tracker](https://apps.allianceauth.org/apps/detail/aa-killtracker), [Intel Tool](https://apps.allianceauth.org/apps/detail/aa-intel-tool), [Sov Timer](https://apps.allianceauth.org/apps/detail/aa-sov-timer), [CorpTools](https://apps.allianceauth.org/apps/detail/allianceauth-corptools), [Member Audit](https://gitlab.com/ErikKalkoken/aa-memberaudit), [Ledger](https://apps.allianceauth.org/apps/detail/aa-ledger) **3.0.1**, [Fleet Pings](https://apps.allianceauth.org/apps/detail/aa-fleetpings), and the rest of the non-removed list in `requirements-aa-extension-apps.txt`.
+
+**Dependency bumps** (slim image): `allianceauth-app-utils>=1.32.1`, `django-oauth-toolkit>=3.3`, `aa-ledger==3.0.1`.
 
 Also enabled in the image: [Discord bot](https://apps.allianceauth.org/apps/detail/allianceauth-discordbot) (`aa-discordbot` Compose service), [Discord Notify](https://apps.allianceauth.org/apps/detail/aa-discordnotify) (needs [Discord Proxy](https://gitlab.com/ErikKalkoken/discordproxy)), [Wiki.js](https://apps.allianceauth.org/apps/detail/allianceauth-wiki-js) (`wikijs` Compose service + [WIKIJS.md](./WIKIJS.md)), [Slate theme](https://apps.allianceauth.org/apps/detail/aa-theme-slate), [Skip Email](https://apps.allianceauth.org/apps/detail/aa-skip-email). **YouTrack** at `pm.<DOMAIN_NAME>` uses [allianceauth-oidc-provider](https://github.com/Solar-Helix-Independent-Transport/allianceauth-oidc-provider) for SSO — see [YOUTRACK.md](./YOUTRACK.md). Optional: [GraphQL](https://apps.allianceauth.org/apps/detail/allianceauth-graphql) via **`AA_EXTENSIONS_GRAPHQL=1`**.
+
+### Upgrade to Alliance Auth v5.1.2 (slim bundle)
+
+```bash
+git submodule update --init allianceauth
+cd allianceauth && git checkout v5.1.2 && cd ..
+docker compose build aa-web aa-worker aa-beat
+docker compose up -d aa-web aa-worker aa-beat
+docker compose exec aa-web python manage.py migrate
+```
+
+Follow upstream [updating guidance](https://allianceauth.readthedocs.io/en/latest/installation/allianceauth.html#updating) if you maintain a forked `local.py` beyond `deploy/aa_docker/local.py`.
 
 ### Permissions matrix (states, groups, apps)
 
@@ -330,6 +347,31 @@ Install and run **aa-structures** ([section below](#aa-structures-structureslist
 `min(100, round(hours_fuel_expires / fuel_reference_hours × 100))`.
 
 Requires `Structure.eve_moon_id` to match the lease moon (or moonmining `Refinery` id).
+
+### Moon Tsar (`moon_tsar`)
+
+Unified **post-pop tax billing**, **Discord reminders**, **Tsar dashboard**, **heatmap**, and **renter portal**. Uses Alliance Auth login (SSO) — not a separate app server. See **[MOON_TSAR.md](./MOON_TSAR.md)** for full design.
+
+| URL | Role |
+|-----|------|
+| `/moon-tsar/` | Moon Tsar dashboard (schedule, m³, ISK) |
+| `/moon-tsar/settings/` | Per-ore tax rates + module settings |
+| `/moon-tsar/bill/<uuid>/` | Member invoice + payment reference |
+| `/moon-tsar/renter/` | Private renter / POC portal |
+
+```bash
+docker compose up -d --build aa-web aa-worker aa-beat
+docker compose exec aa-web python manage.py migrate moon_tsar
+```
+
+Grant group permissions: `moon_tsar.view_dashboard`, `moon_tsar.manage_settings`, `moon_tsar.view_own_bills`, `moon_tsar.view_renter_portal`.
+
+| Env | Default |
+|-----|---------|
+| `AA_MOON_TSAR_CELERY` | `1` |
+| `AA_MOON_TSAR_TRACKING_HOURS` | `20` (post-pop ledger window) |
+
+Integrates **miningtaxes** observer ledger, **moonmining** extractions, **moonrentals** leases, and corp wallet phrase matching (same pattern as buyback).
 
 ### Buyback v2 (Janice line pricing)
 

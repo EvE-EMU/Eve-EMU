@@ -34,16 +34,19 @@ async def acquire_slot() -> None:
     r = await get_redis()
     if r is not None:
         key = "market:esi:next"
-        while True:
-            now = time.monotonic()
-            pipe = r.pipeline()
-            pipe.get(key)
-            raw = await pipe.execute()
-            next_at = float(raw[0] or 0)
-            if now >= next_at:
-                await r.set(key, str(now + interval), ex=120)
-                return
-            await asyncio.sleep(min(0.25, next_at - now))
+        try:
+            while True:
+                now = time.monotonic()
+                pipe = r.pipeline()
+                pipe.get(key)
+                raw = await pipe.execute()
+                next_at = float(raw[0] or 0)
+                if now >= next_at:
+                    await r.set(key, str(now + interval), ex=120)
+                    return
+                await asyncio.sleep(min(0.25, next_at - now))
+        except Exception:
+            pass  # fall back to in-process pacing (CLI without Redis, etc.)
     async with _local_lock:
         now = time.monotonic()
         wait = interval - (now - _last_request)

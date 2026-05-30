@@ -1,0 +1,22 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+{% block page_title %}{% translate "Moon tax bills" %}{% endblock %}
+{% block content %}
+<div class="col-lg-10">
+    <h1>{% translate "Moon tax bills" %}</h1>
+    <table class="table table-striped">
+        <thead><tr><th>{% translate "Character" %}</th><th>{% translate "Moon" %}</th><th>{% translate "Due" %}</th><th>{% translate "Tax" %}</th><th></th></tr></thead>
+        <tbody>
+        {% for b in bills %}
+        <tr>
+            <td>{{ b.character_name }}</td>
+            <td>{{ b.extraction.moon_label }}</td>
+            <td>{{ b.due_date }}</td>
+            <td>{{ b.total_tax_isk|floatformat:0 }}</td>
+            <td><a href="{% url 'moon_tsar:bill_detail' b.public_id %}">{% translate "View" %}</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

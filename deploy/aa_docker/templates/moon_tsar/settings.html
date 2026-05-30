@@ -1,0 +1,45 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+{% block page_title %}{% translate "Moon Tsar settings" %}{% endblock %}
+{% block content %}
+<div class="col-lg-10">
+    <h1>{% translate "Moon Tsar settings" %}</h1>
+    <p>{% translate "Tax payment phrase" %}: <code>{{ settings.tax_payment_phrase }}</code> — {% translate "include bill reference MT-BILL-… in donation reason." %}</p>
+    <p>{% translate "Tracking window" %}: {{ settings.tracking_hours_after_pop }} {% translate "hours after pop" %}</p>
+    <h2>{% translate "Ore tax rates" %}</h2>
+    <table class="table" id="tax-rates">
+        <thead><tr><th>{% translate "Ore" %}</th><th>type_id</th><th>{% translate "Tax %" %}</th></tr></thead>
+        <tbody>
+        {% for r in tax_rates %}
+        <tr data-type-id="{{ r.type_id }}" data-name="{{ r.type_name }}">
+            <td>{{ r.type_name }}</td>
+            <td>{{ r.type_id }}</td>
+            <td><input class="form-control form-control-sm rate-pct" value="{{ r.tax_rate_percent }}"></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">{% translate "Add rates in Django admin or import from miningtaxes OrePrices." %}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% csrf_token %}
+    <button class="btn btn-primary" id="save-rates">{% translate "Save rates" %}</button>
+</div>
+<script>
+document.getElementById('save-rates')?.addEventListener('click', async () => {
+  const rates = [];
+  document.querySelectorAll('#tax-rates tbody tr[data-type-id]').forEach(tr => {
+    rates.push({
+      type_id: tr.dataset.typeId,
+      type_name: tr.dataset.name,
+      tax_rate_percent: tr.querySelector('.rate-pct').value
+    });
+  });
+  const r = await fetch("{% url 'moon_tsar:tax_rates_save' %}", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+    body: JSON.stringify({rates})
+  });
+  alert(r.ok ? 'Saved' : 'Error');
+});
+</script>
+{% endblock %}

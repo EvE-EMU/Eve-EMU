@@ -26,9 +26,6 @@
         <a class="nav-link {% navactive request 'moon_rentals:schedule' %}" href="{% url 'moon_rentals:schedule' %}">{% translate 'Moon schedule' %}</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% navactive request 'miningtaxes_ext:moon_ore_report' %}" href="{% url 'miningtaxes_ext:moon_ore_report' %}">{% translate 'Moon ore report' %}</a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link {% navactive request 'miningtaxes:admin_tables' %}" href="{% url 'miningtaxes:admin_tables' %}">{% translate 'Audit data' %}</a>
     </li>
     {% endif %}

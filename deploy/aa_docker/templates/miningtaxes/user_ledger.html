@@ -21,7 +21,10 @@
                             <th>{% translate 'Solar System' %}</th>
                             <th>{% translate 'Ore type' %}</th>
                             <th class="text-end">{% translate 'Quantity (m³)' %}</th>
-                            <th class="text-end">{% translate 'Value (ISK)' %}</th>
+                            <th class="text-end">{% translate 'Raw (ISK)' %}</th>
+                            <th class="text-end">{% translate 'Refined (ISK)' %}</th>
+                            <th class="text-end">{% translate 'Taxed (ISK)' %}</th>
+                            <th class="text-end">{% translate 'Tax (ISK)' %}</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -46,7 +49,7 @@
 $(document).ready(function () {
     $('#tab_mining_ledger').DataTable({
         ajax: {
-            url: "{% url 'miningtaxes_ext:user_ledger_ore_json' user_pk %}",
+            url: "{% url 'miningtaxes:user_ledger_data' user_pk %}",
             dataSrc: 'data',
             cache: false
         },
@@ -62,14 +65,24 @@ $(document).ready(function () {
                 render: $.fn.dataTable.render.number(',', '.', 0)
             },
             {
-                data: 'value_isk',
+                data: 'raw',
                 className: 'text-end',
-                render: function (data) {
-                    return Number(data || 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                }
+                render: $.fn.dataTable.render.number(',', '.', 2)
+            },
+            {
+                data: 'ref',
+                className: 'text-end',
+                render: $.fn.dataTable.render.number(',', '.', 2)
+            },
+            {
+                data: 'taxed',
+                className: 'text-end',
+                render: $.fn.dataTable.render.number(',', '.', 2)
+            },
+            {
+                data: 'tax',
+                className: 'text-end',
+                render: $.fn.dataTable.render.number(',', '.', 2)
             },
         ],
     });

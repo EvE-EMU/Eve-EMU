@@ -96,6 +96,36 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
             "schedule": crontab(minute=15, hour="*/2"),
         }
 
+    if _has_app(apps, "moon_tsar") and _celery_enabled("AA_MOON_TSAR_CELERY"):
+        schedule["moon_tsar_discover_extractions"] = {
+            "task": "moon_tsar.tasks.discover_extractions",
+            "schedule": crontab(minute="*/15"),
+        }
+        schedule["moon_tsar_sync_extraction_ledgers"] = {
+            "task": "moon_tsar.tasks.sync_extraction_ledgers",
+            "schedule": crontab(minute="*/30"),
+        }
+        schedule["moon_tsar_generate_pending_bills"] = {
+            "task": "moon_tsar.tasks.generate_pending_bills",
+            "schedule": crontab(minute=5, hour="*/1"),
+        }
+        schedule["moon_tsar_poll_tax_payments"] = {
+            "task": "moon_tsar.tasks.poll_tax_payments",
+            "schedule": crontab(minute="*/30"),
+        }
+        schedule["moon_tsar_send_bill_reminders"] = {
+            "task": "moon_tsar.tasks.send_bill_reminders",
+            "schedule": crontab(minute=0, hour=9),
+        }
+        schedule["moon_tsar_refresh_profitability"] = {
+            "task": "moon_tsar.tasks.refresh_profitability_snapshots",
+            "schedule": crontab(minute=0, hour=4),
+        }
+        schedule["moon_tsar_refresh_heatmap"] = {
+            "task": "moon_tsar.tasks.refresh_heatmap",
+            "schedule": crontab(minute=30, hour=3),
+        }
+
     if _has_app(apps, "metenox"):
         schedule["metenox_update_prices"] = {
             "task": "metenox.tasks.update_prices",

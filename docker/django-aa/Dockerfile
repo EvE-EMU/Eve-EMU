@@ -75,8 +75,7 @@ COPY deploy/aa_docker/patches/ledger/thirdparty/charlink_hook.py /usr/local/lib/
 COPY deploy/aa_docker/patches/ledger/auth_hooks.py /usr/local/lib/python3.12/site-packages/ledger/auth_hooks.py
 # aa-contacts: upstream admin omits AllianceToken / CorporationToken (Charlink ESI slots).
 COPY deploy/aa_docker/patches/aa_contacts/admin.py /usr/local/lib/python3.12/site-packages/aa_contacts/admin.py
-# aa-metenox 1.6.3: SDE gap + DataTables GET edge cases → 500 on /metenox/moons.
-COPY deploy/aa_docker/patches/metenox/views/moons.py /usr/local/lib/python3.12/site-packages/metenox/views/moons.py
+# aa-metenox removed from slim bundle (patch retained in repo if re-enabled).
 # aa-market-manager 2.0.0: eve_sde ItemType uses group/market_group/parent_group, not item_* names.
 COPY deploy/aa_docker/patches/marketmanager/models.py /usr/local/lib/python3.12/site-packages/marketmanager/models.py
 COPY deploy/aa_docker/patches/marketmanager/admin.py /usr/local/lib/python3.12/site-packages/marketmanager/admin.py
@@ -95,7 +94,6 @@ COPY deploy/aa_docker/patches/taskmonitor/urls.py /usr/local/lib/python3.12/site
 COPY deploy/aa_docker/taskmonitor_patch.py /app/deploy/aa_docker/taskmonitor_patch.py
 COPY deploy/aa_docker/repair_indy_hub_migrations.py /app/deploy/aa_docker/repair_indy_hub_migrations.py
 COPY deploy/aa_docker/extensions /app/deploy/aa_docker/extensions
-COPY deploy/aa_docker/miningtaxes_ext /app/deploy/aa_docker/miningtaxes_ext
 COPY deploy/aa_docker/moon_rentals /app/deploy/aa_docker/moon_rentals
 COPY deploy/aa_docker/miningtaxes_notify_patch.py /app/deploy/aa_docker/miningtaxes_notify_patch.py
 COPY deploy/aa_docker/market_bridge /app/deploy/aa_docker/market_bridge

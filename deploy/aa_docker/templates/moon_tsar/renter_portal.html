@@ -1,0 +1,24 @@
+{% extends "allianceauth/base-bs5.html" %}
+{% load i18n %}
+{% block page_title %}{% translate "Renter portal" %}{% endblock %}
+{% block content %}
+<div class="col-lg-10">
+    <h1>{% translate "Moon renter portal" %}</h1>
+    <h2>{% translate "Private rentals" %}</h2>
+    <ul>
+    {% for p in profiles %}
+        <li>{{ p.moon_label }} — {{ p.monthly_rent_isk|floatformat:0 }} ISK/mo</li>
+    {% empty %}
+        <li>{% translate "No private moon profiles assigned." %}</li>
+    {% endfor %}
+    </ul>
+    <h2>{% translate "Leases (moonrentals)" %}</h2>
+    <ul>
+    {% for l in leases %}
+        <li>{{ l.moon }} — {{ l.get_payment_status_display }}</li>
+    {% empty %}
+        <li>{% translate "No active leases as POC." %}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+# One item per line: Name x Qty (lines starting with # are ignored)
+Broadcast Node x900
+Integrity Response Drones x1120
+Nano-Factory x1665
+Organic Mortar Applicators x1267
+Recursive Computing Module x1125
+Self-Harmonizing Power Core x883
+Sterile Conduits x1276
+Wetware Mainframe x904
+Janitor x450
+Marines x225

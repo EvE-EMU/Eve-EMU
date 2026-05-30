@@ -7,31 +7,6 @@
 {% block details %}
 <div class="row">
     <div class="col-md-6">
-        <div class="card card-default mb-3">
-            <div class="card-header">
-                <h5 class="card-title mb-0">{% translate 'Ore mined this month (by type)' %}</h5>
-            </div>
-            <div class="card-body table-responsive">
-                <p id="ore_month_moon_note" class="text-muted small d-none"></p>
-                <table class="table table-sm table-striped" id="ore_month_totals">
-                    <thead>
-                        <tr>
-                            <th>{% translate 'Ore type' %}</th>
-                            <th class="text-end">{% translate 'Quantity (m³)' %}</th>
-                            <th class="text-end">{% translate 'Value (ISK)' %}</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                    <tfoot>
-                        <tr class="fw-bold">
-                            <td>{% translate 'Total' %}</td>
-                            <td class="text-end" id="ore_month_total_m3">—</td>
-                            <td class="text-end" id="ore_month_total_isk">—</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
         <div class="card card-default">
             <div class="card-header">
                 <h5 class="card-title mb-0">{% translate 'Characters' %}</h5>
@@ -113,31 +88,6 @@ function formatIsk(n) {
 }
 
 (function() {
-    const now = new Date();
-    $.getJSON("{% url 'miningtaxes_ext:user_ore_totals_json' user_pk %}?year=" + now.getFullYear() + "&month=" + (now.getMonth() + 1), function (payload) {
-        const tbody = $("#ore_month_totals tbody");
-        tbody.empty();
-        (payload.ores || []).forEach(function (row) {
-            tbody.append(
-                "<tr><td>" + row.ore + "</td>"
-                + "<td class='text-end'>" + row.quantity.toLocaleString() + "</td>"
-                + "<td class='text-end'>" + formatIsk(row.value_isk) + "</td></tr>"
-            );
-        });
-        $("#ore_month_total_m3").text((payload.total_quantity || 0).toLocaleString());
-        $("#ore_month_total_isk").text(formatIsk(payload.total_value_isk));
-        const moonNote = $("#ore_month_moon_note");
-        if (payload.corp_moon_mode && payload.includes_corp_moon_observer) {
-            moonNote.text("{% filter escapejs %}{% translate 'Includes corp moon chunk ores (R4–R64) from mining observer logs. Rift/belt ores at moons still come from your character ledger.' %}{% endfilter %}");
-            moonNote.removeClass("d-none");
-        } else if (payload.corp_moon_mode) {
-            moonNote.text("{% filter escapejs %}{% translate 'Corp moon chunk ores (R4–R64) are not in your personal ledger. If you mined corp moons this month and see no chunk ores here, an admin needs to sync corp mining observers under Mining Taxes → Setup.' %}{% endfilter %}");
-            moonNote.removeClass("d-none");
-        } else {
-            moonNote.addClass("d-none");
-        }
-    });
-
     $.getJSON("{% url 'miningtaxes:user_mining_ledger_90day' user_pk %}", function (d) {
         var pgs = [];
         d["stacked"].forEach(function(arr) { if (arr[0] != "x") { pgs.push(arr[0]); } });

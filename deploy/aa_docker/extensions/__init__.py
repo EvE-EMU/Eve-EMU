@@ -24,6 +24,14 @@ DEPRECATED_INSTALLED_APPS: frozenset[str] = frozenset(
         "aa_srppayouts",
         "ravworks_exporter",
         "aa_ravworks_exporter",
+        # Slim bundle (removed from requirements / INSTALLED_APPS — drop orphan labels)
+        "killstats",
+        "metenox",
+        "aasrp",
+        "afat",
+        "skillfarm",
+        "moon_tsar",
+        "miningtaxes_ext",
     }
 )
 

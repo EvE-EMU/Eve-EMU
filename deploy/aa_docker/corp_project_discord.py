@@ -364,6 +364,73 @@ def _goal_dedupe_cache_key(goal_id: str, event_kind: str) -> str:
     return f"corp_project_discord:goal:v1:{goal_id}:{event_kind}"
 
 
+def _terminal_goal_cache_key(goal_id: str) -> str:
+    """Any completed/closed/expired project — never post open/created alerts again."""
+    return f"corp_project_discord:terminal:v1:{goal_id}"
+
+
+def _mark_goal_terminal(goal_id: str) -> None:
+    cache.set(_terminal_goal_cache_key(goal_id), "1", timeout=60 * 60 * 24 * 365)
+
+
+def _goal_is_terminal(goal_id: str) -> bool:
+    return bool(cache.get(_terminal_goal_cache_key(goal_id)))
+
+
+def closed_goal_ids_from_corptools(*, days: int | None = 365) -> set[str]:
+    """``goal_id`` values that have any completed/closed/expired CorpTools notification."""
+    try:
+        from corptools.models import Notification
+    except ImportError:
+        return set()
+
+    qs = Notification.objects.filter(
+        notification_type__in=CORP_PROJECT_CLOSED_TYPES,
+    ).select_related("notification_text")
+    if days and days > 0:
+        since = timezone.now() - timedelta(days=days)
+        qs = qs.filter(timestamp__gte=since)
+
+    closed: set[str] = set()
+    for notification in qs.iterator(chunk_size=500):
+        notif_text = (
+            notification.notification_text.notification_text
+            if notification.notification_text
+            else None
+        )
+        goal_id = parse_goal_id(notif_text)
+        if goal_id:
+            closed.add(goal_id)
+    return closed
+
+
+def closed_goal_names_from_corptools(*, days: int | None = 365) -> set[str]:
+    """Fallback when ``goal_id`` is missing from notification YAML."""
+    try:
+        from corptools.models import Notification
+    except ImportError:
+        return set()
+
+    qs = Notification.objects.filter(
+        notification_type__in=CORP_PROJECT_CLOSED_TYPES,
+    ).select_related("notification_text")
+    if days and days > 0:
+        since = timezone.now() - timedelta(days=days)
+        qs = qs.filter(timestamp__gte=since)
+
+    names: set[str] = set()
+    for notification in qs.iterator(chunk_size=500):
+        notif_text = (
+            notification.notification_text.notification_text
+            if notification.notification_text
+            else None
+        )
+        goal_name = parse_goal_name(notif_text)
+        if goal_name:
+            names.add(goal_name.casefold())
+    return names
+
+
 def _daily_digest_cache_key(goal_id: str, digest_date: str) -> str:
     return f"corp_project_discord:daily:v1:{goal_id}:{digest_date}"
 
@@ -1142,6 +1209,7 @@ def collect_outstanding_open_project_notifications(
         qs = qs.filter(timestamp__gte=since)
 
     closed_goal_ids: set[str] = set()
+    closed_goal_names: set[str] = set()
     open_by_goal: dict[str, Any] = {}
 
     for notification in qs.order_by("timestamp").iterator(chunk_size=500):
@@ -1151,11 +1219,17 @@ def collect_outstanding_open_project_notifications(
             else None
         )
         goal_id = parse_goal_id(notif_text)
-        if not goal_id:
-            continue
+        goal_name = parse_goal_name(notif_text)
 
         if notification.notification_type in CORP_PROJECT_CLOSED_TYPES:
-            closed_goal_ids.add(goal_id)
+            if goal_id:
+                closed_goal_ids.add(goal_id)
+                _mark_goal_terminal(goal_id)
+            if goal_name:
+                closed_goal_names.add(goal_name.casefold())
+            continue
+
+        if not goal_id:
             continue
 
         if notification.notification_type not in CORP_PROJECT_OPEN_TYPES:
@@ -1169,6 +1243,15 @@ def collect_outstanding_open_project_notifications(
         gid: open_by_goal[gid]
         for gid in open_by_goal
         if gid not in closed_goal_ids
+        and (
+            parse_goal_name(
+                open_by_goal[gid].notification_text.notification_text
+                if open_by_goal[gid].notification_text
+                else None
+            )
+            or ""
+        ).casefold()
+        not in closed_goal_names
     }
 
 
@@ -1196,6 +1279,22 @@ def _process_corp_project_notifications(
         .select_related("notification_text", "character__character")
         .order_by("timestamp")
     )
+
+    is_open_pass = notification_types <= CORP_PROJECT_OPEN_TYPES
+    is_terminal_pass = bool(notification_types & CORP_PROJECT_CLOSED_TYPES)
+    closed_ids = (
+        closed_goal_ids_from_corptools(days=0)
+        if is_open_pass or is_terminal_pass
+        else set()
+    )
+    closed_names = (
+        closed_goal_names_from_corptools(days=0)
+        if is_open_pass
+        else set()
+    )
+    if is_terminal_pass:
+        for gid in closed_ids:
+            _mark_goal_terminal(gid)
 
     sent = 0
     examined = 0
@@ -1230,6 +1329,35 @@ def _process_corp_project_notifications(
         )
         goal_id = parse_goal_id(notif_text)
         event_kind = _event_kind(notification.notification_type)
+
+        if is_open_pass:
+            if goal_id and (_goal_is_terminal(goal_id) or goal_id in closed_ids):
+                _mark_sent(notification.notification_id)
+                if goal_id in closed_ids:
+                    _mark_goal_terminal(goal_id)
+                logger.debug(
+                    "corp_project_discord: skip open alert for terminal goal %s (%r)",
+                    goal_id,
+                    goal_name,
+                )
+                continue
+            if goal_name.casefold() in closed_names:
+                _mark_sent(notification.notification_id)
+                logger.debug(
+                    "corp_project_discord: skip open alert for completed goal name %r",
+                    goal_name,
+                )
+                continue
+
+        if is_terminal_pass and goal_id and _goal_is_terminal(goal_id):
+            _mark_sent(notification.notification_id)
+            logger.debug(
+                "corp_project_discord: skip duplicate completed alert for terminal goal %s (%r)",
+                goal_id,
+                goal_name,
+            )
+            continue
+
         if _dedupe_by_goal_enabled() and goal_id and _already_sent_goal(goal_id, event_kind):
             _mark_sent(notification.notification_id)
             continue
@@ -1248,6 +1376,8 @@ def _process_corp_project_notifications(
             _mark_sent(notification.notification_id)
             if _dedupe_by_goal_enabled() and goal_id:
                 _mark_sent_goal(goal_id, event_kind)
+            if goal_id and notification.notification_type in CORP_PROJECT_CLOSED_TYPES:
+                _mark_goal_terminal(goal_id)
             sent += 1
             logger.info(
                 "corp_project_discord: sent %s for %r -> %s",
@@ -1342,6 +1472,9 @@ def backfill_completed_corp_project_discord(
             continue
 
         event_kind = _event_kind(notification.notification_type)
+        if not force and _goal_is_terminal(goal_id):
+            continue
+
         if (
             not force
             and _dedupe_by_goal_enabled()
@@ -1366,6 +1499,7 @@ def backfill_completed_corp_project_discord(
             _mark_sent(notification.notification_id)
             if _dedupe_by_goal_enabled():
                 _mark_sent_goal(goal_id, event_kind)
+            _mark_goal_terminal(goal_id)
             sent += 1
 
     return {
