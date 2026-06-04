@@ -72,28 +72,52 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
             "task": "moonmining.tasks.run_regular_updates",
             "schedule": crontab(minute=f"*/{moonmining_minutes}"),
         }
-        schedule["moonmining_run_report_updates"] = {
-            "task": "moonmining.tasks.run_report_updates",
-            "schedule": crontab(minute=30, hour="*/1"),
-        }
+        if _has_app(apps, "emu_moons") and _celery_enabled("AA_EMU_MOONS_CELERY", "1"):
+            # Non-private moons only; also queues miningtaxes observer refresh.
+            schedule["emu_moons_sync_moonmining_reports"] = {
+                "task": "emu_moons.tasks.sync_moonmining_reports",
+                "schedule": crontab(minute=30, hour="*/1"),
+            }
+        else:
+            schedule["moonmining_run_report_updates"] = {
+                "task": "moonmining.tasks.run_report_updates",
+                "schedule": crontab(minute=30, hour="*/1"),
+            }
         schedule["moonmining_run_value_updates"] = {
             "task": "moonmining.tasks.run_calculated_properties_update",
             "schedule": crontab(minute=30, hour=3),
         }
 
-    if _has_app(apps, "moonrentals"):
-        rental_poll = _env_int("AA_MOONRENTALS_WALLET_POLL_MINUTES", 30)
-        schedule["moonrentals_poll_wallet_payments"] = {
-            "task": "moonmining.rentals.tasks.poll_rental_wallet_payments",
-            "schedule": crontab(minute=f"*/{rental_poll}"),
+    if _has_app(apps, "emu_moons") and _celery_enabled("AA_EMU_MOONS_CELERY", "1"):
+        cfg_weekday = _env_int("AA_EMU_MOONS_INVOICE_WEEKDAY", 3)  # Thursday
+        cfg_hour = _env_int("AA_EMU_MOONS_INVOICE_HOUR_UTC", 12)
+        schedule["emu_moons_discover_extractions"] = {
+            "task": "emu_moons.tasks.discover_extractions",
+            "schedule": crontab(minute="*/15"),
         }
-        schedule["moonrentals_sync_fuel_from_structures"] = {
-            "task": "moonmining.rentals.tasks.sync_rental_fuel_from_structures",
-            "schedule": crontab(minute=45, hour="*/1"),
+        schedule["emu_moons_process_invoices"] = {
+            "task": "emu_moons.tasks.process_pending_invoices",
+            "schedule": crontab(minute=10, hour="*/2"),
         }
-        schedule["moonrentals_check_fuel_alerts"] = {
-            "task": "moonmining.rentals.tasks.check_rental_fuel_alerts",
-            "schedule": crontab(minute=15, hour="*/2"),
+        schedule["emu_moons_weekly_invoice_run"] = {
+            "task": "emu_moons.tasks.weekly_invoice_run",
+            "schedule": crontab(minute=0, hour=cfg_hour, day_of_week=cfg_weekday),
+        }
+        schedule["emu_moons_poll_wallet"] = {
+            "task": "emu_moons.tasks.poll_wallet_payments",
+            "schedule": crontab(minute="*/30"),
+        }
+        schedule["emu_moons_refresh_penalties"] = {
+            "task": "emu_moons.tasks.refresh_penalties",
+            "schedule": crontab(minute=0, hour=6),
+        }
+        schedule["emu_moons_refresh_prices"] = {
+            "task": "emu_moons.tasks.refresh_ore_prices",
+            "schedule": crontab(minute=0, hour="*/6"),
+        }
+        schedule["emu_moons_send_reminders"] = {
+            "task": "emu_moons.tasks.send_reminders",
+            "schedule": crontab(minute=0, hour=10),
         }
 
     if _has_app(apps, "moon_tsar") and _celery_enabled("AA_MOON_TSAR_CELERY"):
@@ -344,7 +368,7 @@ def extension_celerybeat_schedule(installed_apps: list[str] | tuple[str, ...]) -
                 hour=_env_int("AA_BEAT_MININGTAXES_DAILY_HOUR", 1),
             ),
         }
-        if _celery_enabled("AA_MININGTAXES_NOTIFY_ENABLED", "0"):
+        if _celery_enabled("AA_MININGTAXES_NOTIFY_ENABLED", "1"):
             schedule["miningtaxes_notifications"] = {
                 "task": "miningtaxes.tasks.notify_taxes_due",
                 "schedule": crontab(

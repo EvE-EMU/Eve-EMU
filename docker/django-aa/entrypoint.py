@@ -85,7 +85,12 @@ if _manage.is_file():
                 "-c",
                 "import django; django.setup(); "
                 "from corp_project_discord import ensure_corp_project_esi_scope_in_db; "
-                "ensure_corp_project_esi_scope_in_db()",
+                "ensure_corp_project_esi_scope_in_db(); "
+                "try:\n"
+                "  from emu_moons.observer_scopes import ensure_emu_moons_observer_scopes_in_db\n"
+                "  ensure_emu_moons_observer_scopes_in_db()\n"
+                "except ImportError:\n"
+                "  pass",
             ],
             cwd=cwd,
             env=env,

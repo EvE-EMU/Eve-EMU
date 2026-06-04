@@ -317,6 +317,42 @@ def main() -> None:
         return "Unknown\""""
     if old_location in text:
         text = text.replace(old_location, new_location)
+    old_update_scopes = """    @fetch_token_for_owner(
+        [
+            "esi-contracts.read_character_contracts.v1",
+            "esi-contracts.read_corporation_contracts.v1",
+            "esi-universe.read_structures.v1",
+        ]
+    )"""
+    new_update_scopes = """    @fetch_token_for_owner(
+        [
+            "esi-contracts.read_character_contracts.v1",
+            "esi-universe.read_structures.v1",
+        ]
+    )"""
+    if old_update_scopes in text:
+        text = text.replace(old_update_scopes, new_update_scopes, 1)
+    old_corp_fetch = """        corporation_contracts = self._fetch_corporation_contracts()
+
+        logger.debug("Got %s corporation contracts" % len(corporation_contracts))"""
+    new_corp_fetch = """        try:
+            corporation_contracts = self._fetch_corporation_contracts()
+        except TokenError:
+            logger.warning(
+                "%s: Skipping corporation contracts (no corp contract scope)",
+                self,
+            )
+            corporation_contracts = []
+
+        logger.debug("Got %s corporation contracts" % len(corporation_contracts))"""
+    if old_corp_fetch in text and "Skipping corporation contracts" not in text:
+        text = text.replace(old_corp_fetch, new_corp_fetch, 1)
+    if "TokenError" not in text.split("from esi.errors import")[1].split("\n")[0]:
+        text = text.replace(
+            "from esi.errors import TokenExpiredError, TokenInvalidError",
+            "from esi.errors import TokenError, TokenExpiredError, TokenInvalidError",
+            1,
+        )
     text = re.sub(
         r"for esi_contract in esi_contracts:\n            contract = esi_contract\n            contract\[\"is_corporation\"\] = (False|True)",
         lambda m: (

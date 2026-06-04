@@ -17,7 +17,6 @@ An Alliance Auth app for tracking moon extractions and scouting new moons.
 - [Features](#features)
 - [Installation](#installation)
 - [User manual](#user-manual)
-- [Renter management (moonrentals)](#renter-management-moonrentals)
 - [Permissions](#permissions)
 - [Settings](#settings)
 - [Management Commands](#management-commands)
@@ -33,8 +32,6 @@ An Alliance Auth app for tracking moon extractions and scouting new moons.
 - Mining ledger per extraction
 - Reports (e.g. potential total income of all owned moons)
 - Tool for mass importing moon scans from external sources
-- **Renter management** (`moonrentals`): active leases, available moons storefront, corp wallet payment matching, fuel alerts, Discord webhooks — see [Renter management](#renter-management-moonrentals)
-
 >**Hint**<br>If you like to see all extraction events in a calendar view please consider checking out the amazing app [Allianceauth Opcalendar](https://gitlab.com/paulipa/allianceauth-opcalendar), which is fully integrated with **Moon Mining**.
 
 ## Highlights
@@ -95,7 +92,7 @@ pip install aa-moonmining
 
 Configure your Auth settings (`local.py`) as follows:
 
-- Add `'moonmining'` and `'moonmining.rentals.apps.MoonRentalsConfig'` to `INSTALLED_APPS` (omit rentals if you do not need renter management)
+- Add `'moonmining'` to `INSTALLED_APPS` (eve-emu does not deploy `moonmining.rentals`)
 - Add below lines to your settings file:
 
 ```python
@@ -123,7 +120,6 @@ Run migrations & copy static files
 
 ```bash
 python manage.py migrate
-python manage.py migrate moonrentals
 python manage.py collectstatic --noinput
 ```
 
@@ -201,50 +197,6 @@ To help with organizing your moons you can label them. For example you might hav
 
 Labels are created on the admin site under Label and can then be assigned under Moon.
 
-## Renter management (moonrentals)
-
-Optional submodule for **alliance moon rentals**: track who rents which surveyed moon, collect rent via corp wallet journal, and alert renters or leadership on Discord when fuel is low or payment arrives.
-
-Full reference: **[moonmining/rentals/README.md](moonmining/rentals/README.md)**.
-
-### Overview
-
-| Concept | Meaning |
-|---------|---------|
-| **Active lease** | A moon assigned to a renter corp with monthly ISK, POC, and payment status |
-| **Available moon** | Surveyed in Moon Mining, **no refinery** anchored, **no active lease** |
-| **Application** | Renter request (`apply_rent`); can auto-approve or appear in admin **Pending applications** |
-
-### UI
-
-- **Moon Mining → Renter Management** (`/moonmining/renters/`)
-- Tabs: **Active Leases**, **Available Moons**
-- Admin **Settings** (gear): wallet rules, webhooks, auto-approve, fuel reference hours — stored in the database, not `.env`
-
-### Quick setup
-
-1. Add `moonmining.rentals.apps.MoonRentalsConfig` to `INSTALLED_APPS` (see [Installation](#installation)).
-2. `python manage.py migrate moonrentals`
-3. Grant group permissions: `moonrentals.view_leases`, `moonrentals.apply_rent`, `moonrentals.admin_management`.
-4. Configure **Settings** in the UI (corp ID, wallet division, payment keyword, Discord webhooks).
-5. Add Celery beat tasks (see [rentals README](moonmining/rentals/README.md#installation)).
-6. Ensure corp token has `esi-wallet.read_corporation_wallets.v1` and `esi-corporations.read_divisions.v1`.
-7. Install **[aa-structures](https://apps.allianceauth.org/apps/detail/aa-structures)** for automatic fuel % (recommended).
-
-### Payment flow
-
-Renters pay corp wallet with description matching:
-
-```text
-MOON-RENT-REVENUE <system> - <moon name>
-```
-
-(Default keyword is configurable.) Celery marks the lease **Paid** when amount ≥ monthly rent.
-
-### Screenshots
-
-The UI follows the same Bootstrap layout as Moon Mining (tables for leases and available moons, modal for global settings, autocomplete for POC on the lease form).
-
 ## Permissions
 
 Here is an overview of all permissions:
@@ -258,14 +210,6 @@ Name  | Description
 `moonmining.view_all_moons` | User can view all moons in the database and see own moons.
 `moonmining.add_refinery_owner` | This permission is allows users to add their tokens to be pulled from when checking for new extraction events.
 `moonmining.view_moon_ledgers` | Users with this permission can view the mining ledgers from past extractions from moons they have access to.
-
-### Moon rentals (`moonrentals` app label)
-
-| Name | Description |
-|------|-------------|
-| `moonrentals.view_leases` | View active leases and available moons |
-| `moonrentals.apply_rent` | Submit rental applications (**Rent This Moon**) |
-| `moonrentals.admin_management` | Edit/evict leases, settings, webhooks, approve applications |
 
 ## Settings
 
@@ -295,14 +239,6 @@ Name | Description
 `moonstuff_export_moons`| Export all moons from aa-moonstuff v1 to a CSV file, which can later be used to import the moons into the Moon Mining app
 `moonmining_load_eve`| Pre-loads data required for this app from ESI to improve app performance.
 `moonmining_import_moons`| Import moons from a CSV file. Example:<br>`moon_id,ore_type_id,amount`<br>`40161708,45506,0.19`
-
-### Moon rentals Celery tasks
-
-| Task | Description |
-|------|-------------|
-| `moonmining.rentals.tasks.poll_rental_wallet_payments` | Match corp wallet journal to open leases |
-| `moonmining.rentals.tasks.sync_rental_fuel_from_structures` | Update fuel % from aa-structures |
-| `moonmining.rentals.tasks.check_rental_fuel_alerts` | Sync fuel and send low-fuel Discord webhooks |
 
 ## FAQ
 

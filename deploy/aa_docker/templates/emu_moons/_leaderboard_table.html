@@ -1,0 +1,56 @@
+{% load i18n %}
+
+{% load emu_moons_tags %}
+
+<table class="table table-sm table-hover mb-0 align-middle emu-lb-table">
+
+    <tbody>
+
+        {% for row in rows %}
+
+        <tr>
+
+            <td class="text-muted ps-3" style="width: 2rem;">{{ forloop.counter }}</td>
+
+            <td>
+
+                {% if link_prefix == "user" and row.link_username %}
+
+                <a href="{% url 'emu_moons:account_statement_user' row.link_username %}">{{ row.label }}</a>
+
+                {% else %}
+
+                {{ row.label }}
+
+                {% endif %}
+
+                <div class="text-muted small">{{ row.sublabel }}</div>
+
+            </td>
+
+            <td class="text-end pe-3 fw-semibold text-nowrap">
+
+                {% if value_is_volume %}
+
+                {{ row.value|floatformat:0 }}{{ value_suffix }}
+
+                {% else %}
+
+                {{ row.value|isk_amount }}
+
+                {% endif %}
+
+            </td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr><td colspan="3" class="text-muted small p-3">{% translate "No data yet." %}</td></tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+

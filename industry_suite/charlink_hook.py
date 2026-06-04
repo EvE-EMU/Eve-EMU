@@ -42,7 +42,7 @@ app_import = AppImport(
     [
         LoginImport(
             app_label="industry_suite",
-            unique_id="corp_project_discord",
+            unique_id="corpprojectdiscord",
             field_label=_("Corp project Discord (qty / ISK)"),
             add_character=_add_character_corp_projects,
             scopes=required_corp_project_scopes(),

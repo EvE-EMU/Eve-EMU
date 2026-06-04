@@ -1,19 +1,68 @@
 """Pin aa-structures Owner ESI sync to specific django-esi tokens (private server).
 
 Same env as CorpTools: ``AA_FALSE_GODS_CORP_TOKEN_ID`` / ``AA_CORP_TOKEN_OVERRIDES``.
+Guns-R-Us structures default to ``AA_STRUCTURES_AUTH_CHARACTER`` (Rexan Darkstar).
 """
 
 from __future__ import annotations
 
 import logging
+import os
 
 from corptools_corp_token import FALSE_GODS_CORP_ID, _parse_corp_token_overrides
 
 logger = logging.getLogger(__name__)
 
+GUNS_R_US_CORP_ID = 98633922
+DEFAULT_STRUCTURES_AUTH_CHARACTER = "Rexan Darkstar"
+
+
+def _token_pk_for_character(character_name: str) -> int | None:
+    if not character_name.strip():
+        return None
+    try:
+        from allianceauth.eveonline.models import EveCharacter
+        from esi.models import Token
+    except Exception:
+        return None
+
+    ec = EveCharacter.objects.filter(character_name__iexact=character_name.strip()).first()
+    if not ec:
+        logger.warning("structures_corp_token: character %r not found on auth", character_name)
+        return None
+    token = (
+        Token.objects.filter(character_id=ec.character_id)
+        .order_by("-created")
+        .first()
+    )
+    if not token:
+        logger.warning(
+            "structures_corp_token: no ESI token for character %r", character_name
+        )
+        return None
+    return int(token.pk)
+
+
+def structures_token_overrides() -> dict[int, int]:
+    """Corp id → django-esi token pk for aa-structures Owner.fetch_token()."""
+    overrides = dict(_parse_corp_token_overrides())
+
+    gru_token = os.environ.get("AA_GUNS_R_US_CORP_TOKEN_ID", "").strip()
+    if gru_token.isdigit():
+        overrides[GUNS_R_US_CORP_ID] = int(gru_token)
+    else:
+        auth_char = os.environ.get(
+            "AA_STRUCTURES_AUTH_CHARACTER", DEFAULT_STRUCTURES_AUTH_CHARACTER
+        ).strip()
+        token_pk = _token_pk_for_character(auth_char)
+        if token_pk is not None:
+            overrides[GUNS_R_US_CORP_ID] = token_pk
+
+    return overrides
+
 
 def patch_structures_fetch_token() -> None:
-    overrides = _parse_corp_token_overrides()
+    overrides = structures_token_overrides()
     if not overrides:
         return
 
@@ -33,7 +82,6 @@ def patch_structures_fetch_token() -> None:
             token = (
                 Token.objects.filter(pk=token_pk)
                 .require_scopes(Owner.esi_scopes())
-                .require_valid()
                 .first()
             )
             if token:
@@ -59,8 +107,8 @@ def patch_structures_fetch_token() -> None:
 
 
 def ensure_structure_owners_from_overrides() -> None:
-    """Create Owner + sync character for each corp in AA_CORP_TOKEN_OVERRIDES."""
-    overrides = _parse_corp_token_overrides()
+    """Create Owner + sync character for each corp in structures token overrides."""
+    overrides = structures_token_overrides()
     if not overrides:
         return
 

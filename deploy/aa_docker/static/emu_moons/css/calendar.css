@@ -1,0 +1,29 @@
+#moonCalendar {
+    min-height: 640px;
+}
+
+.emu-moons-calendar-legend .legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.legend-public {
+    background-color: #0d6efd;
+}
+
+.legend-nationalized {
+    background-color: #fd7e14;
+}
+
+.legend-private {
+    background-color: #6c757d;
+}
+
+.fc .fc-event {
+    cursor: pointer;
+    font-size: 0.8rem;
+}

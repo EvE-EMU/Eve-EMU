@@ -105,9 +105,15 @@ def apply_extension_settings(settings: dict) -> None:
         )
 
     if "aa_theme_slate" in installed:
-        settings["DEFAULT_THEME"] = (
-            "aa_theme_slate.theme.slate.auth_hooks.AaSlateThemeHook"
-        )
+        theme_choice = os.environ.get("AA_DEFAULT_THEME", "flatly").strip().lower()
+        if theme_choice == "slate":
+            settings["DEFAULT_THEME"] = (
+                "aa_theme_slate.theme.slate.auth_hooks.AaSlateThemeHook"
+            )
+        else:
+            settings["DEFAULT_THEME"] = (
+                "allianceauth.theme.flatly.auth_hooks.FlatlyThemeHook"
+            )
 
     if "wikijs" in installed:
         domain = os.environ.get("DOMAIN_NAME", "").strip()
@@ -172,11 +178,28 @@ def apply_extension_settings(settings: dict) -> None:
         )
 
     public_views = list(settings.get("APPS_WITH_PUBLIC_VIEWS", []))
-    for label in ("timezones", "sovtimer", "esistatus", "aa_intel_tool", "buyback_v2"):
+    for label in (
+        "timezones",
+        "sovtimer",
+        "esistatus",
+        "aa_intel_tool",
+        "buyback_v2",
+        "emu_moons",
+    ):
         if label in installed and label not in public_views:
             public_views.append(label)
     if public_views:
         settings["APPS_WITH_PUBLIC_VIEWS"] = public_views
+
+    if _app_installed(installed, "emu_moons"):
+        templates = settings.get("TEMPLATES")
+        if templates and isinstance(templates, list) and templates:
+            ctx_procs = list(templates[0].get("OPTIONS", {}).get("context_processors", []))
+            proc = "emu_moons.context_processors.emu_moons_nav"
+            if proc not in ctx_procs:
+                ctx_procs.append(proc)
+                templates[0].setdefault("OPTIONS", {})["context_processors"] = ctx_procs
+                settings["TEMPLATES"] = templates
 
     if "buyback_v2" in installed:
         templates = settings.get("TEMPLATES")
@@ -205,29 +228,23 @@ def apply_extension_settings(settings: dict) -> None:
         settings["BUYBACKPROGRAM_PRICE_JANICE_API_KEY"] = janice_key
 
     if _app_installed(installed, "miningtaxes"):
+        # Optional overrides only — otherwise aa-miningtaxes app_settings defaults apply.
         mt_method = os.environ.get("MININGTAXES_PRICE_METHOD", "").strip()
         if mt_method:
             settings["MININGTAXES_PRICE_METHOD"] = mt_method
-        else:
-            settings.setdefault("MININGTAXES_PRICE_METHOD", "Fuzzwork")
-        mt_janice = (
-            os.environ.get("MININGTAXES_PRICE_JANICE_API_KEY", "").strip() or janice_key
-        )
+        mt_janice = os.environ.get("MININGTAXES_PRICE_JANICE_API_KEY", "").strip() or janice_key
         if mt_janice:
             settings["MININGTAXES_PRICE_JANICE_API_KEY"] = mt_janice
-            if not mt_method:
-                settings["MININGTAXES_PRICE_METHOD"] = "Janice"
         corp_div = os.environ.get("MININGTAXES_CORP_WALLET_DIVISION", "").strip()
         if corp_div.isdigit():
             settings["MININGTAXES_CORP_WALLET_DIVISION"] = int(corp_div)
-        # Corp moon observer logs only (private moons ignored for taxing).
-        settings.setdefault("MININGTAXES_TAX_ONLY_CORP_MOONS", True)
-        if os.environ.get("MININGTAXES_TAX_ONLY_CORP_MOONS", "").strip().lower() in (
-            "0",
-            "false",
-            "no",
-            "off",
-        ):
+        tax_corp_only = os.environ.get("MININGTAXES_TAX_ONLY_CORP_MOONS", "").strip().lower()
+        if tax_corp_only in ("0", "false", "no", "off"):
+            settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = False
+        elif tax_corp_only in ("1", "true", "yes", "on"):
+            settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = True
+        elif _app_installed(installed, "emu_moons"):
+            # EMU Moons invoices from corp observer logs; personal ledger is opt-in fallback only.
             settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = False
 
     if _app_installed(installed, "moon_rentals"):
@@ -249,13 +266,17 @@ def apply_extension_settings(settings: dict) -> None:
             pass
 
     if _app_installed(installed, "corptools"):
+        settings["CT_CHAR_MAIL_MODULE"] = os.environ.get(
+            "AA_CORPTOOLS_MAIL_MODULE", "1"
+        ).strip().lower() in ("1", "true", "yes", "on")
         ct_scopes = [
             s.strip()
             for s in os.environ.get(
                 "AA_CORPTOOLS_LOGIN_SCOPES",
                 "esi-characters.read_titles.v1 "
                 "esi-characters.read_corporation_roles.v1 "
-                "esi-corporations.read_projects.v1",
+                "esi-corporations.read_projects.v1 "
+                "esi-mail.read_mail.v1",
             ).split()
             if s.strip()
         ]

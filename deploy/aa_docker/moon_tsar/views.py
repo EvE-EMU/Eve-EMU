@@ -124,17 +124,10 @@ def bill_detail(request: HttpRequest, public_id) -> HttpResponse:
 @permission_required("moon_tsar.view_renter_portal", raise_exception=True)
 def renter_portal(request: HttpRequest) -> HttpResponse:
     profiles = MoonRentalProfile.objects.filter(active=True, renter_user=request.user)
-    leases = []
-    try:
-        from moonmining.rentals.models import MoonLease
-
-        leases = MoonLease.objects.filter(main_poc=request.user).select_related("moon")[:20]
-    except ImportError:
-        pass
     return render(
         request,
         "moon_tsar/renter_portal.html",
-        {"profiles": profiles, "leases": leases},
+        {"profiles": profiles},
     )
 
 

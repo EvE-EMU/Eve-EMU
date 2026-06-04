@@ -12,7 +12,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir "pip==26.1.1"
+RUN pip install --no-cache-dir "pip==26.1.2"
 
 COPY allianceauth /opt/allianceauth
 COPY deploy/aa_docker/patch_allianceauth_providers_compat.py /app/deploy/aa_docker/patch_allianceauth_providers_compat.py
@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -e /opt/allianceauth \
     -r /tmp/requirements-aa-extension-deps.txt \
     gunicorn whitenoise "psycopg2-binary>=2.9,<3" \
     && pip install --no-cache-dir -r /tmp/requirements-aa-extension-apps.txt --no-deps \
-    && pip install --no-cache-dir "pip==26.1.1"
+    && pip install --no-cache-dir "pip==26.1.2"
 
 COPY deploy/aa_docker/patches/indy_hub/ /usr/local/lib/python3.12/site-packages/indy_hub/migrations/
 
@@ -45,7 +45,6 @@ COPY deploy/aa_docker/metenox_compat.py /app/deploy/aa_docker/metenox_compat.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/killtracker/providers.py /usr/local/lib/python3.12/site-packages/killtracker/providers.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/standingssync/providers.py /usr/local/lib/python3.12/site-packages/standingssync/providers.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/moonmining/providers.py /usr/local/lib/python3.12/site-packages/moonmining/providers.py
-COPY deploy/aa_docker/patches/moonmining/rentals/ /usr/local/lib/python3.12/site-packages/moonmining/rentals/
 COPY deploy/aa_docker/patches/moonmining/urls.py /usr/local/lib/python3.12/site-packages/moonmining/urls.py
 COPY deploy/aa_docker/patches/moonmining/templates/moonmining/base.html /usr/local/lib/python3.12/site-packages/moonmining/templates/moonmining/base.html
 COPY deploy/aa_docker/patches/esi_openapi_providers/buybackprogram/providers.py /usr/local/lib/python3.12/site-packages/buybackprogram/providers.py
@@ -53,6 +52,15 @@ COPY deploy/aa_docker/patch_buyback_models.py /app/deploy/aa_docker/patch_buybac
 RUN python /app/deploy/aa_docker/patch_buyback_models.py
 COPY deploy/aa_docker/buybackprogram_esi_compat.py /app/deploy/aa_docker/buybackprogram_esi_compat.py
 COPY deploy/aa_docker/patches/esi_openapi_providers/structures/providers.py /usr/local/lib/python3.12/site-packages/structures/providers.py
+COPY deploy/aa_docker/patches/corptools/api/character/finances.py /usr/local/lib/python3.12/site-packages/corptools/api/character/finances.py
+COPY deploy/aa_docker/patches/corptools/api/character/status.py /usr/local/lib/python3.12/site-packages/corptools/api/character/status.py
+COPY deploy/aa_docker/patches/corptools/api/character/list.py /usr/local/lib/python3.12/site-packages/corptools/api/character/list.py
+COPY deploy/aa_docker/patches/corptools/api/schema.py /usr/local/lib/python3.12/site-packages/corptools/api/schema.py
+COPY deploy/aa_docker/patches/corptools/api/corporation/status.py /usr/local/lib/python3.12/site-packages/corptools/api/corporation/status.py
+COPY deploy/aa_docker/patches/corptools/static/corptools/bs5/assets/index-Cc9aPcSR.js /usr/local/lib/python3.12/site-packages/corptools/static/corptools/bs5/assets/index-Cc9aPcSR.js
+COPY deploy/aa_docker/corptools_audit_issues.py /app/deploy/aa_docker/corptools_audit_issues.py
+COPY deploy/aa_docker/corptools_contracts_patch.py /app/deploy/aa_docker/corptools_contracts_patch.py
+COPY deploy/aa_docker/corptools_mail_patch.py /app/deploy/aa_docker/corptools_mail_patch.py
 COPY deploy/aa_docker/corptools_postgres_compat.py /app/deploy/aa_docker/corptools_postgres_compat.py
 COPY deploy/aa_docker/corptools_corp_token.py /app/deploy/aa_docker/corptools_corp_token.py
 COPY deploy/aa_docker/structures_corp_token.py /app/deploy/aa_docker/structures_corp_token.py
@@ -63,12 +71,12 @@ COPY deploy/aa_docker/indy_hub_django_compat.py /app/deploy/aa_docker/indy_hub_d
 COPY deploy/aa_docker/indy_hub_postgres_compat.py /app/deploy/aa_docker/indy_hub_postgres_compat.py
 COPY deploy/aa_docker/oidc_provider.py /app/deploy/aa_docker/oidc_provider.py
 COPY deploy/aa_docker/corp_project_discord.py /app/deploy/aa_docker/corp_project_discord.py
-# allianceauth-oidc-provider 0.0.1: safe OIDC claims, JSON token errors, state M2M fix.
+# allianceauth-oidc-provider 0.0.2 (+ patches): OIDC claims, JSON token errors, state M2M fix.
 COPY deploy/aa_docker/patches/allianceauth_oidc/auth_provider.py /usr/local/lib/python3.12/site-packages/allianceauth_oidc/auth_provider.py
 COPY deploy/aa_docker/patches/allianceauth_oidc/views.py /usr/local/lib/python3.12/site-packages/allianceauth_oidc/views.py
 COPY deploy/aa_docker/patches/allianceauth_oidc/admin.py /usr/local/lib/python3.12/site-packages/allianceauth_oidc/admin.py
 COPY deploy/aa_docker/top_postgres_compat.py /app/deploy/aa_docker/top_postgres_compat.py
-# Django 5 upsert: bulk_create(update_conflicts=True) requires unique_fields (aa-sov-timer 4.1.0).
+# Django 5 upsert: bulk_create(update_conflicts=True) requires unique_fields (aa-sov-timer 4.2.0).
 COPY deploy/aa_docker/patches/sovtimer/tasks.py /usr/local/lib/python3.12/site-packages/sovtimer/tasks.py
 # aa-ledger 3.0.0 charlink hook still referenced renamed ORM fields (corporation / character).
 COPY deploy/aa_docker/patches/ledger/thirdparty/charlink_hook.py /usr/local/lib/python3.12/site-packages/ledger/thirdparty/charlink_hook.py
@@ -91,11 +99,14 @@ COPY allianceauth/allianceauth/eveonline/providers.py /opt/allianceauth/alliance
 COPY allianceauth/allianceauth/eveonline/managers.py /opt/allianceauth/allianceauth/eveonline/managers.py
 COPY deploy/aa_docker/patches/taskmonitor/views.py /usr/local/lib/python3.12/site-packages/taskmonitor/views.py
 COPY deploy/aa_docker/patches/taskmonitor/urls.py /usr/local/lib/python3.12/site-packages/taskmonitor/urls.py
+COPY deploy/aa_docker/patches/securegroups/setup_securegroup_task.py /usr/local/lib/python3.12/site-packages/securegroups/management/commands/setup_securegroup_task.py
 COPY deploy/aa_docker/taskmonitor_patch.py /app/deploy/aa_docker/taskmonitor_patch.py
 COPY deploy/aa_docker/repair_indy_hub_migrations.py /app/deploy/aa_docker/repair_indy_hub_migrations.py
 COPY deploy/aa_docker/extensions /app/deploy/aa_docker/extensions
 COPY deploy/aa_docker/moon_rentals /app/deploy/aa_docker/moon_rentals
-COPY deploy/aa_docker/miningtaxes_notify_patch.py /app/deploy/aa_docker/miningtaxes_notify_patch.py
+COPY deploy/aa_docker/emu_moons /app/deploy/aa_docker/emu_moons
+COPY deploy/aa_docker/moonmining_discord_events.py /app/deploy/aa_docker/moonmining_discord_events.py
+COPY deploy/aa_docker/miningtaxes_ext /app/deploy/aa_docker/miningtaxes_ext
 COPY deploy/aa_docker/market_bridge /app/deploy/aa_docker/market_bridge
 COPY deploy/aa_docker/esi_compat_app /app/deploy/aa_docker/esi_compat_app
 COPY deploy/aa_docker/templates /app/deploy/aa_docker/templates

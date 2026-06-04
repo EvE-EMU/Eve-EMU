@@ -36,6 +36,34 @@ docker compose exec market-api python scripts/hub_basket_compare.py -f /tmp/list
 
 API: `GET /api/market/v1/...` (OpenAPI at `/api/market/docs` when enabled).
 
+### Google Sheets (`IMPORTDATA`)
+
+`WEBSERVICE` is not supported in Google Sheets. Use **straight ASCII double quotes** `"` only (not curly “ ” quotes). Paste **one formula per cell**—do not include labels or a second formula in the same cell.
+
+**Single number (easiest)** — 30-day volume-weighted regional average:
+
+```text
+=INDEX(IMPORTDATA("https://eve-emu.com/api/market/v1/browser/item/17888/value.csv?field=avg_price_30d"),2,1)
+```
+
+EU locale (semicolon separators):
+
+```text
+=INDEX(IMPORTDATA("https://eve-emu.com/api/market/v1/browser/item/17888/value.csv?field=avg_price_30d");2;1)
+```
+
+Other `field` values: `best_sell`, `best_buy`, `jita_sell`, `high_30d`, `low_30d`, `volume_30d`, etc.
+
+**Full summary row** (header + one data row):
+
+```text
+=IMPORTDATA("https://eve-emu.com/api/market/v1/browser/item/17888/summary.csv")
+```
+
+`avg_price_30d` is column **11** in that table (US): `=INDEX(IMPORTDATA(".../summary.csv"),2,11)`
+
+Deploy `market-api` after pulling: `docker compose build market-api && docker compose up -d market-api`
+
 ## Architecture
 
 ```mermaid

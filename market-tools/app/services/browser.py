@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import csv
+import io
+from datetime import date, timedelta
+
 from sqlalchemy import func, select
 
 from app.db.models import (
@@ -290,6 +294,107 @@ async def item_orders(
         if appr
         else None,
     }
+
+
+SUMMARY_CSV_FIELDS = (
+    "type_id",
+    "type_name",
+    "location_id",
+    "hub_region_id",
+    "best_sell",
+    "best_buy",
+    "sell_order_count",
+    "buy_order_count",
+    "sell_volume_remain",
+    "buy_volume_remain",
+    "avg_price_30d",
+    "high_30d",
+    "low_30d",
+    "volume_30d",
+    "jita_sell",
+    "jita_buy",
+    "wompstar_sell",
+    "wompstar_buy",
+)
+
+
+def _history_window_stats(days: list[dict], *, period_days: int) -> dict[str, int | float | None]:
+    cutoff = date.today() - timedelta(days=period_days)
+    total_vol = 0
+    total_isk = 0.0
+    highs: list[float] = []
+    lows: list[float] = []
+    for row in days:
+        try:
+            day = date.fromisoformat(str(row["day"])[:10])
+        except (TypeError, ValueError):
+            continue
+        if day < cutoff:
+            continue
+        vol = int(row.get("volume") or 0)
+        avg = float(row.get("average") or 0)
+        total_vol += vol
+        total_isk += avg * vol
+        if row.get("highest") is not None:
+            highs.append(float(row["highest"]))
+        if row.get("lowest") is not None:
+            lows.append(float(row["lowest"]))
+    return {
+        "avg_price_30d": round(total_isk / total_vol, 2) if total_vol else None,
+        "high_30d": round(max(highs), 2) if highs else None,
+        "low_30d": round(min(lows), 2) if lows else None,
+        "volume_30d": total_vol if total_vol else None,
+    }
+
+
+async def item_summary_row(
+    *,
+    location_id: int,
+    type_id: int,
+    period_days: int = 30,
+) -> dict[str, int | float | str | None]:
+    """Flat summary for spreadsheets (Google Sheets IMPORTDATA)."""
+    data = await item_orders(location_id=location_id, type_id=type_id)
+    sells = data.get("sell_orders") or []
+    buys = data.get("buy_orders") or []
+    hist_days = (data.get("history") or {}).get("days") or []
+    hist = _history_window_stats(hist_days, period_days=period_days)
+    appr = data.get("appraisal") or {}
+    counts = data.get("order_counts") or {}
+
+    def _num(v: float | int | None) -> float | int | None:
+        if v is None:
+            return None
+        return v
+
+    return {
+        "type_id": type_id,
+        "type_name": data.get("type_name") or f"Type {type_id}",
+        "location_id": location_id,
+        "hub_region_id": data.get("hub_region_id"),
+        "best_sell": _num(sells[0]["price"] if sells else None),
+        "best_buy": _num(buys[0]["price"] if buys else None),
+        "sell_order_count": int(counts.get("sell") or len(sells)),
+        "buy_order_count": int(counts.get("buy") or len(buys)),
+        "sell_volume_remain": sum(int(s.get("volume_remain") or 0) for s in sells),
+        "buy_volume_remain": sum(int(b.get("volume_remain") or 0) for b in buys),
+        "avg_price_30d": hist["avg_price_30d"],
+        "high_30d": hist["high_30d"],
+        "low_30d": hist["low_30d"],
+        "volume_30d": hist["volume_30d"],
+        "jita_sell": _num(appr.get("jita_sell")),
+        "jita_buy": _num(appr.get("jita_buy")),
+        "wompstar_sell": _num(appr.get("wompstar_sell")),
+        "wompstar_buy": _num(appr.get("wompstar_buy")),
+    }
+
+
+def item_summary_csv_text(row: dict[str, int | float | str | None]) -> str:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(SUMMARY_CSV_FIELDS), lineterminator="\n")
+    writer.writeheader()
+    writer.writerow({k: "" if row.get(k) is None else row[k] for k in SUMMARY_CSV_FIELDS})
+    return buf.getvalue()
 
 
 async def listed_types_category_tree(*, location_id: int) -> dict:

@@ -1,5 +1,5 @@
 # Shared dependencies for community apps (resolved against Alliance Auth 5.x).
-pip==26.1.1
+pip==26.1.2
 recurrent>=0.4
 psutil>=5.9
 # Transitive via slixmpp / aioxmpp stacks — pin so aa-package-monitor stays current.
@@ -12,7 +12,7 @@ telnetlib3==4.0.4
 django-eveuniverse==2.0.0
 # Celery stack; keep current so aa-package-monitor "Update Available" stays clear.
 click>=8.4.1,<9
-idna>=3.16,<4
+idna>=3.18,<4
 more-itertools>=11.1.0,<12
 aiopenapi3>=0.10
 bravado
@@ -20,8 +20,11 @@ bravado-core
 django-eveonline-sde>=0.0.1b9
 django-celery-results>=2.5,<3
 django-esi>=9,<10
+django-redis>=7.0.0,<8
+aiohttp>=3.14.0,<4
+ua-parser-builtins==202606
 django-oauth-toolkit>=3.3,<4
-allianceauth-oidc-provider==0.0.1
+allianceauth-oidc-provider==0.0.2
 allianceauth-app-utils>=1.32.1,<2
 django-navhelper
 django-multiselectfield

@@ -32,7 +32,7 @@ MEMBERAUDIT_APPS: list[str] = [
 
 
 
-# Moon rentals + corp mining taxes (buybackprogram integration) — keep for eve-emu customizations.
+# Mining taxes + EMU Moons; core moonmining surveys/extractions.
 
 MOON_MINING_APPS: list[str] = [
 
@@ -40,7 +40,7 @@ MOON_MINING_APPS: list[str] = [
 
     "miningtaxes",
 
-    "moon_rentals.apps.MoonRentalsConfig",
+    "emu_moons",
 
 ]
 
@@ -71,6 +71,8 @@ SLIM_REMOVED_APP_LABELS: frozenset[str] = frozenset(
         "moon_tsar",
 
         "miningtaxes_ext",
+
+        "moon_rentals",
 
     }
 
@@ -105,8 +107,6 @@ FULL_EXTENSION_APPS: list[str] = [
     "structuretimers",
 
     "moonmining",
-
-    "moonmining.rentals.apps.MoonRentalsConfig",
 
     "buybackprogram",
 

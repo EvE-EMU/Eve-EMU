@@ -15,6 +15,13 @@
             </a>
         </li>
     {% endif %}
+    {% if perms.moonmining.extractions_access or user.emu_moons_private_structures.exists %}
+        <li class="nav-item">
+            <a class="nav-link {% navactive request 'moonmining:calendar' %}" href="{% url 'moonmining:calendar' %}">
+                {% translate 'Calendar' %}
+            </a>
+        </li>
+    {% endif %}
     {% if "/moonmining/extraction/" in request.path %}
         <li class="nav-item">
             <a class="nav-link {% renavactive request '/moonmining/extraction/' %}" href="#">{% translate 'Extraction Details' %}</a>
@@ -33,16 +40,29 @@
             <a class="nav-link {% navactive request 'moonmining:reports' %}" href="{% url 'moonmining:reports' %}">{% translate 'Reports' %}</a>
         </li>
     {% endif %}
-    {% if perms.moonrentals.view_leases %}
+    {% if perms.emu_moons.emu_moons_view_self or perms.emu_moons.emu_moons_view_alliance %}
         <li class="nav-item">
-            <a class="nav-link {% navactive request 'moonmining:renter_management' %}" href="{% url 'moonmining:renter_management' %}">
-                {% translate 'Renter Management' %}
+            <a class="nav-link {% navactive request 'emu_moons:' %}" href="{% url 'emu_moons:index' %}">
+                {% translate 'EMU Moons Tax' %}
             </a>
         </li>
     {% endif %}
 {% endblock header_nav_collapse_left %}
 
 {% block header_nav_collapse_right %}
+    {% if request.resolver_match.url_name == 'extractions' and perms.moonmining.extractions_access %}
+    <li class="nav-item d-flex align-items-center me-2">
+        <form method="post" action="{% url 'moonmining:sync_discord_events' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit"
+                    class="btn btn-outline-primary btn-sm"
+                    title="{% translate 'Add missing upcoming moon pops to the Discord events calendar (skips duplicates).' %}"
+                    {% if not moonmining_discord_sync_enabled %}disabled{% endif %}>
+                <i class="fa-brands fa-discord"></i>&nbsp;{% translate "Sync to Discord events" %}
+            </button>
+        </form>
+    </li>
+    {% endif %}
     <li class="nav-item">
         <a class="btn btn-success me-2" href="{% url 'moonmining:add_owner' %}" title="{% translate 'Add new corporation or update existing' %}">
             <i class="fa-solid fa-plus"></i>&nbsp;Add Corporation

@@ -12,13 +12,5 @@
         <li>{% translate "No private moon profiles assigned." %}</li>
     {% endfor %}
     </ul>
-    <h2>{% translate "Leases (moonrentals)" %}</h2>
-    <ul>
-    {% for l in leases %}
-        <li>{{ l.moon }} — {{ l.get_payment_status_display }}</li>
-    {% empty %}
-        <li>{% translate "No active leases as POC." %}</li>
-    {% endfor %}
-    </ul>
 </div>
 {% endblock %}

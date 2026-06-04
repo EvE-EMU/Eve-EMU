@@ -32,6 +32,8 @@ DEPRECATED_INSTALLED_APPS: frozenset[str] = frozenset(
         "skillfarm",
         "moon_tsar",
         "miningtaxes_ext",
+        "moon_rentals",
+        "moon_rentals.apps.MoonRentalsConfig",
     }
 )
 

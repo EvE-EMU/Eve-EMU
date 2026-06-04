@@ -1,0 +1,250 @@
+/* EMU Moons portal — light theme (overrides Slate dark on tax pages) */
+
+html[data-theme="slate"] .nav-padding .my-3:has(.emu-moons-portal),
+.emu-moons-portal {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+    min-height: calc(100vh - 5rem);
+}
+
+.emu-moons-portal {
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+.emu-moons-portal .card {
+    background: #fff !important;
+    border-color: #dee2e6 !important;
+    color: #212529 !important;
+}
+
+.emu-moons-portal .card-header {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+.emu-moons-portal .table {
+    --bs-table-bg: #fff;
+    --bs-table-color: #212529;
+    --bs-table-striped-bg: #f8f9fa;
+    --bs-table-striped-color: #212529;
+    color: #212529 !important;
+}
+
+.emu-moons-portal .text-muted {
+    color: #6c757d !important;
+}
+
+.emu-moons-portal h1,
+.emu-moons-portal h2,
+.emu-moons-portal h3,
+.emu-moons-portal h4,
+.emu-moons-portal h5,
+.emu-moons-portal .h1,
+.emu-moons-portal .h2,
+.emu-moons-portal .h3,
+.emu-moons-portal .h4,
+.emu-moons-portal .h5 {
+    color: #212529 !important;
+}
+
+.emu-moons-portal .text-white {
+    color: #212529 !important;
+}
+
+.emu-moons-portal .text-light {
+    color: #495057 !important;
+}
+
+.emu-moons-portal .bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.emu-moons-portal .bg-black,
+.emu-moons-portal .bg-dark {
+    background-color: #f8f9fa !important;
+}
+
+.emu-moons-portal .border-dark,
+.emu-moons-portal .border-secondary {
+    border-color: #dee2e6 !important;
+}
+
+.emu-copyable {
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(13, 110, 253, 0.45);
+    transition: background-color 0.15s ease, color 0.15s ease;
+    border-radius: 0.2rem;
+    padding: 0.05rem 0.25rem;
+}
+
+.emu-copyable:hover,
+.emu-copyable:focus {
+    background: rgba(13, 110, 253, 0.08);
+    color: #0d6efd;
+    outline: none;
+}
+
+.emu-copyable.copied {
+    background: rgba(25, 135, 84, 0.12);
+    border-bottom-color: #198754;
+    color: #198754;
+}
+
+.emu-copy-hint {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.emu-ad-sidebar {
+    position: sticky;
+    top: 1rem;
+}
+
+.emu-ad-sidebar__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6c757d;
+}
+
+.emu-ad-slot {
+    width: 100%;
+    max-width: 500px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto 1rem;
+    border: 2px dashed #ced4da;
+    border-radius: 0.5rem;
+    background: linear-gradient(145deg, #ffffff 0%, #f1f3f5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.emu-ad-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emu-ad-slot__placeholder {
+    text-align: center;
+    padding: 1rem;
+    color: #868e96;
+    font-size: 0.9rem;
+}
+
+.emu-ad-slot__placeholder .fa {
+    font-size: 2rem;
+    opacity: 0.35;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.emu-copy-toast {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    z-index: 1080;
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.375rem;
+    background: #212529;
+    color: #fff;
+    font-size: 0.875rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.emu-copy-toast.show {
+    opacity: 1;
+}
+
+@media (max-width: 991.98px) {
+    .emu-ad-sidebar {
+        position: static;
+    }
+
+    .emu-ad-slot {
+        max-width: 100%;
+    }
+}
+
+/* Alliance dashboard KPI cards */
+.emu-kpi-card__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+    margin-bottom: 0.35rem;
+}
+
+.emu-kpi-card__value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.emu-kpi-card__meta {
+    font-size: 0.75rem;
+    color: #868e96;
+    margin-top: 0.35rem;
+}
+
+.emu-kpi-card--generated .emu-kpi-card__value { color: #0d6efd; }
+.emu-kpi-card--collected .emu-kpi-card__value { color: #198754; }
+.emu-kpi-card--outstanding .emu-kpi-card__value { color: #dc3545; }
+.emu-kpi-card--volume .emu-kpi-card__value { color: #0dcaf0; }
+
+.emu-kpi-card--generated { border-left: 4px solid #0d6efd !important; }
+.emu-kpi-card--collected { border-left: 4px solid #198754 !important; }
+.emu-kpi-card--outstanding { border-left: 4px solid #dc3545 !important; }
+.emu-kpi-card--volume { border-left: 4px solid #0dcaf0 !important; }
+
+.emu-kpi-mini {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.65rem 0.75rem;
+    height: 100%;
+}
+
+.emu-kpi-mini__label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.emu-kpi-mini__value {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-top: 0.15rem;
+}
+
+.emu-kpi-mini--generated .emu-kpi-mini__value { color: #0d6efd; }
+.emu-kpi-mini--collected .emu-kpi-mini__value { color: #198754; }
+.emu-kpi-mini--outstanding .emu-kpi-mini__value { color: #dc3545; }
+.emu-kpi-mini--volume .emu-kpi-mini__value { color: #0891b2; }
+
+.emu-lb-header { border-bottom-width: 2px; }
+.emu-lb-header--volume { border-bottom-color: #0dcaf0; color: #0891b2; }
+.emu-lb-header--collected { border-bottom-color: #198754; color: #198754; }
+.emu-lb-header--outstanding { border-bottom-color: #dc3545; color: #dc3545; }
+
+.emu-lb-table td:last-child {
+    font-variant-numeric: tabular-nums;
+}
+
+.emu-lb-table .text-end.collected { color: #198754; }
+.emu-lb-table .text-end.outstanding { color: #dc3545; }

@@ -21,7 +21,7 @@ docker compose exec aa-web python manage.py setup_securegroup_task
 docker compose exec aa-web python manage.py corptools ct_setup
 ```
 
-- **`setup_securegroup_task`** — hourly Celery job that applies Smart Group rules.  
+- **`setup_securegroup_task`** — Celery job that applies Smart Group rules (eve-emu default: every **30** minutes UTC; override with `AA_BEAT_SECUREGROUPS_MINUTES`).  
 - **`corptools ct_setup`** — CorpTools periodic tasks (character audits, including titles/roles).
 
 Confirm in **Django Admin → Periodic tasks** that **Secure Group Updater** exists and is enabled.

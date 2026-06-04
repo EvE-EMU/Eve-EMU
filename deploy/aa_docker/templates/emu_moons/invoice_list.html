@@ -1,0 +1,111 @@
+{% extends "emu_moons/base.html" %}
+
+{% load i18n %}
+
+{% load emu_moons_tags %}
+
+
+
+{% block emu_moons_content %}
+
+<h1>{% translate "Moon tax accounts" %}</h1>
+
+<p class="text-muted">{% translate "One statement per Alliance Auth user; all mining alts are combined." %}</p>
+
+<p class="small text-muted">{% translate "Click balance or wallet code to copy." %}</p>
+
+<table class="table table-striped table-hover align-middle">
+
+    <thead>
+
+        <tr>
+
+            <th>{% translate "Account" %}</th>
+
+            <th>{% translate "Characters" %}</th>
+
+            <th>{% translate "Open pops" %}</th>
+
+            <th>{% translate "Balance due" %}</th>
+
+            <th>{% translate "Wallet reason" %}</th>
+
+            <th></th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+        {% for row in accounts %}
+
+        <tr>
+
+            <td>
+
+                <strong>{{ row.username }}</strong>
+
+                {% if row.on_naughty %}
+
+                <span class="badge bg-danger ms-1">{% translate "Overdue" %}</span>
+
+                {% endif %}
+
+            </td>
+
+            <td class="small text-muted">
+
+                {% for name in row.character_names|slice:":4" %}
+
+                {{ name }}{% if not forloop.last %}, {% endif %}
+
+                {% endfor %}
+
+                {% if row.character_names|length > 4 %}
+
+                … +{{ row.character_names|length|add:"-4" }}
+
+                {% endif %}
+
+            </td>
+
+            <td>{{ row.invoice_count }}</td>
+
+            <td class="fw-bold">
+
+                {% include "emu_moons/_copyable.html" with copy_value=row.total_due_isk|floatformat:2 display_value=row.total_due_isk|isk_amount css_class="fw-bold" copy_label="Amount copied" %}
+
+            </td>
+
+            <td>
+
+                {% include "emu_moons/_copyable.html" with copy_value=row.wallet_reason display_value=row.wallet_reason copy_label="Wallet reason copied" %}
+
+            </td>
+
+            <td>
+
+                <a class="btn btn-sm btn-primary" href="{% url 'emu_moons:account_statement_user' row.username %}">
+
+                    {% translate "Statement" %}
+
+                </a>
+
+            </td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr><td colspan="6">{% translate "No open invoices." %}</td></tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+{% endblock %}
+
+

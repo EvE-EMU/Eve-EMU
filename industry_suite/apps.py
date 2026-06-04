@@ -96,3 +96,21 @@ class IndustrySuiteConfig(AppConfig):
             import industry_suite.tasks  # noqa: F401
         except Exception:
             pass
+
+        self._register_charlink_import()
+
+    @staticmethod
+    def _register_charlink_import() -> None:
+        """Ensure Charlink AppSettings row exists (industry_suite_corpprojectdiscord)."""
+        try:
+            from charlink.models import AppSettings
+
+            AppSettings.objects.update_or_create(
+                app_name="industry_suite_corpprojectdiscord",
+                defaults={"default_selection": True},
+            )
+            AppSettings.objects.filter(
+                app_name="industry_suite_corp_project_discord",
+            ).delete()
+        except Exception:
+            pass

@@ -1,4 +1,6 @@
-# Moon Rentals (`moonrentals`)
+# Moon Rentals (`moonrentals`) — not deployed on eve-emu
+
+> **Note:** This submodule is **not** installed in the eve-emu Docker bundle (removed from `INSTALLED_APPS`, image COPY, URLs, and Celery beat). Kept in-repo for reference or manual re-enable.
 
 Renter management extension for **aa-moonmining**: track active moon leases, list available surveyed moons, verify rent via corp wallet journal, and post fuel/payment alerts to Discord.
 

@@ -1,0 +1,81 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+{% load static %}
+{% load navactive %}
+
+{% block page_title %}{{ page_title }} — {% translate 'EMU Moons' %}{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    {# Override Slate dark Bootswatch with Flatly for EMU Moons pages only #}
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.3/flatly/bootstrap.min.css"
+          integrity="sha512-qoT4KwnRpAQ9uczPsw7GunsNmhRnYwSlE2KRCUPRQHSkDuLulCtDXuC2P/P6oqr3M5hoGagUG9pgHDPkD2zCDA=="
+          crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'emu_moons/css/portal.css' %}">
+{% endblock extra_css %}
+
+{% block extra_javascript %}
+    {{ block.super }}
+    <script src="{% static 'emu_moons/js/copy-click.js' %}" defer></script>
+{% endblock extra_javascript %}
+
+{% block header_nav_brand %}{% translate "EMU Moons" %}{% endblock %}
+
+{% block header_nav_collapse_left %}
+    {% if emu_moons_can_naughty %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'emu_moons:naughty_list' %}" href="{% url 'emu_moons:naughty_list' %}">
+            {% translate "Naughty List" %}
+        </a>
+    </li>
+    {% endif %}
+    {% if emu_moons_can_statement %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'emu_moons:account_statement' %}" href="{% url 'emu_moons:account_statement' %}">
+            {% translate "My statement" %}
+        </a>
+    </li>
+    {% endif %}
+    {% if emu_moons_can_all_accounts %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'emu_moons:invoice_list' %}" href="{% url 'emu_moons:invoice_list' %}">
+            {% translate "All accounts" %}
+        </a>
+    </li>
+    {% endif %}
+    {% if emu_moons_can_alliance %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'emu_moons:alliance_dashboard' %}" href="{% url 'emu_moons:alliance_dashboard' %}">
+            {% translate "Alliance" %}
+        </a>
+    </li>
+    {% endif %}
+    {% if emu_moons_can_corp %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'emu_moons:corp_dashboard' %}" href="{% url 'emu_moons:corp_dashboard' %}">
+            {% translate "Corporation" %}
+        </a>
+    </li>
+    {% endif %}
+    {% if perms.emu_moons.emu_moons_admin %}
+    <li class="nav-item">
+        <a class="nav-link {% navactive request 'emu_moons:admin_settings' %}" href="{% url 'emu_moons:admin_settings' %}">
+            {% translate "Admin" %}
+        </a>
+    </li>
+    {% endif %}
+{% endblock header_nav_collapse_left %}
+
+{% block content %}
+<div class="container-fluid py-3 emu-moons-portal">
+    <div class="row g-4">
+        <div class="col-lg-9">
+            {% block emu_moons_content %}{% endblock %}
+        </div>
+        <div class="col-lg-3">
+            {% include "emu_moons/_ad_sidebar.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

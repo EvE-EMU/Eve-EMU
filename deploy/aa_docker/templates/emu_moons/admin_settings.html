@@ -1,0 +1,180 @@
+{% extends "emu_moons/base.html" %}
+
+{% load i18n %}
+
+{% block emu_moons_content %}
+
+<div class="col-lg-12">
+
+    <h1>{% translate "EMU Moons configuration" %}</h1>
+
+    {% if messages %}
+
+    {% for message in messages %}
+
+    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+
+    {% endfor %}
+
+    {% endif %}
+
+    <p>{% translate "Use Django admin for tax rates and webhooks." %}
+
+        <a href="/admin/emu_moons/">{% translate "Open admin" %}</a></p>
+
+    <h3>{% translate "Tax collection" %}</h3>
+
+    <ul>
+
+        <li>{% translate "Corporation" %}: {{ settings.tax_corp_name }} ({{ settings.corporation_id }})</li>
+
+        <li>{% translate "Wallet division" %}: {{ settings.wallet_division }}</li>
+
+        <li>{% translate "Ledger match window" %}: {{ settings.ledger_match_hours }}h</li>
+
+    </ul>
+
+
+
+    <h3>{% translate "Private moon owners" %}</h3>
+
+    <p class="text-muted">{% translate "Assigned members see their private moons on the Moon Mining calendar. Alliance staff with extractions access see public and nationalized pops plus all private moons." %}</p>
+
+    <form method="post" class="row g-2 align-items-end mb-4">
+
+        {% csrf_token %}
+
+        <input type="hidden" name="action" value="assign_private_owner">
+
+        <div class="col-md-5">
+
+            <label class="form-label" for="refinery_id">{% translate "Refinery / moon" %}</label>
+
+            <select name="refinery_id" id="refinery_id" class="form-select" required>
+
+                <option value="">{% translate "Select…" %}</option>
+
+                {% for row in refinery_rows %}
+
+                <option value="{{ row.refinery_id }}">{{ row.name }} — {{ row.system_name }} ({{ row.structure_class_display }})</option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <label class="form-label" for="owner_id">{% translate "Owner (auth user)" %}</label>
+
+            <select name="owner_id" id="owner_id" class="form-select">
+
+                <option value="">{% translate "— Clear owner —" %}</option>
+
+                {% for u in users %}
+
+                <option value="{{ u.pk }}">{{ u.username }}</option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <button type="submit" class="btn btn-primary w-100">{% translate "Save owner" %}</button>
+
+        </div>
+
+    </form>
+
+    <table class="table table-sm table-striped">
+
+        <thead>
+
+            <tr>
+
+                <th>{% translate "Structure" %}</th>
+
+                <th>{% translate "System" %}</th>
+
+                <th>{% translate "Class" %}</th>
+
+                <th>{% translate "Private owner" %}</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for row in refinery_rows %}
+
+            {% if row.structure_class == 'private' or row.private_owner %}
+
+            <tr>
+
+                <td>{{ row.name }}</td>
+
+                <td>{{ row.system_name }}</td>
+
+                <td>{{ row.structure_class_display }}</td>
+
+                <td>{% if row.private_owner %}{{ row.private_owner.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+
+            </tr>
+
+            {% endif %}
+
+            {% empty %}
+
+            <tr><td colspan="4">{% translate "No refineries loaded." %}</td></tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+
+
+    <h3 class="mt-4">{% translate "Structure profiles" %}</h3>
+
+    <table class="table table-sm">
+
+        <thead><tr><th>{% translate "Structure" %}</th><th>{% translate "System" %}</th><th>{% translate "Class" %}</th><th>{% translate "Owner" %}</th></tr></thead>
+
+        <tbody>
+
+            {% for s in structures %}
+
+            <tr>
+
+                <td>{{ s.structure_name }}</td>
+
+                <td>{{ s.system_name }}</td>
+
+                <td>{{ s.get_structure_class_display }}</td>
+
+                <td>{% if s.private_owner %}{{ s.private_owner.username }}{% else %}—{% endif %}</td>
+
+            </tr>
+
+            {% empty %}
+
+            <tr><td colspan="4">{% translate "No structure profiles yet — assign above or add in admin." %}</td></tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+    <p class="mt-3"><a class="btn btn-outline-secondary" href="{% url 'moonmining:calendar' %}">{% translate "Open moon calendar" %}</a></p>
+
+</div>
+
+{% endblock %}
+

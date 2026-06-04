@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 
 from app.config import settings
 from app.services.browser import (
+    SUMMARY_CSV_FIELDS,
     item_orders,
+    item_summary_csv_text,
+    item_summary_row,
     listed_types_catalog,
     listed_types_category_tree,
     market_tree_build,
@@ -83,6 +86,84 @@ async def browser_search(
         location_id=loc, query=q, limit=limit, listed_only=listed_only
     )
     return {"location_id": loc, "query": q, "listed_only": listed_only, "types": types}
+
+
+def _csv_response(body: str) -> Response:
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
+
+
+@router.get("/item/{type_id}/summary.csv")
+async def browser_item_summary_csv(
+    type_id: int,
+    location_id: int | None = None,
+    days: int = Query(30, ge=7, le=180, description="Days for regional avg/high/low/volume"),
+) -> Response:
+    """Single-row CSV for Google Sheets =IMPORTDATA(url)."""
+    loc = _location_id(location_id)
+    row = await item_summary_row(location_id=loc, type_id=type_id, period_days=days)
+    return _csv_response(item_summary_csv_text(row))
+
+
+@router.get("/item/{type_id}/value.csv")
+async def browser_item_value_csv(
+    type_id: int,
+    field: str = Query(
+        "avg_price_30d",
+        description=f"One of: {', '.join(SUMMARY_CSV_FIELDS)}",
+    ),
+    location_id: int | None = None,
+    days: int = Query(30, ge=7, le=180),
+) -> Response:
+    """Two-row, one-column CSV for a single metric (simplest IMPORTDATA)."""
+    if field not in SUMMARY_CSV_FIELDS:
+        raise HTTPException(
+            400,
+            f"Unknown field '{field}'. Use one of: {', '.join(SUMMARY_CSV_FIELDS)}",
+        )
+    loc = _location_id(location_id)
+    row = await item_summary_row(location_id=loc, type_id=type_id, period_days=days)
+    val = row.get(field)
+    body = f"{field}\n{'' if val is None else val}\n"
+    return _csv_response(body)
+
+
+@router.get("/item/value.csv")
+async def browser_item_value_csv_by_name(
+    name: str = Query(..., min_length=1, max_length=120),
+    type_id: int | None = None,
+    field: str = Query("avg_price_30d"),
+    location_id: int | None = None,
+    days: int = Query(30, ge=7, le=180),
+) -> Response:
+    if field not in SUMMARY_CSV_FIELDS:
+        raise HTTPException(400, f"Unknown field '{field}'")
+    loc = _location_id(location_id)
+    tid = await resolve_type_id(location_id=loc, type_id=type_id, name=name)
+    if not tid:
+        raise HTTPException(404, f"No item matching '{name}'")
+    row = await item_summary_row(location_id=loc, type_id=tid, period_days=days)
+    val = row.get(field)
+    body = f"{field}\n{'' if val is None else val}\n"
+    return _csv_response(body)
+
+
+@router.get("/item/summary.csv")
+async def browser_item_summary_csv_by_name(
+    name: str = Query(..., min_length=1, max_length=120),
+    type_id: int | None = None,
+    location_id: int | None = None,
+    days: int = Query(30, ge=7, le=180),
+) -> Response:
+    loc = _location_id(location_id)
+    tid = await resolve_type_id(location_id=loc, type_id=type_id, name=name)
+    if not tid:
+        raise HTTPException(404, f"No item matching '{name}'")
+    row = await item_summary_row(location_id=loc, type_id=tid, period_days=days)
+    return _csv_response(item_summary_csv_text(row))
 
 
 @router.get("/item/{type_id}")

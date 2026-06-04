@@ -1,6 +1,6 @@
 # Test environment (`test.eve-emu.com`)
 
-Isolated Alliance Auth + core site for staging, including **aa-moonmining renter management** (`moonrentals` at `/moonmining/rentals/`).
+Isolated Alliance Auth + core site for staging (aa-moonmining surveys/extractions; **moonrentals** renter module not deployed).
 
 Production Caddy on the same host terminates TLS and proxies to the test containers on Docker network `eve_emu_edge`.
 
@@ -45,7 +45,6 @@ docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file .env.
   db redis wikijs aa-web aa-worker aa-beat core-api core-web market-api market-web
 
 docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file .env.test exec aa-web python manage.py migrate
-docker compose -f docker-compose.yml -f docker-compose.test.yml --env-file .env.test exec aa-web python manage.py migrate moonrentals
 ```
 
 Reload production Caddy after the first test deploy (picks up `eve_emu_edge` + test routes):
@@ -54,12 +53,6 @@ Reload production Caddy after the first test deploy (picks up `eve_emu_edge` + t
 docker compose up -d caddy
 docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
-
-## Moon renter management
-
-Included via `deploy/aa_docker/patches/moonmining/rentals/` and `moonmining.rentals.apps.MoonRentalsConfig` in extension apps.
-
-After migrate, open **Moon mining → Renter management** on the test auth site (corp admin).
 
 ## Stop test stack
 

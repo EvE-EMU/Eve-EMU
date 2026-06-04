@@ -1,0 +1,7 @@
+{% load i18n %}
+<span class="emu-copyable{% if css_class %} {{ css_class }}{% endif %}"
+      role="button"
+      tabindex="0"
+      data-copy="{{ copy_value }}"
+      data-copy-label="{% if copy_label %}{{ copy_label }}{% else %}{% translate 'Copied!' %}{% endif %}"
+      title="{% translate 'Click to copy' %}">{{ display_value|default:copy_value }}</span>

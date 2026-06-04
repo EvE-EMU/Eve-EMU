@@ -1,0 +1,9 @@
+{% extends "emu_moons/base.html" %}
+{% load i18n %}
+{% block emu_moons_content %}
+<div class="col-lg-12">
+    <h1>{% translate "Corporation moon tax" %}</h1>
+    <p><strong>{% translate "Outstanding" %}:</strong> {{ outstanding|floatformat:0 }} ISK</p>
+    <p><a href="{% url 'emu_moons:invoice_list' %}">{% translate "View corporation invoices" %}</a></p>
+</div>
+{% endblock %}

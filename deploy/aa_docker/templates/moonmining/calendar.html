@@ -1,0 +1,118 @@
+{% extends 'moonmining/base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block details %}
+<div class="my-3">
+    {% if is_private_only %}
+    <p class="text-muted">{% translate "Showing your assigned private moons only." %}</p>
+    {% endif %}
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3 emu-moons-calendar-legend">
+        <span class="fw-bold">{% translate "Legend" %}:</span>
+        <span><span class="legend-swatch legend-public"></span> {% translate "Public" %}</span>
+        <span><span class="legend-swatch legend-nationalized"></span> {% translate "Nationalized" %}</span>
+        <span><span class="legend-swatch legend-private"></span> {% translate "Private" %}</span>
+        {% if show_suggested %}
+        <span class="text-muted small">{% translate "Lighter colors = suggested next pop (EMU schedule)" %}</span>
+        {% endif %}
+    </div>
+    <div id="moonCalendar"></div>
+</div>
+
+<div class="modal fade" id="calendarEventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="calendarEventTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">{% translate "Type" %}</dt>
+                    <dd class="col-sm-8" id="calendarEventClass"></dd>
+                    <dt class="col-sm-4">{% translate "Location" %}</dt>
+                    <dd class="col-sm-8" id="calendarEventLocation"></dd>
+                    <dt class="col-sm-4">{% translate "When" %}</dt>
+                    <dd class="col-sm-8" id="calendarEventWhen"></dd>
+                    <dt class="col-sm-4">{% translate "Status" %}</dt>
+                    <dd class="col-sm-8" id="calendarEventStatus"></dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-primary d-none" id="calendarEventExtractionLink" target="_blank">{% translate "Extraction" %}</a>
+                <a href="#" class="btn btn-secondary d-none" id="calendarEventMoonLink" target="_blank">{% translate "Moon" %}</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% translate "Close" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link href="{% static 'emu_moons/css/calendar.css' %}" type="text/css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block extra_javascript %}
+    {{ block.super }}
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarEl = document.getElementById('moonCalendar');
+            const modal = new bootstrap.Modal(document.getElementById('calendarEventModal'));
+            const eventsUrl = '{% url "moonmining:calendar_events" %}';
+            const showSuggested = {{ show_suggested|yesno:"true,false" }};
+
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listMonth'
+                },
+                height: 'auto',
+                navLinks: true,
+                nowIndicator: true,
+                events: function (info, successCallback, failureCallback) {
+                    const params = new URLSearchParams({
+                        start: info.startStr,
+                        end: info.endStr,
+                        suggested: showSuggested ? '1' : '0'
+                    });
+                    fetch(eventsUrl + '?' + params.toString(), { credentials: 'same-origin' })
+                        .then(r => r.json())
+                        .then(successCallback)
+                        .catch(failureCallback);
+                },
+                eventClick: function (info) {
+                    const p = info.event.extendedProps;
+                    document.getElementById('calendarEventTitle').textContent = info.event.title;
+                    document.getElementById('calendarEventClass').textContent =
+                        p.structure_class_display + (p.event_kind === 'suggested' ? ' ({% translate "suggested" %})' : '');
+                    document.getElementById('calendarEventLocation').textContent = p.location || '';
+                    document.getElementById('calendarEventWhen').textContent = info.event.start.toLocaleString();
+                    document.getElementById('calendarEventStatus').textContent = p.status || '—';
+
+                    const extLink = document.getElementById('calendarEventExtractionLink');
+                    const moonLink = document.getElementById('calendarEventMoonLink');
+                    if (p.extraction_id) {
+                        extLink.href = '/moonmining/extraction/' + p.extraction_id;
+                        extLink.classList.remove('d-none');
+                    } else {
+                        extLink.classList.add('d-none');
+                    }
+                    if (p.moon_id) {
+                        moonLink.href = '/moonmining/moon/' + p.moon_id;
+                        moonLink.classList.remove('d-none');
+                    } else {
+                        moonLink.classList.add('d-none');
+                    }
+                    modal.show();
+                    info.jsEvent.preventDefault();
+                }
+            });
+            calendar.render();
+        });
+    </script>
+{% endblock %}

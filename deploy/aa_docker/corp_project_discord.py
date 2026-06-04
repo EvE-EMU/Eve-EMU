@@ -195,16 +195,35 @@ def corp_project_discord_needs_aadiscordbot() -> bool:
     return False
 
 
+def disabled_manufacturing_tiers() -> frozenset[str]:
+    """Tiers that must not post Discord alerts (e.g. ``d0,d1,d2``)."""
+    raw = os.environ.get("AA_CORP_PROJECT_DISCORD_DISABLED_TIERS", "").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
+
+
+def _route_manufacturing_tier(pattern: str) -> str | None:
+    """Infer d0/d1/d2 from a route pattern like ``d0 manufacturing``."""
+    pl = pattern.strip().lower()
+    for tier in ("d0", "d1", "d2"):
+        if pl.startswith(tier):
+            return tier
+    return None
+
+
 def parse_corp_project_discord_routes() -> list[CorpProjectRoute]:
     """Parse ``AA_CORP_PROJECT_DISCORD_ROUTES`` (comma-separated ``pattern:dest``).
 
     ``dest`` is either a numeric Discord channel ID or a full webhook URL.
     Only the **first** ``:`` splits pattern from destination (URLs may contain ``:``).
+    Skips tiers listed in ``AA_CORP_PROJECT_DISCORD_DISABLED_TIERS``.
     """
     raw = os.environ.get("AA_CORP_PROJECT_DISCORD_ROUTES", "").strip()
     if not raw:
         return []
 
+    disabled = disabled_manufacturing_tiers()
     routes: list[CorpProjectRoute] = []
     for part in raw.split(","):
         part = part.strip()
@@ -212,6 +231,9 @@ def parse_corp_project_discord_routes() -> list[CorpProjectRoute]:
             continue
         pattern, _, dest_raw = part.partition(":")
         pattern = pattern.strip()
+        tier = _route_manufacturing_tier(pattern)
+        if tier and tier in disabled:
+            continue
         destination = _parse_destination(dest_raw)
         if not pattern or destination is None:
             logger.warning(
@@ -249,6 +271,9 @@ def default_corp_project_discord_destination() -> CorpProjectDestination | None:
 
 def resolve_corp_project_destination(goal_name: str) -> CorpProjectDestination | None:
     """First matching route wins (order in env)."""
+    tier = manufacturing_tier(goal_name)
+    if tier and tier in disabled_manufacturing_tiers():
+        return None
     name_lower = goal_name.lower()
     for route in parse_corp_project_discord_routes():
         if route.pattern.lower() in name_lower:
@@ -281,12 +306,15 @@ def completed_discord_tiers() -> frozenset[str]:
     raw = os.environ.get("AA_CORP_PROJECT_DISCORD_COMPLETED_TIERS", "d0").strip()
     if not raw:
         return frozenset()
-    return frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
+    tiers = frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
+    return tiers - disabled_manufacturing_tiers()
 
 
 def goal_name_posts_completed_discord(goal_name: str) -> bool:
     tier = manufacturing_tier(goal_name)
-    if tier is None or tier not in completed_discord_tiers():
+    if tier is None or tier in disabled_manufacturing_tiers():
+        return False
+    if tier not in completed_discord_tiers():
         return False
     return resolve_corp_project_destination(goal_name) is not None
 

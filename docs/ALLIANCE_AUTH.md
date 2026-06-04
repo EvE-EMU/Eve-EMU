@@ -29,7 +29,7 @@ Configure root **`.env`** (see **`.env.example`**):
 
 On first start, **`docker/django-aa/entrypoint.py`** runs **`repair_indy_hub_migrations.py`** (records Indy Hub `0023` when columns already exist), then **`manage.py migrate`** and **`collectstatic`** before Gunicorn (Alliance Auth touches Redis during `django.setup()`, so static collection is not done at image build time).
 
-**Indy Hub** is pinned at **`indy-hub==1.17.1`** ([PyPI](https://pypi.org/project/indy-hub/1.17.1/)). **Indy Hub on PostgreSQL:** upstream migrations `0023`, `0026`, `0049`, and `0050` assume MySQL/SQLite for some schema steps; patched copies live under **`deploy/aa_docker/patches/indy_hub/`** and are copied into the **`aa-*`** image at build time. **`repair_indy_hub_migrations.py`** (runs before migrate on web boot) fixes partial states. If migrate still fails, rebuild **`aa-web`** and run:
+**Indy Hub** is pinned at **`indy-hub==1.17.2`** ([PyPI](https://pypi.org/project/indy-hub/1.17.2/)). **Indy Hub on PostgreSQL:** upstream migrations `0023`, `0026`, `0049`, and `0050` assume MySQL/SQLite for some schema steps; patched copies live under **`deploy/aa_docker/patches/indy_hub/`** and are copied into the **`aa-*`** image at build time. **`repair_indy_hub_migrations.py`** (runs before migrate on web boot) fixes partial states. If migrate still fails, rebuild **`aa-web`** and run:
 
 ```bash
 docker compose exec aa-web python /app/deploy/aa_docker/repair_indy_hub_migrations.py
@@ -49,7 +49,7 @@ Community apps are installed from **`deploy/aa_docker/requirements-aa-extension-
 | **`AA_USE_MODELTRANSLATION`** | `1` | Prepend `modeltranslation` (required by fittings, sov-timer, etc.). |
 | **`AA_ESI_COMPATIBILITY_DATE`** | `2025-12-16` | Passed to legacy ESI shims for django-eveuniverse apps. |
 
-**Slim bundle** (default when **`AA_EXTENSIONS_ENABLED=1`**): core ops apps only. **Removed** from install (see `deploy/aa_docker/extensions/apps.py` → `SLIM_REMOVED_APP_LABELS`): Killstats, Metenox, AA-SRP (ship replacement), AFAT (fleet activity tracking), Skillfarm, Moon Tsar, Mining Taxes moon-ore report extension (`miningtaxes_ext`).
+**Slim bundle** (default when **`AA_EXTENSIONS_ENABLED=1`**): core ops apps only. **Removed** from install (see `deploy/aa_docker/extensions/apps.py` → `SLIM_REMOVED_APP_LABELS`): Killstats, Metenox, AA-SRP (ship replacement), AFAT (fleet activity tracking), Skillfarm, Moon Tsar, Mining Taxes moon-ore report extension (`miningtaxes_ext`), Moon pop schedule (`moon_rentals`, was `/miningtaxes/schedule/`).
 
 **Retained** (eve-emu customizations depend on them): [Moon Mining](https://apps.allianceauth.org/apps/detail/aa-moonmining) + **moon rentals** patch, [Mining Taxes](https://gitlab.com/arctiru/aa-miningtaxes) (`aa-miningtaxes`), [Buyback Program](https://apps.allianceauth.org/apps/detail/aa-buybackprogram) + **`buyback_v2`** (tiered public pricing), [Standings Sync](https://apps.allianceauth.org/apps/detail/aa-standingssync), [Structures](https://apps.allianceauth.org/apps/detail/aa-structures), [Structure Timers II](https://apps.allianceauth.org/apps/detail/aa-structuretimers), [Indy Hub](https://apps.allianceauth.org/apps/detail/indy-hub), [Market Manager](https://apps.allianceauth.org/apps/detail/aa-market-manager), [Kill Tracker](https://apps.allianceauth.org/apps/detail/aa-killtracker), [Intel Tool](https://apps.allianceauth.org/apps/detail/aa-intel-tool), [Sov Timer](https://apps.allianceauth.org/apps/detail/aa-sov-timer), [CorpTools](https://apps.allianceauth.org/apps/detail/allianceauth-corptools), [Member Audit](https://gitlab.com/ErikKalkoken/aa-memberaudit), [Ledger](https://apps.allianceauth.org/apps/detail/aa-ledger) **3.0.1**, [Fleet Pings](https://apps.allianceauth.org/apps/detail/aa-fleetpings), and the rest of the non-removed list in `requirements-aa-extension-apps.txt`.
 
@@ -181,172 +181,43 @@ Optional: `--days 90` (limit history), `--force` (ignore dedupe cache). Default 
 
 Officer/director **item exchange** quotes for corp stock buys (Janice + PushX Jita → Badivefi). See **[CORP_ORDERS.md](./CORP_ORDERS.md)**. Menu: **Corp stock orders** at `/corp-orders/`.
 
-### Moon mining & ore reporting (`miningtaxes` + `miningtaxes_ext`)
+### Mining Taxes (`miningtaxes`)
 
-[aa-miningtaxes](https://gitlab.com/arctiru/aa-miningtaxes) tracks corp moon observer extractions and character mining ledgers. EvE-EMU customizes it for **100% moon-ore return** workflows (no ISK tax UI):
+[aa-miningtaxes](https://gitlab.com/arctiru/aa-miningtaxes) — stock Alliance Auth app: corp moon observer logs, character ledgers, **ISK tax balances**, ore prices, and monthly notifications.
 
-| Setting | Default | Purpose |
-|--------|---------|---------|
-| `AA_MININGTAXES_NOTIFY_ENABLED` | `0` | No monthly tax-due / interest Alliance Auth notifications |
-| `MININGTAXES_TAX_ONLY_CORP_MOONS` | `1` | Tax logic uses **corp moon observers** only (not private moons in personal ledgers) |
-| `AA_MININGTAXES_CELERY` | `1` | Daily ESI sync (`update_daily`) still runs |
+| Setting | Eve-EMU default | Purpose |
+|--------|-----------------|---------|
+| `AA_MININGTAXES_CELERY` | `1` | Daily ESI sync (`update_daily`) |
+| `AA_MININGTAXES_NOTIFY_ENABLED` | `1` | Tax-due ping (2nd of month) + interest (15th) via Celery beat |
+| `MININGTAXES_*` | *(package defaults)* | Only set in `.env` when you need overrides (Fuzzwork pricing, wallet division, etc.) |
 
-**Members** see **ore type + quantity** (current month totals and full ledger). **Auditors** open **Moon ore report** (`/miningtaxes/moon-ore-report/`) for a calendar month: every row has **date**, **system**, **ore**, **quantity**, plus rolled-up totals by ore and by system. Export **CSV** from that page.
-
-Admin setup is unchanged: add accountant characters in **Mining Taxes → Admin setup** so corp moon logs sync. Set ore tax rates to **100%** in admin if you still use the backend tax ledger for credits; the member UI hides ISK balances.
-
-### Moon pop schedule & buyback compliance (`moon_rentals`)
-
-For alliance-rented **corp moons** and **private rentals** (you do not own structures), import when each moon **pops** and track whether ore was returned via **[Moon G00 Buyback](https://auth.eve-emu.com/buybackprogram/program/3/calculate)** (`MOON_RENTALS_BUYBACK_PROGRAM_ID=3`).
-
-| Page | Path |
-|------|------|
-| Schedule | `/miningtaxes/schedule/` |
-| Import | `/miningtaxes/import/` |
-
-**Import format** (one line per moon, tab between location and time):
-
-```text
-9SBB-9 VII - Moon 20	5/28/2026 19:00:00|sevey
-TV8-HS VII - Moon 4	6/2/2026 20:00:00
-RF-CN3 V - Moon 10	6/6/2026 20:00:00
-```
-
-- Lines without `|username` are **False Gods corp** moons (default).
-- Append `|sevey` (Auth username) for a **private** rental.
-- Open a pop → **Refresh compliance** to match **mining observer logs** (system + moon) with **buyback quotes** and **in-game contracts** (shows compressed / uncompressed / both).
+The custom **`miningtaxes_ext`** moon-ore report app is **not** in the slim bundle. UI uses upstream templates (**Mining Taxes** nav, tax summary, full ledger).
 
 ```bash
-docker compose exec aa-web python manage.py migrate moon_rentals
-docker compose exec aa-web python manage.py moon_rentals_import /path/to/pops.txt --kind corp
+docker compose exec aa-web python manage.py miningtaxes_preload_prices
 ```
 
-**Weekly Discord report** (embeds: action required, in progress, private, upcoming):
+### Moon pop schedule (`moon_rentals`) — removed
 
-| Env | Default |
-|-----|---------|
-| `MOON_RENTALS_DISCORD_WEBHOOK_URL` | *(required)* |
-| `MOON_RENTALS_DISCORD_ENABLED` | `1` |
-| `AA_MOON_RENTALS_CELERY` | `1` |
-| `AA_BEAT_MOON_RENTALS_REFRESH_HOUR` / `MINUTE` | `2:30` daily compliance refresh |
-| `AA_BEAT_MOON_RENTALS_WEEKLY_DOW` | `1` (Monday) |
-| `AA_BEAT_MOON_RENTALS_WEEKLY_HOUR` / `MINUTE` | `10:00` |
+The legacy **`/miningtaxes/schedule/`** and **`/miningtaxes/import/`** pages (app `moon_rentals`) are **disabled** in the slim bundle. Use **aa-moonmining** extractions/calendar and **EMU Moons** for owned-structure pops and tax invoicing instead (see [EMU_MOONS.md](./EMU_MOONS.md)).
 
-Manual test:
+### Moon renter management (`moonrentals`) — not deployed
+
+The **lease / renter** submodule (`moonmining.rentals`, app label `moonrentals`) is **not** installed in this stack. Source remains under `deploy/aa_docker/patches/moonmining/rentals/` for reference only.
+
+Use **aa-moonmining** for surveys/extractions and **EMU Moons** for tax invoicing on corp-owned moons.
+
+### EMU Moons + Member Mining reports
+
+See **[EMU_MOONS.md](./EMU_MOONS.md)**. After deploy, migrate and seed structure classes (public by default; private only when the structure name contains `PRIVATE` or you assign an owner in `/emu-moons/admin/settings/`):
 
 ```bash
-docker compose exec aa-worker celery -A eve_auth call moon_rentals.tasks.moon_rentals_weekly_discord_report
+docker compose exec aa-web python manage.py migrate emu_moons
+docker compose exec aa-web python manage.py emu_moons_seed
+docker compose exec aa-web python manage.py moonmining_sync_reports
 ```
 
-### Moon renter management (`moonrentals` inside aa-moonmining)
-
-Long-term **lease tracking** on surveyed moons. This is **not** the same as [moon pop schedule](#moon-pop-schedule--buyback-compliance-moon_rentals) (`moon_rentals`): pop schedule tracks extraction/buyback compliance; **moonrentals** tracks **who rents which moon**, rent payments, fuel, and Discord alerts.
-
-| | Pop schedule (`moon_rentals`) | Lease management (`moonrentals`) |
-|--|-------------------------------|----------------------------------|
-| Purpose | When moons pop; ore buyback compliance | Monthly rent, POC, wallet matching |
-| UI | `/miningtaxes/schedule/` | `/moonmining/renters/` |
-| Config | `.env` webhook for weekly report | In-app **Settings** modal (database) |
-
-#### Features
-
-- **Active leases** — renter corp, main POC (AA user autocomplete), monthly ISK, payment status, fuel %, edit/evict
-- **Available moons** — surveyed moons with **no refinery** and **no active lease**; **Rent This Moon** for admins or applicants
-- **Pending applications** — manual approve/reject, or **auto-approve** in settings
-- **Wallet automation** — Celery polls corp wallet journal; marks lease **Paid** when amount and description match
-- **Fuel sync** — fuel % from **aa-structures** `hours_fuel_expires` (hourly task + on save)
-- **Discord** — low-fuel and payment-received webhooks (URLs in settings modal)
-
-#### Permissions (Alliance Auth groups)
-
-| Permission | Purpose |
-|------------|---------|
-| `moonrentals.view_leases` | View active leases + available moons |
-| `moonrentals.apply_rent` | Submit rental applications |
-| `moonrentals.admin_management` | Leases, settings, webhooks, approve/reject |
-
-#### URLs
-
-| Page | Path |
-|------|------|
-| Renter Management | `/moonmining/renters/` |
-| Configure lease | `/moonmining/renters/moon/<moon_id>/` |
-| API leases | `GET/POST /moonmining/api/rentals/leases` |
-| API settings | `GET/PUT /moonmining/api/rentals/config` |
-| POC user search | `GET /moonmining/api/rentals/users?q=` |
-
-#### Install / upgrade (eve-emu Docker)
-
-The module is bundled via `deploy/aa_docker/patches/moonmining/rentals/` (see `docker/django-aa/Dockerfile`). `INSTALLED_APPS` includes `moonmining.rentals.apps.MoonRentalsConfig` in `deploy/aa_docker/extensions/apps.py`.
-
-```bash
-docker compose up -d --build aa-web aa-worker aa-beat
-docker compose exec aa-web python manage.py migrate moonrentals
-```
-
-Edit source (optional local copy): `moonmining/rentals/` in [aa-moonmining](https://pypi.org/project/aa-moonmining/) or `Desktop/aa-moonmining-master/moonmining/rentals/`. Full module README: `moonmining/rentals/README.md`.
-
-#### Admin settings (no `.env` for webhooks)
-
-Open **Moon Mining → Renter Management → Settings** (gear icon):
-
-| Setting | Purpose |
-|---------|---------|
-| Corporation ID | Corp wallet to poll |
-| Wallet division | Division 1–7 |
-| Payment keyword | Default `MOON-RENT-REVENUE` |
-| Due day / grace period | Billing calendar |
-| Fuel alert threshold % | Discord alert below this % |
-| Fuel reference hours | Hours = 100% fuel (default 720) |
-| Fuel / payment webhook URLs | Discord incoming webhooks |
-| ESI token ID | Optional override (else `AA_FALSE_GODS_CORP_TOKEN_ID`) |
-| Auto-approve applications | Instant lease on renter apply |
-
-#### Payment matching
-
-Each lease gets a wallet description reference:
-
-```text
-MOON-RENT-REVENUE <system> - <moon name>
-```
-
-Renters must pay **≥ monthly rent** with that keyword/location in the journal line.
-
-#### ESI scopes (corp accountant token)
-
-- `esi-wallet.read_corporation_wallets.v1`
-- `esi-corporations.read_divisions.v1`
-
-Set token in settings or rely on `AA_FALSE_GODS_CORP_TOKEN_ID` (see [CorpTools / structures token override](#corptools-audit-structures-auditrcorpstructures)).
-
-#### Celery beat (enabled with `AA_MOONMINING_CELERY=1`)
-
-Configured in `deploy/aa_docker/extensions/celerybeat.py`:
-
-| Beat key | Task | Default schedule |
-|----------|------|------------------|
-| `moonrentals_poll_wallet_payments` | Wallet journal poll | Every `AA_MOONRENTALS_WALLET_POLL_MINUTES` (30) |
-| `moonrentals_sync_fuel_from_structures` | Fuel % from aa-structures | Hourly at :45 |
-| `moonrentals_check_fuel_alerts` | Discord low-fuel alerts | Every 2h at :15 |
-
-| Env | Default |
-|-----|---------|
-| `AA_MOONRENTALS_WALLET_POLL_MINUTES` | `30` |
-
-Manual test:
-
-```bash
-docker compose exec aa-worker celery -A eve_auth call moonmining.rentals.tasks.poll_rental_wallet_payments
-docker compose exec aa-worker celery -A eve_auth call moonmining.rentals.tasks.sync_rental_fuel_from_structures
-```
-
-#### aa-structures integration
-
-Install and run **aa-structures** ([section below](#aa-structures-structureslist)) so structures at moons have `fuel_expires_at`. Fuel % on leases is:
-
-`min(100, round(hours_fuel_expires / fuel_reference_hours × 100))`.
-
-Requires `Structure.eve_moon_id` to match the lease moon (or moonmining `Refinery` id).
+`/moonmining/reports` → **Member Mining** needs corp mining observer data. The sync command requires **director** characters on moonmining **Owners** and **miningtaxes** admin characters with `esi-industry.read_corporation_mining.v1`. If corp ESI returns 403, fix roles/tokens; the report API also falls back to existing `AdminMiningObsLog` rows for miners on Alliance Auth.
 
 ### Moon Tsar (`moon_tsar`)
 
@@ -371,7 +242,7 @@ Grant group permissions: `moon_tsar.view_dashboard`, `moon_tsar.manage_settings`
 | `AA_MOON_TSAR_CELERY` | `1` |
 | `AA_MOON_TSAR_TRACKING_HOURS` | `20` (post-pop ledger window) |
 
-Integrates **miningtaxes** observer ledger, **moonmining** extractions, **moonrentals** leases, and corp wallet phrase matching (same pattern as buyback).
+Integrates **miningtaxes** observer ledger, **moonmining** extractions, and corp wallet phrase matching (same pattern as buyback).
 
 ### Buyback v2 (Janice line pricing)
 
@@ -383,6 +254,22 @@ The stock [Buyback Program](https://apps.allianceauth.org/apps/detail/aa-buyback
 - **Price basis**: program Buy/Sell/Split, or force buy / sell / split; **Jita buy %** scales the final line price.
 
 Set `BUYBACKPROGRAM_PRICE_METHOD=Janice` and `BUYBACKPROGRAM_PRICE_JANICE_API_KEY` in the environment. After deploy, run **`buyback_v2_enable_programs`** once so existing programs get a profile.
+
+**Guns-R-Us buyback locations:** Import all corp structures from ESI (`GET /corporations/98633922/structures/`) using the Rexan / `AA_GUNS_R_US_CORP_TOKEN_ID` token (same as aa-structures):
+
+```bash
+docker compose exec aa-web python manage.py buyback_sync_guns_structures --ensure-v2-profiles
+```
+
+This creates **`buybackprogram.Location`** rows (name, `structure_id`, solar system) and attaches them to every buyback program. Use `--no-attach` to only refresh locations, or `--program-id 2` to limit which programs get the new sites. Rebuild **`aa-web`** after changing `buyback_v2/`.
+
+**Character dockable structures (e.g. sevey):** ESI has no official “all dockable structures” list; the sync probes public structures with the character token and searches each buyback system name:
+
+```bash
+docker compose exec aa-web python manage.py buyback_sync_character_structures --character sevey
+```
+
+Uses **sevey**’s token (`esi-universe.read_structures.v1`). First run may take several minutes while public structure IDs are checked.
 
 **Standing Fleet Tracker** (`/standing-fleet/`): polls linked characters’ fleets via ESI, scores standing-fleet hours, home-defence kill bonuses, and sov-roam penalties. See `standing_fleet_tracker/README.md` and env vars `SFT_*` in `.env.example`.
 
@@ -415,9 +302,11 @@ Token admin: `https://auth.eve-emu.com/admin/esi/token/58/change/`. For other co
 The **Structures** app ([aa-structures](https://aa-structures.readthedocs.io/en/latest/operations.html)) is separate from CorpTools. It needs:
 
 1. **Celery Beat** entries for `structures.tasks.update_all_structures` and `structures.tasks.fetch_all_notifications` (added in `deploy/aa_docker/extensions/celerybeat.py`).
-2. A **structure owner** for False Gods — auto-created on `aa-web` boot when `AA_ENSURE_STRUCTURE_OWNER=1` and `AA_FALSE_GODS_CORP_TOKEN_ID=58` are set (`deploy/aa_docker/structures_corp_token.py`).
+2. **Structure owners** on `aa-web` boot when `AA_ENSURE_STRUCTURE_OWNER=1` (`deploy/aa_docker/structures_corp_token.py`):
+   - **False Gods** (`98799892`): `AA_FALSE_GODS_CORP_TOKEN_ID` (default token 58).
+   - **Guns-R-Us** (`98633922`, moon athanors): `AA_STRUCTURES_AUTH_CHARACTER=Rexan Darkstar` (resolves latest django-esi token for that character), or set `AA_GUNS_R_US_CORP_TOKEN_ID` explicitly.
 3. **ESI scopes** on your CCP app (see aa-structures install docs): `esi-corporations.read_structures.v1`, `esi-universe.read_structures.v1`, `esi-characters.read_notifications.v1`, `esi-assets.read_corporation_assets.v1`, plus starbase/customs scopes if enabled.
-4. **Director** or **Station_Manager** in-game on Lamaashtu for corp structure endpoints (same ESI 403 as CorpTools if missing).
+4. **Director** (or token override) for structure corp API calls — Rexan must log in on auth with aa-structures scopes if sync returns 403.
 
 One-time (or set `AA_STRUCTURES_LOAD_EVE=1` on next `aa-web` boot):
 
@@ -426,6 +315,14 @@ docker compose exec aa-web python manage.py structures_load_eve
 ```
 
 Force a sync after deploy:
+
+Force a sync after deploy (Guns-R-Us / Rexan Darkstar):
+
+```powershell
+docker compose exec aa-web python manage.py shell -c "from structures.tasks import update_all_for_owner; from structures.models import Owner; o=Owner.objects.filter(corporation__corporation_id=98633922).first(); update_all_for_owner.delay(o.pk) if o else print('no owner')"
+```
+
+False Gods:
 
 ```powershell
 docker compose exec aa-web python manage.py shell -c "from structures.tasks import update_all_for_owner; from structures.models import Owner; o=Owner.objects.filter(corporation__corporation_id=98799892).first(); update_all_for_owner.delay(o.pk) if o else print('no owner')"

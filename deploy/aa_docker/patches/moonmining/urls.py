@@ -2,9 +2,9 @@
 
 from django.urls import path
 
-from django.urls import include
-
 from moonmining.views import extractions, moons, reports
+
+from emu_moons import views_moonmining
 
 from .views import general
 
@@ -17,11 +17,23 @@ urlpatterns = [
     path("modal_loader_body", general.modal_loader_body, name="modal_loader_body"),
     path("tests", general.tests, name="tests"),
     # extractions
-    path("extractions", extractions.extractions, name="extractions"),
+    path("extractions", views_moonmining.extractions, name="extractions"),
+    path(
+        "extractions/sync_discord_events",
+        views_moonmining.sync_discord_events,
+        name="sync_discord_events",
+    ),
+    path("calendar", views_moonmining.calendar, name="calendar"),
+    path("calendar_events", views_moonmining.calendar_events, name="calendar_events"),
     path(
         "extractions_data/<str:category>",
         extractions.extractions_data,
         name="extractions_data",
+    ),
+    path(
+        "next_extractions_data",
+        views_moonmining.next_extractions_data,
+        name="next_extractions_data",
     ),
     path(
         "extraction/<int:extraction_pk>",
@@ -56,7 +68,7 @@ urlpatterns = [
     ),
     path(
         "report_user_mining_data",
-        reports.report_user_mining_data,
+        views_moonmining.report_user_mining_data,
         name="report_user_mining_data",
     ),
     path(
@@ -69,5 +81,4 @@ urlpatterns = [
         reports.report_ore_prices_data,
         name="report_ore_prices_data",
     ),
-    path("", include("moonmining.rentals.urls")),
 ]
