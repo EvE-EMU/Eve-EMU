@@ -18,7 +18,7 @@ aa-structuretimers==3.0.0
 aa-moonmining==3.0.0
 aa-buybackprogram==2.3.4
 indy-hub==1.17.2
-aa-market-manager==2.0.0
+aa-market-manager==3.0.0
 aa-killtracker==2.0.0
 aa-intel-tool==3.1.0
 aa-sov-timer==4.2.0
