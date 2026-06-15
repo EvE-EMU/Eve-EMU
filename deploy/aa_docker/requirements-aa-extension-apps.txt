@@ -5,7 +5,7 @@ aa-taskmonitor==1.0.0
 allianceauth-securegroups==0.10.1
 aa-memberaudit==5.0.1
 aa-memberaudit-securegroups==1.0.1
-aa-miningtaxes==2.0.1
+aa-miningtaxes==2.0.2
 allianceauth-celeryanalytics==0.1.1
 aa-charlink==1.14.0
 aa-esi-status==3.4.0

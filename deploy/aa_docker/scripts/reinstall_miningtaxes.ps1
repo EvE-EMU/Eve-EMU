@@ -4,8 +4,8 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\..\.."))
 
-Write-Host "Reinstalling aa-miningtaxes==2.0.1 in aa-web..."
-docker compose exec -T aa-web pip install --no-cache-dir --force-reinstall --no-deps "aa-miningtaxes==2.0.1"
+Write-Host "Reinstalling aa-miningtaxes==2.0.2 in aa-web..."
+docker compose exec -T aa-web pip install --no-cache-dir --force-reinstall --no-deps "aa-miningtaxes==2.0.2"
 
 Write-Host "Migrate + collectstatic..."
 docker compose exec -T aa-web python manage.py migrate miningtaxes --noinput

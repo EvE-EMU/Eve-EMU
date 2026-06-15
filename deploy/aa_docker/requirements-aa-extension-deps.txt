@@ -43,7 +43,7 @@ networkx
 humanize>=4.7
 bleach
 unidecode
-tqdm
+tqdm==4.68.2
 dacite
 puremagic
 dnspython
@@ -63,3 +63,9 @@ numpy>=2.4.6,<3
 ortools
 pytz>=2025.2
 pendulum>=3.0,<4
+# Package monitor bumps — explicit pins keep aa-web image current.
+cryptography==49.0.0
+grpcio==1.81.1
+grpcio-tools==1.81.1
+msgpack==1.2.0
+wcwidth==0.8.1
