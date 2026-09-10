@@ -1,8 +1,15 @@
-"""Shared fitting store — GET / POST / DELETE /penguin/fittings.
+"""Fittings for the desktop client — GET / POST / DELETE /penguin/fittings.
 
-Visibility: a user sees their own private fits plus every corp / alliance fit
-whose stored org id matches one of their linked characters' corp / alliance ids.
-A user may only write a corp / alliance scope for an org they belong to.
+GET merges two sources:
+  * "auth"    — read-only doctrine fits from AllianceAuth's `fittings` app
+                (shown when the user has `fittings.access_fittings`), grouped
+                by doctrine; ids look like "auth:<pk>".
+  * "penguin" — the user's own `PenguinFitting` rows: their private fits plus
+                every corp / alliance fit whose stored org id matches one of
+                their linked characters' orgs. Editable / deletable.
+
+POST / DELETE only ever touch "penguin" rows, and a user may only write a
+corp / alliance scope for an org they belong to.
 """
 
 from __future__ import annotations
@@ -37,6 +44,40 @@ def _my_orgs(user):
     return corp_ids, alli_ids
 
 
+def _auth_fittings(user):
+    """Read-only doctrine fits from AllianceAuth's `fittings` app."""
+    if not user.has_perm("fittings.access_fittings"):
+        return []
+    try:
+        from fittings.models import Fitting
+    except Exception:  # app not installed
+        return []
+
+    rows = []
+    qs = Fitting.objects.select_related("ship_type").prefetch_related("doctrines")
+    for f in qs:
+        try:
+            eft = f.eft
+        except Exception:
+            logger.warning("penguin fittings: eft() failed for Fitting %s", f.pk)
+            continue
+        upd = getattr(f, "last_updated", None) or getattr(f, "created", None)
+        rows.append(
+            {
+                "id": f"auth:{f.pk}",
+                "name": f.name,
+                "ship_type_id": int(getattr(f, "ship_type_type_id", 0) or 0),
+                "eft": eft,
+                "scope": "auth",
+                "source": "auth",
+                "mine": False,
+                "doctrines": sorted(d.name for d in f.doctrines.all()),
+                "updated": upd.isoformat() if upd else "",
+            }
+        )
+    return rows
+
+
 @csrf_exempt
 @require_http_methods(["GET", "POST", "DELETE"])
 def fittings(request):
@@ -53,9 +94,10 @@ def fittings(request):
             | Q(scope=PenguinFitting.ALLIANCE, alliance_id__in=list(alli_ids) or [0])
         )
         rows = [
-            f.as_dict(mine=(f.owner_user_id == user.pk))
+            {**f.as_dict(mine=(f.owner_user_id == user.pk)), "source": "penguin"}
             for f in PenguinFitting.objects.filter(visible)
         ]
+        rows.extend(_auth_fittings(user))
         return JsonResponse({"fittings": rows})
 
     if request.method == "DELETE":
