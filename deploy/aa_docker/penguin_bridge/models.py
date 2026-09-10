@@ -63,3 +63,34 @@ class PenguinFitting(models.Model):
             "mine": mine,
             "updated": self.updated_at.isoformat(),
         }
+
+
+class PenguinWhMap(models.Model):
+    """One shared wormhole chain, stored as a single JSON blob.
+
+    Keyed by (scope, key): scope in {personal, corp, alliance}; key is the AA
+    user pk for a personal map, else the corp / alliance id. `rev` bumps on
+    every write so the desktop client can do optimistic-concurrency merges
+    instead of locking.
+    """
+
+    scope = models.CharField(max_length=10, default="personal", db_index=True)
+    key = models.BigIntegerField(default=0, db_index=True)
+    data = models.JSONField(default=dict)
+    rev = models.BigIntegerField(default=0)
+    updated_by = models.CharField(max_length=100, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "penguin_bridge"
+        unique_together = [("scope", "key")]
+
+    def as_dict(self) -> dict:
+        return {
+            "scope": self.scope,
+            "key": self.key,
+            "data": self.data or {},
+            "rev": self.rev,
+            "updated_by": self.updated_by,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else "",
+        }
