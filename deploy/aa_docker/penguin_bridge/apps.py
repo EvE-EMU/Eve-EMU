@@ -19,6 +19,7 @@ class PenguinBridgeConfig(AppConfig):
         import eve_auth.urls as root_urls
 
         from penguin_bridge.fittings import fittings
+        from penguin_bridge.pings import pings
         from penguin_bridge.wh import wh
         from penguin_bridge.views import (
             authorize,
@@ -36,6 +37,7 @@ class PenguinBridgeConfig(AppConfig):
             path("penguin/health", health, name="penguin_health"),
             path("penguin/fittings", fittings, name="penguin_fittings"),
             path("penguin/wh", wh, name="penguin_wh"),
+            path("penguin/pings", pings, name="penguin_pings"),
             re_path(
                 r"^penguin/esi/corp/(?P<corporation_id>\d+)/(?P<esi_path>.+)$",
                 esi_corp,

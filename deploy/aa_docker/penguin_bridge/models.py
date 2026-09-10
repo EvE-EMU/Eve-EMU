@@ -94,3 +94,43 @@ class PenguinWhMap(models.Model):
             "updated_by": self.updated_by,
             "updated_at": self.updated_at.isoformat() if self.updated_at else "",
         }
+
+
+class PenguinPing(models.Model):
+    """A fleet ping / timer shared to a corp or alliance.
+
+    Posted by a signed-in user (to their own corp / alliance) or by a relay
+    forwarder that presents the shared secret. Read by every client in that
+    corp / alliance until it expires.
+    """
+
+    CORP = "corp"
+    ALLIANCE = "alliance"
+    SCOPE_CHOICES = [(CORP, "Corp"), (ALLIANCE, "Alliance")]
+
+    scope = models.CharField(max_length=10, choices=SCOPE_CHOICES, db_index=True)
+    key = models.BigIntegerField(db_index=True)  # corp or alliance id
+    kind = models.CharField(max_length=16, default="misc")  # fc/formup/doctrine/undock/timer/misc
+    text = models.TextField()
+    system = models.CharField(max_length=64, blank=True, default="")
+    at_unix = models.BigIntegerField(default=0)  # timer target, 0 = none
+    author = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        app_label = "penguin_bridge"
+        ordering = ["-created_at", "-id"]
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "scope": self.scope,
+            "kind": self.kind,
+            "text": self.text,
+            "system": self.system,
+            "at_unix": self.at_unix,
+            "author": self.author,
+            "created_at": self.created_at.isoformat() if self.created_at else "",
+            "expires_at": self.expires_at.isoformat() if self.expires_at else "",
+        }
