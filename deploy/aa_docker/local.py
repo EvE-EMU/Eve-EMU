@@ -30,6 +30,7 @@ if not SECRET_KEY:
 
 SITE_URL = os.environ.get("AA_SITE_URL", "http://127.0.0.1:8080").rstrip("/")
 SITE_NAME = os.environ.get("AA_SITE_NAME", "EVE-EMU Alliance Auth")
+INDY_HUB_SITE_URL = os.environ.get("INDY_HUB_SITE_URL", SITE_URL).rstrip("/")
 
 DEBUG = os.environ.get("AA_DEBUG", "0").strip().lower() in ("1", "true", "yes", "on")
 
@@ -68,6 +69,25 @@ if _site.scheme == "http":
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
+_cookie_domain = os.environ.get("AA_SESSION_COOKIE_DOMAIN", "").strip()
+if not _cookie_domain and _domain:
+    _cookie_domain = f".{_domain.lstrip('.')}"
+if _cookie_domain:
+    SESSION_COOKIE_DOMAIN = _cookie_domain
+    CSRF_COOKIE_DOMAIN = _cookie_domain
+
+# Re-save session on each request so a bridge visit re-issues Domain=.eve-emu.com cookies.
+# Use Redis-only sessions so CorpTools/Indy Hub API fan-out does not UPDATE django_session
+# in Postgres on every XHR (cached_db would write Redis + PG each time).
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+SESSION_SAVE_EVERY_REQUEST = True
+
+if _domain:
+    _public_origin = f"https://{_domain.lstrip('.')}"
+    if _public_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_public_origin)
+
 # Caddy terminates TLS and forwards X-Forwarded-Proto. Without this, OIDC discovery
 # advertises http:// endpoints; clients POST to http, get a 308 with an empty body,
 # and fail token exchange with a JSON parse error.
@@ -76,6 +96,8 @@ if os.environ.get("AA_BEHIND_PROXY", "1").strip().lower() in ("1", "true", "yes"
     USE_X_FORWARDED_HOST = True
 
 STATIC_ROOT = os.environ.get("AA_STATIC_ROOT", os.path.join(BASE_DIR, "staticfiles"))
+MEDIA_ROOT = os.environ.get("AA_MEDIA_ROOT", os.path.join(BASE_DIR, "media"))
+MEDIA_URL = os.environ.get("AA_MEDIA_URL", "/content/uploads/")
 
 # Optional deployment branding (login / menu logo via templates/bundles/image-auth-logo.html).
 _aa_static = os.path.abspath(
@@ -116,6 +138,10 @@ DATABASES["default"] = {
     "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "eve"),
     "HOST": os.environ.get("POSTGRES_HOST", "db"),
     "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+    # Reuse connections across requests (gunicorn workers + Celery). Default 0 opens a
+    # new TCP/auth handshake to Postgres on every request — brutal for CorpTools SPA loads.
+    "CONN_MAX_AGE": int(os.environ.get("AA_DB_CONN_MAX_AGE", "600")),
+    "CONN_HEALTH_CHECKS": True,
 }
 
 # Must match your CCP developer app callback URL exactly (django-esi: /sso/callback).
@@ -135,14 +161,97 @@ if os.environ.get("AA_SKIP_EMAIL_VERIFY", "0").strip().lower() in ("1", "true", 
 if "whitenoise.middleware.WhiteNoiseMiddleware" not in MIDDLEWARE:
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
-INSTALLED_APPS += [
+# Duplicate csrftoken cookies (host-only + Domain=.eve-emu.com) break Craft AJAX CSRF.
+# Prefer the cookie that matches X-CSRFToken / csrfmiddlewaretoken before Django checks.
+_csrf_mw = "django.middleware.csrf.CsrfViewMiddleware"
+_csrf_fix_mw = "csrf_cookie_cleanup.PreferMatchingCsrfCookieMiddleware"
+if _csrf_fix_mw not in MIDDLEWARE:
+    try:
+        _csrf_idx = MIDDLEWARE.index(_csrf_mw)
+    except ValueError:
+        MIDDLEWARE.append(_csrf_fix_mw)
+    else:
+        MIDDLEWARE.insert(_csrf_idx, _csrf_fix_mw)
+
+import importlib
+
+_LOCAL_APPS = [
     "industry_suite",
-    "buyback_v2.apps.BuybackV2Config",
-    "corp_orders.apps.CorpOrdersConfig",
-    "standing_fleet_tracker",
     "sde_wiki.apps.SdeWikiConfig",
+    "buyback_v2.apps.BuybackV2Config",
     "market_bridge.apps.MarketBridgeConfig",
+    "freight_bridge.apps.FreightBridgeConfig",
+    "penguin_bridge.apps.PenguinBridgeConfig",
+    "moon_rental_bridge.apps.MoonRentalBridgeConfig",
+    "mfg_projects.apps.MfgProjectsConfig",
+    "emu_pi.apps.EmuPiConfig",
+    "discord_lookup.apps.DiscordLookupConfig",
+    "corptools_asset_export.apps.CorptoolsAssetExportConfig",
+    "audit_comms_hub.apps.AuditCommsHubConfig",
+    "auth_assets_report.apps.AuthAssetsReportConfig",
+    "industry_jobs_report.apps.IndustryJobsReportConfig",
+    "false_gods_audit.apps.FalseGodsAuditConfig",
+    "logistics_group.apps.LogisticsGroupConfig",
+    "marketing_mail.apps.MarketingMailConfig",
+    "doctrine_contract_manager.apps.DoctrineContractManagerConfig",
+    "winter_coalition_report.apps.WinterCoalitionReportConfig",
+    "ffr.apps.FfrConfig",
+    "carbon_bridge.apps.CarbonBridgeConfig",
+    "permissions_overview.apps.PermissionsOverviewConfig",
+    "package_monitor_ops.apps.PackageMonitorOpsConfig",
+    "rorqual_status.apps.RorqualStatusConfig",
+    "krab_schedule.apps.KrabScheduleConfig",
+    "jumpplanner_blues.apps.JumpplannerBluesConfig",
+    "stream_watch.apps.StreamWatchConfig",
+    "zomboid_service.apps.ZomboidServiceConfig",
 ]
+
+
+def _local_app_importable(entry: str) -> bool:
+    root = entry.split(".apps.", 1)[0] if ".apps." in entry else entry.split(".", 1)[0]
+    try:
+        importlib.import_module(root)
+        return True
+    except ModuleNotFoundError:
+        return False
+
+
+INSTALLED_APPS += [entry for entry in _LOCAL_APPS if _local_app_importable(entry)]
+
+# EVE-Penguin Discord → ping relay cog (aa-discordbot). Harmless if the bot
+# profile isn't running; needs PENGUIN_RELAY_SECRET set + channel mappings in
+# the admin (penguin_bridge → Penguin ping channels). We can't import
+# aadiscordbot.app_settings here (settings not built yet), so restate the
+# upstream default cog list and append ours.
+DISCORD_BOT_COGS = [
+    "aadiscordbot.cogs.about",
+    "aadiscordbot.cogs.admin",
+    "aadiscordbot.cogs.members",
+    "aadiscordbot.cogs.timers",
+    "aadiscordbot.cogs.auth",
+    "aadiscordbot.cogs.sov",
+    "aadiscordbot.cogs.time",
+    "aadiscordbot.cogs.eastereggs",
+    "aadiscordbot.cogs.remind",
+    "aadiscordbot.cogs.reaction_roles",
+    "aadiscordbot.cogs.services",
+    "aadiscordbot.cogs.price_check",
+    "aadiscordbot.cogs.eightball",
+    "aadiscordbot.cogs.welcomegoodbye",
+    "aadiscordbot.cogs.models",
+    "aadiscordbot.cogs.quote",
+    "aadiscordbot.cogs.honeypot",
+    "penguin_bridge.discord_relay",
+]
+
+# Upstream AA permissions audit (permission → users/groups drill-down).
+if "allianceauth.permissions_tool" not in INSTALLED_APPS:
+    INSTALLED_APPS.append("allianceauth.permissions_tool")
+
+# Built-in HR Applications (recruitment questionnaires / review).
+# https://allianceauth.readthedocs.io/en/latest/features/apps/hrapplications.html
+if "allianceauth.hrapplications" not in INSTALLED_APPS:
+    INSTALLED_APPS.append("allianceauth.hrapplications")
 
 # Community apps: deploy/aa_docker/extensions/ + requirements-aa-extensions.txt
 import sys
@@ -160,6 +269,16 @@ from extensions import configure_extensions  # noqa: E402
 _configure = dict(globals())
 configure_extensions(_configure)
 globals().update(_configure)
+
+# aa-discordbot admin slash commands (e.g. /lookup, /altcorp) require channel allowlist.
+_raw_aa_admin_ch = os.environ.get("AA_ADMIN_DISCORD_BOT_CHANNELS", "").strip()
+if _raw_aa_admin_ch:
+    ADMIN_DISCORD_BOT_CHANNELS = [
+        int(x.strip()) for x in _raw_aa_admin_ch.split(",") if x.strip().isdigit()
+    ]
+else:
+    # HR / officer channel — aa-discordbot /lookup is blocked without this.
+    ADMIN_DISCORD_BOT_CHANNELS = [1460686353237803244]
 
 LOGGING["loggers"]["django"]["level"] = "INFO"
 LOGGING["loggers"]["allianceauth"]["level"] = "INFO"

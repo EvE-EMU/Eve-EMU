@@ -134,3 +134,27 @@ class PenguinPing(models.Model):
             "created_at": self.created_at.isoformat() if self.created_at else "",
             "expires_at": self.expires_at.isoformat() if self.expires_at else "",
         }
+
+
+class PenguinPingChannel(models.Model):
+    """Maps a Discord channel to a EVE-Penguin ping target.
+
+    The Discord relay cog forwards each new message in `discord_channel_id` to
+    `/penguin/pings` as `(scope, key, kind)` with `label` as a prefix. Only
+    clients whose main is in that corp / alliance ever see it — that is the
+    "does this user have access to the channel" gate, at org granularity.
+    """
+
+    discord_channel_id = models.BigIntegerField(unique=True, db_index=True)
+    label = models.CharField(max_length=40, blank=True, default="")
+    scope = models.CharField(max_length=10, default="alliance")  # corp | alliance
+    key = models.BigIntegerField()  # corp or alliance id
+    kind = models.CharField(max_length=16, default="misc")
+    ttl_hours = models.PositiveIntegerField(default=6)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        app_label = "penguin_bridge"
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.discord_channel_id} → {self.scope}:{self.key} ({self.label})"
