@@ -59,6 +59,7 @@ PENGUIN_SCOPES = [
     "esi-industry.read_corporation_jobs.v1",
     "esi-corporations.read_divisions.v1",
     "esi-corporations.read_structures.v1",
+    "esi-corporations.read_projects.v1",
     "esi-contracts.read_character_contracts.v1",
     "esi-contracts.read_corporation_contracts.v1",
     "esi-markets.read_character_orders.v1",
