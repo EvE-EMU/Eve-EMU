@@ -83,6 +83,18 @@ def _apply_discord_settings(settings: dict) -> None:
 def apply_extension_settings(settings: dict) -> None:
     _apply_discord_settings(settings)
 
+    domain = os.environ.get("DOMAIN_NAME", "").strip()
+    wiki_public = os.environ.get("WIKIJS_URL", "").strip()
+    if not wiki_public and domain:
+        wiki_public = f"https://wiki.{domain}"
+    settings.setdefault("WIKIJS_URL", wiki_public)
+    settings.setdefault(
+        "WIKIJS_API_URL",
+        os.environ.get("WIKIJS_API_URL", "").strip() or "http://wikijs:3000",
+    )
+    settings.setdefault("WIKIJS_API_KEY", os.environ.get("WIKIJS_API_KEY", ""))
+    settings.setdefault("WIKIJS_AADISCORDBOT_INTEGRATION", False)
+
     _aa_docker_templates = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "templates")
     )
@@ -115,7 +127,7 @@ def apply_extension_settings(settings: dict) -> None:
                 "allianceauth.theme.flatly.auth_hooks.FlatlyThemeHook"
             )
 
-    if "wikijs" in installed:
+    if _app_installed(installed, "wikijs"):
         domain = os.environ.get("DOMAIN_NAME", "").strip()
         wiki_public = os.environ.get("WIKIJS_URL", "").strip()
         if not wiki_public and domain:
@@ -127,15 +139,20 @@ def apply_extension_settings(settings: dict) -> None:
         settings.setdefault("WIKIJS_AADISCORDBOT_INTEGRATION", False)
 
     if "discordnotify" in installed:
-        settings.setdefault("DISCORDNOTIFY_ENABLED", True)
-        settings.setdefault(
-            "DISCORDPROXY_HOST",
-            os.environ.get("DISCORDPROXY_HOST", "discordproxy"),
-        )
-        settings.setdefault(
-            "DISCORDPROXY_PORT",
-            int(os.environ.get("DISCORDPROXY_PORT", "50051")),
-        )
+        # Only wire discordproxy when explicitly configured — defaulting to the
+        # hostname "discordproxy" causes DNS failures when that service is absent.
+        # Empty host produces DiscordProxyException ("host must not be empty … :0").
+        proxy_host = os.environ.get("DISCORDPROXY_HOST", "").strip()
+        if proxy_host:
+            settings.setdefault("DISCORDNOTIFY_ENABLED", True)
+            settings["DISCORDPROXY_HOST"] = proxy_host
+            settings["DISCORDPROXY_PORT"] = int(
+                os.environ.get("DISCORDPROXY_PORT", "50051")
+            )
+        else:
+            settings["DISCORDNOTIFY_ENABLED"] = False
+            settings["DISCORDPROXY_HOST"] = ""
+            settings["DISCORDPROXY_PORT"] = 0
 
     if "aa_skip_email" in installed:
         backends = list(settings.get("AUTHENTICATION_BACKENDS", []))
@@ -183,11 +200,20 @@ def apply_extension_settings(settings: dict) -> None:
         "sovtimer",
         "esistatus",
         "aa_intel_tool",
-        "buyback_v2",
         "emu_moons",
+        "emu_ads",
+        # Winter Co ingest + emu-bot HELP APIs (UrlHook excluded_views)
+        "rorqual_status",
+        "krab_schedule",
+        # aa-shop public storefront (browse without login)
+        "storefront",
+        "shop",
     ):
-        if label in installed and label not in public_views:
-            public_views.append(label)
+        if _app_installed(installed, label) or (
+            label == "storefront" and _app_installed(installed, "shop")
+        ):
+            if label not in public_views:
+                public_views.append(label)
     if public_views:
         settings["APPS_WITH_PUBLIC_VIEWS"] = public_views
 
@@ -200,16 +226,33 @@ def apply_extension_settings(settings: dict) -> None:
                 ctx_procs.append(proc)
                 templates[0].setdefault("OPTIONS", {})["context_processors"] = ctx_procs
                 settings["TEMPLATES"] = templates
+        # Do NOT add esi-mail.send_mail.v1 to default login — only opt-in via env
+        # for designated mail-sender characters (CharLink / re-auth).
+        mail_scopes = [
+            s.strip()
+            for s in os.environ.get("AA_EMU_MOONS_MAIL_LOGIN_SCOPES", "").split()
+            if s.strip()
+        ]
+        if mail_scopes:
+            login_scopes = list(settings.get("LOGIN_TOKEN_SCOPES", ["publicData"]))
+            for scope in mail_scopes:
+                if scope not in login_scopes:
+                    login_scopes.append(scope)
+            settings["LOGIN_TOKEN_SCOPES"] = login_scopes
 
-    if "buyback_v2" in installed:
-        templates = settings.get("TEMPLATES")
-        if templates and isinstance(templates, list) and templates:
-            ctx_procs = list(templates[0].get("OPTIONS", {}).get("context_processors", []))
-            proc = "buyback_v2.context_processors.buyback_pricing_tier"
-            if proc not in ctx_procs:
-                ctx_procs.append(proc)
-                templates[0].setdefault("OPTIONS", {})["context_processors"] = ctx_procs
-                settings["TEMPLATES"] = templates
+    if _app_installed(installed, "marketing_mail"):
+        # Mail-send is tool-specific; keep it off the default new-user login consent.
+        mail_scopes = [
+            s.strip()
+            for s in os.environ.get("AA_MARKETING_MAIL_LOGIN_SCOPES", "").split()
+            if s.strip()
+        ]
+        if mail_scopes:
+            login_scopes = list(settings.get("LOGIN_TOKEN_SCOPES", ["publicData"]))
+            for scope in mail_scopes:
+                if scope not in login_scopes:
+                    login_scopes.append(scope)
+            settings["LOGIN_TOKEN_SCOPES"] = login_scopes
 
     settings.setdefault(
         "AA_ESI_COMPATIBILITY_DATE",
@@ -217,35 +260,95 @@ def apply_extension_settings(settings: dict) -> None:
     )
 
     janice_key = os.environ.get("BUYBACKPROGRAM_PRICE_JANICE_API_KEY", "").strip()
+    market_janice = os.environ.get("MARKET_JANICE_API_KEY", "").strip()
+    if not janice_key and market_janice:
+        janice_key = market_janice
     janice_method = os.environ.get("BUYBACKPROGRAM_PRICE_METHOD", "").strip()
     if janice_method:
         settings["BUYBACKPROGRAM_PRICE_METHOD"] = janice_method
-    elif _app_installed(installed, "buyback_v2") and _app_installed(
-        installed, "buybackprogram"
-    ):
+    elif _app_installed(installed, "buybackprogram"):
         settings.setdefault("BUYBACKPROGRAM_PRICE_METHOD", "Janice")
     if janice_key:
         settings["BUYBACKPROGRAM_PRICE_JANICE_API_KEY"] = janice_key
+        # Janice web UI (appraisal / reprocess) uses immediate/effective prices, not top-5 average.
+        settings.setdefault("BUYBACKPROGRAM_PRICE_INSTANT_PRICES", True)
+    if market_janice:
+        settings["MARKET_JANICE_API_KEY"] = market_janice
+    elif janice_key:
+        settings.setdefault("MARKET_JANICE_API_KEY", janice_key)
+
+    if _app_installed(installed, "freight"):
+        op_mode = os.environ.get("FREIGHT_OPERATION_MODE", "").strip()
+        if op_mode:
+            settings["FREIGHT_OPERATION_MODE"] = op_mode
+        else:
+            settings.setdefault("FREIGHT_OPERATION_MODE", "corp_public")
+        for env_key, setting_key in (
+            ("FREIGHT_DISCORD_WEBHOOK_URL", "FREIGHT_DISCORD_WEBHOOK_URL"),
+            ("FREIGHT_DISCORD_CUSTOMERS_WEBHOOK_URL", "FREIGHT_DISCORD_CUSTOMERS_WEBHOOK_URL"),
+            ("FREIGHT_DISCORD_MENTIONS", "FREIGHT_DISCORD_MENTIONS"),
+            ("FREIGHT_APP_NAME", "FREIGHT_APP_NAME"),
+        ):
+            val = os.environ.get(env_key, "").strip()
+            if val:
+                settings[setting_key] = val
+
+    if _app_installed(installed, "moonmining"):
+        # ESI EveMarketPrice averages for raw moon ore are unreliable (thin books /
+        # spoof buy orders). Prefer refined goo+mineral value (aa-moonmining RM mode).
+        # Opt out with MOONMINING_USE_REPROCESS_PRICING=0.
+        # Material prices: Janice Jita Immediate buy by default (MOONMINING_PRICE_SOURCE).
+        reprocess = os.environ.get("MOONMINING_USE_REPROCESS_PRICING", "1").strip().lower()
+        settings["MOONMINING_USE_REPROCESS_PRICING"] = reprocess not in (
+            "0",
+            "false",
+            "no",
+            "off",
+        )
+        yield_raw = os.environ.get("MOONMINING_REPROCESSING_YIELD", "").strip()
+        if yield_raw:
+            try:
+                settings["MOONMINING_REPROCESSING_YIELD"] = float(yield_raw)
+            except ValueError:
+                pass
+        price_source = os.environ.get("MOONMINING_PRICE_SOURCE", "janice_buy").strip()
+        if price_source:
+            settings["MOONMINING_PRICE_SOURCE"] = price_source
+        else:
+            settings.setdefault("MOONMINING_PRICE_SOURCE", "janice_buy")
+        moon_janice = os.environ.get("MOONMINING_JANICE_API_KEY", "").strip()
+        if moon_janice:
+            settings["MOONMINING_JANICE_API_KEY"] = moon_janice
+        elif janice_key:
+            settings.setdefault("MOONMINING_JANICE_API_KEY", janice_key)
 
     if _app_installed(installed, "miningtaxes"):
-        # Optional overrides only — otherwise aa-miningtaxes app_settings defaults apply.
+        # Stock aa-miningtaxes: Janice pricing + corp-moon-only taxes (env-overridable).
         mt_method = os.environ.get("MININGTAXES_PRICE_METHOD", "").strip()
         if mt_method:
             settings["MININGTAXES_PRICE_METHOD"] = mt_method
+        elif janice_key or os.environ.get("MININGTAXES_PRICE_JANICE_API_KEY", "").strip():
+            settings["MININGTAXES_PRICE_METHOD"] = "Janice"
         mt_janice = os.environ.get("MININGTAXES_PRICE_JANICE_API_KEY", "").strip() or janice_key
         if mt_janice:
             settings["MININGTAXES_PRICE_JANICE_API_KEY"] = mt_janice
         corp_div = os.environ.get("MININGTAXES_CORP_WALLET_DIVISION", "").strip()
         if corp_div.isdigit():
             settings["MININGTAXES_CORP_WALLET_DIVISION"] = int(corp_div)
-        tax_corp_only = os.environ.get("MININGTAXES_TAX_ONLY_CORP_MOONS", "").strip().lower()
+        tax_corp_only = os.environ.get("MININGTAXES_TAX_ONLY_CORP_MOONS", "1").strip().lower()
         if tax_corp_only in ("0", "false", "no", "off"):
             settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = False
-        elif tax_corp_only in ("1", "true", "yes", "on"):
+        else:
             settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = True
-        elif _app_installed(installed, "emu_moons"):
-            # EMU Moons invoices from corp observer logs; personal ledger is opt-in fallback only.
-            settings["MININGTAXES_TAX_ONLY_CORP_MOONS"] = False
+        # Package default is 0.10 (10%) for any ore type with no OrePrices row /
+        # explicit tax_rate — i.e. unpriced/unlisted ore was silently taxed. Per
+        # policy: unlisted ore types are not taxed at all (MININGTAXES_UNKNOWN_TAX_RATE=0).
+        unknown_rate = os.environ.get("MININGTAXES_UNKNOWN_TAX_RATE", "").strip()
+        if unknown_rate:
+            try:
+                settings["MININGTAXES_UNKNOWN_TAX_RATE"] = float(unknown_rate)
+            except ValueError:
+                pass
 
     if _app_installed(installed, "moon_rentals"):
         webhook = os.environ.get("MOON_RENTALS_DISCORD_WEBHOOK_URL", "").strip()
@@ -286,6 +389,23 @@ def apply_extension_settings(settings: dict) -> None:
                 login_scopes.append(scope)
         settings["LOGIN_TOKEN_SCOPES"] = login_scopes
 
+    if _app_installed(installed, "marketmanager"):
+        mm_scopes = [
+            s.strip()
+            for s in os.environ.get(
+                "AA_MARKET_MANAGER_LOGIN_SCOPES",
+                "esi-markets.read_character_orders.v1 "
+                "esi-markets.structure_markets.v1 "
+                "esi-universe.read_structures.v1",
+            ).split()
+            if s.strip()
+        ]
+        login_scopes = list(settings.get("LOGIN_TOKEN_SCOPES", ["publicData"]))
+        for scope in mm_scopes:
+            if scope not in login_scopes:
+                login_scopes.append(scope)
+        settings["LOGIN_TOKEN_SCOPES"] = login_scopes
+
     if _app_installed(installed, "industry_suite") and os.environ.get(
         "AA_CORP_PROJECT_DISCORD_ENABLED", "1"
     ).strip().lower() not in ("0", "false", "no", "off"):
@@ -303,19 +423,36 @@ def apply_extension_settings(settings: dict) -> None:
                 login_scopes.append(scope)
         settings["LOGIN_TOKEN_SCOPES"] = login_scopes
 
-    if any(label == "standing_fleet_tracker" or label.startswith("standing_fleet_tracker.") for label in installed):
-        sft_scopes = [
-            s.strip()
-            for s in os.environ.get(
-                "SFT_REQUIRED_SCOPES",
-                "esi-fleets.read_fleet.v1 esi-location.read_location.v1 "
-                "esi-location.read_ship_type.v1 esi-assets.read_assets.v1 "
-                "esi-killmails.read_killmails.v1",
-            ).split()
-            if s.strip()
+    if _app_installed(installed, "doctrine_contract_manager"):
+        webhook = os.environ.get("DOCTRINE_CONTRACT_MANAGER_DISCORD_WEBHOOK", "").strip()
+        if webhook:
+            settings["DOCTRINE_CONTRACT_MANAGER_DISCORD_WEBHOOK"] = webhook
+        else:
+            # Fall back to Market Manager doctrine stock webhook at runtime.
+            settings.setdefault("DOCTRINE_CONTRACT_MANAGER_DISCORD_WEBHOOK", "")
+        settings["DOCTRINE_CONTRACT_MANAGER_FITTING_PROVIDER"] = os.environ.get(
+            "DOCTRINE_CONTRACT_MANAGER_FITTING_PROVIDER",
+            "doctrine_contract_manager.live_providers.aa_doctrine_fittings_provider",
+        ).strip()
+        settings["DOCTRINE_CONTRACT_MANAGER_CONTRACT_PROVIDER"] = os.environ.get(
+            "DOCTRINE_CONTRACT_MANAGER_CONTRACT_PROVIDER",
+            "doctrine_contract_manager.live_providers.aa_corptools_contract_provider",
+        ).strip()
+        admin_groups = os.environ.get(
+            "DOCTRINE_CONTRACT_MANAGER_ADMIN_GROUPS",
+            "Director,Logistics,Personnel",
+        ).strip()
+        settings["DOCTRINE_CONTRACT_MANAGER_ADMIN_GROUPS"] = [
+            g.strip() for g in admin_groups.split(",") if g.strip()
         ]
-        login_scopes = list(settings.get("LOGIN_TOKEN_SCOPES", ["publicData"]))
-        for scope in sft_scopes:
-            if scope not in login_scopes:
-                login_scopes.append(scope)
-        settings["LOGIN_TOKEN_SCOPES"] = login_scopes
+
+    settings["ZOMBOID_DB_PATH"] = os.environ.get(
+        "ZOMBOID_DB_PATH", "/zomboid-db/EveEmuZomboid.db"
+    ).strip()
+    settings["ZOMBOID_WORLD"] = os.environ.get(
+        "ZOMBOID_WORLD", "EveEmuZomboid"
+    ).strip() or "EveEmuZomboid"
+    settings["ZOMBOID_SERVICE_URL"] = os.environ.get(
+        "ZOMBOID_SERVICE_URL", "5.9.109.245:16261"
+    ).strip() or "5.9.109.245:16261"
+

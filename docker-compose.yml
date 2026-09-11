@@ -7,16 +7,43 @@ x-aa-discord-environment: &aa-discord-environment
   DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
   DISCORD_APP_ID: ${DISCORD_APP_ID:-}
   DISCORD_APP_SECRET: ${DISCORD_APP_SECRET:-}
+  DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
   DISCORD_CALLBACK_URL: ${DISCORD_CALLBACK_URL:-}
 
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
+    # Default Docker shm (64MB) is too small once shared_buffers > ~64MB.
+    shm_size: 1gb
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-eve}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve}
       POSTGRES_DB: ${POSTGRES_DB_CORE:-eve_emu_core}
       POSTGRES_DB_AA: ${POSTGRES_DB_AA:-eve_emu_aa}
+    # ~4.5GB AA DB + market/core on a 62GB host; stock alpine defaults were 128MB buffers.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=8GB
+      - -c
+      - work_mem=32MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=64MB
+      - -c
+      - max_connections=200
+      - -c
+      - idle_in_transaction_session_timeout=60000
     volumes:
       - eve_emu_pgdata:/var/lib/postgresql/data
       - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
@@ -30,18 +57,29 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - eve_emu_redis:/data
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
+    # Do not publish Redis on 0.0.0.0 — CERT scanners flag open unauthenticated instances.
+    # Containers use REDIS_URL (redis://:password@redis:6379/N). Host access is loopback only.
     ports:
-      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PUBLISH_PORT:-6379}:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        [
+          "CMD-SHELL",
+          'if [ -n "$$REDIS_PASSWORD" ]; then redis-cli -a "$$REDIS_PASSWORD" ping; else redis-cli ping; fi | grep -q PONG',
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
 
   core-api:
+    restart: unless-stopped
     build:
       context: ./core
       dockerfile: Dockerfile
@@ -58,16 +96,29 @@ services:
       CORE_DISCORD_BOT_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
       CORE_TOKEN_ENCRYPTION_KEY: ${CORE_TOKEN_ENCRYPTION_KEY:-}
       CORE_MOON_TAX_PERCENT_OF_OWED_VALUE: ${MINING_TAX_RATE:-0}
+      CORE_SDE_AUTO_SYNC: ${CORE_SDE_AUTO_SYNC:-1}
+      CORE_SDE_CHECK_INTERVAL_HOURS: ${CORE_SDE_CHECK_INTERVAL_HOURS:-6}
+      CORE_IMAGE_PROXY_ENABLED: ${CORE_IMAGE_PROXY_ENABLED:-1}
+      CORE_IMAGE_USE_LOCAL_URLS: ${CORE_IMAGE_USE_LOCAL_URLS:-1}
+      CORE_IMAGE_CACHE_DIR: /data/image-cache
+    volumes:
+      - eve_emu_image_cache:/data/image-cache
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "${CORE_API_PUBLISH_PORT:-8000}:8000"
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-core-api
 
   core-web:
+    restart: unless-stopped
     build:
-      context: ./core-web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: core-web/Dockerfile
       args:
         NEXT_PUBLIC_CORE_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
         NEXT_PUBLIC_AUTH_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
@@ -75,6 +126,16 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      FREIGHT_AA_API_URL: ${FREIGHT_AA_API_URL:-http://aa-web:8080}
+      CORE_API_INTERNAL_URL: ${CORE_API_INTERNAL_URL:-http://core-api:8000}
+      CORE_SITE_BRIDGE_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      CORE_DISCORD_BOT_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      APM_FILES_DIR: /srv/apm
+      APM_CRASH_DIR: /srv/apm-crashes
+    volumes:
+      - ./dist/apm:/srv/apm:ro
+      - ./dist/apm-crashes:/srv/apm-crashes
     depends_on:
       - core-api
     expose:
@@ -82,6 +143,11 @@ services:
     # Dev direct access (optional): CORE_WEB_PUBLISH_PORT=3000
     ports:
       - "${CORE_WEB_PUBLISH_PORT:-3000}:3000"
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-core-web
 
   emu-bot:
     build:
@@ -91,99 +157,116 @@ services:
       - path: .env
         required: false
     environment:
-      EVE_DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      # Use a dedicated app token when aa-discordbot also runs (same token = one bot wins slash-command sync).
+      EVE_DISCORD_BOT_TOKEN: ${EVE_DISCORD_BOT_TOKEN:-${DISCORD_BOT_TOKEN:-}}
       EVE_DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
       EVE_TICKET_QUEUE_CHANNEL_ID: ${EVE_TICKET_QUEUE_CHANNEL_ID:-}
       EVE_CORE_BASE_URL: ${BOT_CORE_API_URL:-http://core-api:8000}
       EVE_CORE_BOT_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      EVE_AA_LOOKUP_BASE_URL: ${AA_LOOKUP_BASE_URL:-http://aa-web:8080}
+      EVE_AA_LOOKUP_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      EVE_MINING_PING_CHANNEL_ID: ${EVE_MINING_PING_CHANNEL_ID:-1500502296461705477}
+      EVE_MINING_PING_HERE: ${EVE_MINING_PING_HERE:-1}
+      # TheraBot-style EVE Scout alerts (any Thera hole in the listed regions)
+      EVE_THERA_HOLES: ${EVE_THERA_HOLES:-1}
+      EVE_THERA_CHANNEL_ID: ${EVE_THERA_CHANNEL_ID:-1459837542021992468}
+      EVE_THERA_REGIONS: ${EVE_THERA_REGIONS:-Deklein}
+      EVE_THERA_POLL_SECONDS: ${EVE_THERA_POLL_SECONDS:-300}
+      EVE_THERA_PING_HERE: ${EVE_THERA_PING_HERE:-0}
+      EVE_LOOKUP_ROLE_NAMES: ${EVE_LOOKUP_ROLE_NAMES:-Personnel}
+      EVE_AUDIT_FULL_ROLE_NAMES: ${EVE_AUDIT_FULL_ROLE_NAMES:-Security,Director}
+      EVE_FALSE_GODS_CORPORATION_ID: ${EVE_FALSE_GODS_CORPORATION_ID:-98799892}
+      # Rorqual HELP + status-board buttons; AA_RORQUAL_HELP must also be 1 on aa-web
+      EVE_RORQUAL_HELP: ${EVE_RORQUAL_HELP:-${AA_RORQUAL_HELP:-0}}
+      EVE_RORQUAL_HELP_DRY_RUN: ${EVE_RORQUAL_HELP_DRY_RUN:-${AA_RORQUAL_HELP_DRY_RUN:-0}}
+      EVE_RORQUAL_HELP_CHANNEL_ID: ${EVE_RORQUAL_HELP_CHANNEL_ID:-1530743911721734225}
+      EVE_RORQUAL_STATUS_CHANNEL_ID: ${EVE_RORQUAL_STATUS_CHANNEL_ID:-1530725599444992170}
+      AA_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      EVE_APPLICATION_URL: ${EVE_APPLICATION_URL:-}
+      EVE_SRP_URL: ${EVE_SRP_URL:-https://slycealliance.com/ship-replacement/}
+      EVE_SRP_AUTH_URL: ${EVE_SRP_AUTH_URL:-}
+      AA_RORQUAL_HELP: ${AA_RORQUAL_HELP:-0}
+      AA_RORQUAL_HELP_DRY_RUN: ${AA_RORQUAL_HELP_DRY_RUN:-0}
+      AA_RORQUAL_STATUS_CHANNEL_ID: ${AA_RORQUAL_STATUS_CHANNEL_ID:-1530725599444992170}
+    volumes:
+      # Live-edit Rorqual Discord Views + BP deal mail button without rebuilding emu-bot
+      - ./discord-bot/bot/rorqual_help.py:/bot/rorqual_help.py:ro
+      - ./discord-bot/bot/rorqual_status_board.py:/bot/rorqual_status_board.py:ro
+      - ./discord-bot/bot/bp_deal_mail.py:/bot/bp_deal_mail.py:ro
+      - ./discord-bot/bot/eve_mining_timer_bot.py:/bot/eve_mining_timer_bot.py:ro
+      - ./discord-bot/bot/thera_holes.py:/bot/thera_holes.py:ro
+      - ./discord-bot/bot/data:/bot/data
     depends_on:
-      - core-api
+      core-api:
+        condition: service_started
+      aa-web:
+        condition: service_healthy
     restart: unless-stopped
 
-  # Wanderer CE — EVE mapper at https://wh.<DOMAIN_NAME> (see docs/WANDERER.md).
-  wanderer-route-builder:
-    image: wandererltd/eve-route-builder:main
-    restart: unless-stopped
-    expose:
-      - "2001"
-    environment:
-      PORT: "2001"
-
-  wanderer-kills:
-    image: wandererltd/wanderer-kills:latest
-    restart: unless-stopped
-    expose:
-      - "4004"
-    environment:
-      PORT: "4004"
-      MIX_ENV: prod
-      ESI_BASE_URL: https://esi.evetech.net/latest
-      ESI_DATASOURCE: tranquility
-      CACHE_KILLMAIL_TTL: "300"
-      CACHE_SYSTEM_TTL: "3600"
-      CACHE_ESI_TTL: "86400"
-
-  wanderer:
-    image: wandererltd/community-edition:latest
+  # Pelican game server panel at https://wh.<DOMAIN_NAME> (see docs/PELICAN.md).
+  pelican:
+    image: ghcr.io/pelican-dev/panel:latest
     restart: unless-stopped
     env_file:
       - path: .env
         required: false
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        # CCP removed esi-search.search_structures.v1; strip from runtime.exs (plain text) and
-        # sys.config (Erlang byte-list form: ,32,101,115,105,...structures.v1).
-        if [ -f /app/releases/1.0.0/runtime.exs ]; then
-          sed -i 's/ esi-search.search_structures.v1//g' /app/releases/1.0.0/runtime.exs
-        fi
-        if [ -f /app/releases/1.0.0/sys.config ]; then
-          sed -i 's/ esi-search.search_structures.v1//g' /app/releases/1.0.0/sys.config
-          sed -i 's/,32,101,115,105,45,115,101,97,114,99,104,46,115,101,97,114,99,104,95,115,116,114,117,99,116,117,114,101,115,46,118,49//g' /app/releases/1.0.0/sys.config
-        fi
-        if [ -f /app/releases/1.0.0/runtime.exs ] && ! grep -q 'plug_init_mode: :runtime' /app/releases/1.0.0/runtime.exs; then
-          printf '\nconfig :phoenix, plug_init_mode: :runtime\n' >> /app/releases/1.0.0/runtime.exs
-        fi
-        sleep 5
-        /app/entrypoint.sh db migrate
-        /app/entrypoint.sh run
-    depends_on:
-      db:
-        condition: service_healthy
-      wanderer-route-builder:
-        condition: service_started
-      wanderer-kills:
-        condition: service_started
     expose:
-      - "8000"
+      - "80"
+    volumes:
+      - eve_emu_pelican_data:/pelican-data
+      - eve_emu_pelican_logs:/var/www/html/storage/logs
+      - ./deploy/pelican/Caddyfile:/etc/caddy/Caddyfile:ro
     environment:
-      PHX_SERVER: "true"
-      ECTO_IPV6: "false"
-      ERL_AFLAGS: -proto_dist inet6_tcp
-      DATABASE_URL: postgresql://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/${POSTGRES_DB_WANDERER:-wanderer}
-      CUSTOM_ROUTE_BASE_URL: http://wanderer-route-builder:2001
-      WANDERER_KILLS_SERVICE_ENABLED: "true"
-      WANDERER_KILLS_BASE_URL: ws://wanderer-kills:4004
-      WEB_APP_URL: ${WANDERER_URL:-https://wh.${DOMAIN_NAME:-eve-emu.com}}
-      SECRET_KEY_BASE: ${WANDERER_SECRET_KEY_BASE:-}
-      CLOAK_KEY: ${WANDERER_CLOAK_KEY:-}
-      EVE_CLIENT_ID: ${WANDERER_EVE_CLIENT_ID:-}
-      EVE_CLIENT_SECRET: ${WANDERER_EVE_CLIENT_SECRET:-}
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+      XDG_DATA_HOME: /pelican-data
+      APP_URL: ${PELICAN_URL:-https://wh.${DOMAIN_NAME:-eve-emu.com}}
+      ADMIN_EMAIL: ${PELICAN_ADMIN_EMAIL:-admin@${DOMAIN_NAME:-eve-emu.com}}
+      APP_DEBUG: "false"
+      APP_ENV: "production"
+      BEHIND_PROXY: "true"
+      TRUSTED_PROXIES: "172.16.0.0/12,192.168.0.0/16,10.0.0.0/8"
+      MAIL_DRIVER: log
     healthcheck:
+      # Panel Caddy listens on IPv6; busybox wget mishandles [::1], curl -g works.
       test:
         [
           "CMD-SHELL",
-          "wget -q -O /dev/null http://127.0.0.1:8000/ || exit 1",
+          "curl -g -fsS -o /dev/null 'http://[::1]:80/' || exit 1",
         ]
       interval: 15s
       timeout: 5s
       retries: 12
       start_period: 180s
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-pelican
+
+  # Pelican Wings — runs game server containers (see docs/PELICAN.md).
+  pelican-wings:
+    image: ghcr.io/pelican-dev/wings:latest
+    restart: unless-stopped
+    depends_on:
+      - pelican
+    environment:
+      TZ: ${TZ:-UTC}
+      WINGS_UID: "988"
+      WINGS_GID: "988"
+      WINGS_USERNAME: pelican
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/eveemu/eve-emu/data/pelican:/home/eveemu/eve-emu/data/pelican
+      - ./deploy/pelican/etc:/etc/pelican
+      - ./deploy/pelican/wings-config.yml:/etc/pelican/config.yml:ro
+    ports:
+      - "${PELICAN_SFTP_PUBLISH_PORT:-2022}:2022"
+    expose:
+      - "8080"
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-pelican-wings
 
   # RIFT-style intel overlay at https://wh.<DOMAIN>/intel/ (see docs/WH_INTEL.md)
   wh-intel:
@@ -203,9 +286,9 @@ services:
       WH_INTEL_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/${POSTGRES_DB_WH_INTEL:-eve_emu_wh_intel}
       WH_INTEL_PUBLIC_BASE_URL: ${WH_INTEL_PUBLIC_BASE_URL:-https://wh.${DOMAIN_NAME:-eve-emu.com}/intel}
       WH_INTEL_CHANNELS: ${WH_INTEL_CHANNELS:-intel.womp,OnlyQuerious}
-      WH_INTEL_SOV_ALLIANCE_IDS: ${WH_INTEL_SOV_ALLIANCE_IDS:-99010468}
+      WH_INTEL_SOV_ALLIANCE_IDS: ${WH_INTEL_SOV_ALLIANCE_IDS:-1042504553}
       WH_INTEL_SDE_SQLITE_PATH: ${WH_INTEL_SDE_SQLITE_PATH:-}
-      WH_INTEL_WANDERER_SYNC: ${WH_INTEL_WANDERER_SYNC:-1}
+      WH_INTEL_WANDERER_SYNC: ${WH_INTEL_WANDERER_SYNC:-0}
       WH_INTEL_WANDERER_BASE_URL: ${WANDERER_URL:-https://wh.${DOMAIN_NAME:-eve-emu.com}}
       WH_INTEL_WANDERER_MAP_SLUG: ${WH_INTEL_WANDERER_MAP_SLUG:-false-gods}
       WH_INTEL_WANDERER_API_TOKEN: ${WH_INTEL_WANDERER_API_TOKEN:-}
@@ -216,46 +299,161 @@ services:
       timeout: 5s
       retries: 8
       start_period: 60s
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-wh-intel
 
-  # Wiki.js — public URL via Caddy `wiki.<DOMAIN_NAME>`; AA provisions users via GraphQL (see docs/WIKIJS.md).
-  wikijs:
-    image: ghcr.io/requarks/wiki:2
+  # MediaWiki — public URL via Caddy `wiki.<DOMAIN_NAME>`; SSO via Alliance Auth OIDC (see docs/MEDIAWIKI.md).
+  mediawiki-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MEDIAWIKI_DB_NAME:-mediawiki}
+      MARIADB_USER: ${MEDIAWIKI_DB_USER:-mediawiki}
+      MARIADB_PASSWORD: ${MEDIAWIKI_DB_PASSWORD:-mediawiki}
+      MARIADB_ROOT_PASSWORD: ${MEDIAWIKI_DB_ROOT_PASSWORD:-mediawiki_root}
+    volumes:
+      - eve_emu_mediawiki_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # CirrusSearch for MediaWiki 1.43 requires Elasticsearch 7.10.2
+  # https://www.mediawiki.org/wiki/Extension:CirrusSearch
+  mediawiki-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: ${MEDIAWIKI_ES_JAVA_OPTS:--Xms512m -Xmx512m}
+      cluster.name: mediawiki-cirrus
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - eve_emu_mediawiki_es:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  mediawiki:
+    build:
+      context: .
+      dockerfile: docker/mediawiki/Dockerfile
     restart: unless-stopped
     env_file:
       - path: .env
         required: false
     environment:
-      DB_TYPE: postgres
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_USER: ${POSTGRES_USER:-eve}
-      DB_PASS: ${POSTGRES_PASSWORD:-eve}
-      DB_NAME: ${POSTGRES_DB_WIKI:-wikijs}
-      DB_SSL: "false"
+      MW_SERVER: ${MEDIAWIKI_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
+      MW_SITE_NAME: ${MEDIAWIKI_SITE_NAME:-EVE-EMU Universe Wiki}
+      MW_DB_HOST: mediawiki-db
+      MW_DB_NAME: ${MEDIAWIKI_DB_NAME:-mediawiki}
+      MW_DB_USER: ${MEDIAWIKI_DB_USER:-mediawiki}
+      MW_DB_PASSWORD: ${MEDIAWIKI_DB_PASSWORD:-mediawiki}
+      MW_ADMIN_USER: ${MEDIAWIKI_ADMIN_USER:-Admin}
+      MW_ADMIN_PASSWORD: ${MEDIAWIKI_ADMIN_PASSWORD:-}
+      MW_OIDC_ENABLED: ${MEDIAWIKI_OIDC_ENABLED:-1}
+      MW_OIDC_ISSUER: ${MEDIAWIKI_OIDC_ISSUER:-https://auth.${DOMAIN_NAME:-eve-emu.com}/o}
+      MW_OIDC_CLIENT_ID: ${MEDIAWIKI_OIDC_CLIENT_ID:-}
+      MW_OIDC_CLIENT_SECRET: ${MEDIAWIKI_OIDC_CLIENT_SECRET:-}
+      MW_EVE_IMAGE_BASE: ${MEDIAWIKI_EVE_IMAGE_BASE:-https://images.evetech.net}
+      MW_FALSE_GODS_CORP_ID: ${EVE_FALSE_GODS_CORPORATION_ID:-98799892}
+      MW_SLYCE_ALLIANCE_ID: ${EVE_SLYCE_ALLIANCE_ID:-1042504553}
+      MW_WOMP_ALLIANCE_ID: ${EVE_WOMP_ALLIANCE_ID:-1042504553}
+
+
+      MW_DIRECTOR_WIKI_GROUPS: ${MEDIAWIKI_DIRECTOR_WIKI_GROUPS:-Directors,Director}
+      MW_DISCORD_WEBHOOK_URL: ${MEDIAWIKI_DISCORD_WEBHOOK_URL:-}
+      MW_DISCORD_FROM_NAME: ${MEDIAWIKI_DISCORD_FROM_NAME:-EVE-EMU Wiki}
+      MW_SESSION_SECONDS: ${MEDIAWIKI_SESSION_SECONDS:-86400}
     expose:
-      - "3000"
+      - "80"
     volumes:
-      - eve_emu_wikijs_data:/wiki/data
-      - eve_emu_wikijs_config:/wiki/config
+      - eve_emu_mediawiki_images:/var/www/html/images
     depends_on:
-      db:
+      mediawiki-db:
+        condition: service_healthy
+      mediawiki-elasticsearch:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget -q -O /dev/null http://127.0.0.1:3000/healthz || wget -q -O /dev/null http://127.0.0.1:3000/",
-        ]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/ || wget -q -O /dev/null http://127.0.0.1/"]
       interval: 15s
       timeout: 5s
       retries: 12
-      start_period: 60s
+      start_period: 120s
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-mediawiki
+
+  # CirrusSearch (and other MW features) write via the job queue; without a runner, search stays stale.
+  mediawiki-jobs:
+    build:
+      context: .
+      dockerfile: docker/mediawiki/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MW_SERVER: ${MEDIAWIKI_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
+      MW_SITE_NAME: ${MEDIAWIKI_SITE_NAME:-EVE-EMU Universe Wiki}
+      MW_DB_HOST: mediawiki-db
+      MW_DB_NAME: ${MEDIAWIKI_DB_NAME:-mediawiki}
+      MW_DB_USER: ${MEDIAWIKI_DB_USER:-mediawiki}
+      MW_DB_PASSWORD: ${MEDIAWIKI_DB_PASSWORD:-mediawiki}
+      MW_ADMIN_USER: ${MEDIAWIKI_ADMIN_USER:-Admin}
+      MW_ADMIN_PASSWORD: ${MEDIAWIKI_ADMIN_PASSWORD:-}
+      MW_OIDC_ENABLED: ${MEDIAWIKI_OIDC_ENABLED:-1}
+      MW_OIDC_ISSUER: ${MEDIAWIKI_OIDC_ISSUER:-https://auth.${DOMAIN_NAME:-eve-emu.com}/o}
+      MW_OIDC_CLIENT_ID: ${MEDIAWIKI_OIDC_CLIENT_ID:-}
+      MW_OIDC_CLIENT_SECRET: ${MEDIAWIKI_OIDC_CLIENT_SECRET:-}
+      MW_EVE_IMAGE_BASE: ${MEDIAWIKI_EVE_IMAGE_BASE:-https://images.evetech.net}
+      MW_FALSE_GODS_CORP_ID: ${EVE_FALSE_GODS_CORPORATION_ID:-98799892}
+      MW_SLYCE_ALLIANCE_ID: ${EVE_SLYCE_ALLIANCE_ID:-1042504553}
+      MW_WOMP_ALLIANCE_ID: ${EVE_WOMP_ALLIANCE_ID:-1042504553}
+      MW_DIRECTOR_WIKI_GROUPS: ${MEDIAWIKI_DIRECTOR_WIKI_GROUPS:-Directors,Director}
+      MW_DISCORD_WEBHOOK_URL: ${MEDIAWIKI_DISCORD_WEBHOOK_URL:-}
+      MW_DISCORD_FROM_NAME: ${MEDIAWIKI_DISCORD_FROM_NAME:-EVE-EMU Wiki}
+      MW_SESSION_SECONDS: ${MEDIAWIKI_SESSION_SECONDS:-86400}
+    volumes:
+      - eve_emu_mediawiki_images:/var/www/html/images
+    depends_on:
+      mediawiki-db:
+        condition: service_healthy
+      mediawiki-elasticsearch:
+        condition: service_healthy
+      mediawiki:
+        condition: service_healthy
+    entrypoint: ["/jobs-entrypoint.sh"]
+    healthcheck:
+      disable: true
 
   aa-web:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: docker/django-aa/Dockerfile
     entrypoint: ["python3", "/docker-entrypoint.py"]
+    # Do not use --preload: AppConfig.ready() opens DB connections that get
+    # inherited by forked workers and cause psycopg "lost synchronization" /
+    # DataTables Ajax 500s (e.g. /moonmining/moons_data/uploads).
     command:
       [
         "gunicorn",
@@ -265,7 +463,9 @@ services:
         "--chdir",
         "/app/site",
         "--workers",
-        "2",
+        "4",
+        "--timeout",
+        "180",
       ]
     env_file:
       - path: .env
@@ -283,24 +483,92 @@ services:
       AA_DEBUG: ${AA_DEBUG:-0}
       AA_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
       AA_SITE_NAME: ${AA_SITE_NAME:-EVE-EMU Alliance Auth}
+      DOMAIN_NAME: ${DOMAIN_NAME:-eve-emu.com}
       AA_SKIP_EMAIL_VERIFY: ${AA_SKIP_EMAIL_VERIFY:-1}
       AA_CSRF_TRUSTED_ORIGINS: ${AA_CSRF_TRUSTED_ORIGINS:-}
       ESI_CLIENT_ID: ${ESI_CLIENT_ID:-}
       ESI_CLIENT_SECRET: ${ESI_CLIENT_SECRET:-}
       MARKET_INTERNAL_SECRET: ${MARKET_INTERNAL_SECRET:-}
+      MARKET_WOMP_ALLIANCE_ID: ${EVE_SLYCE_ALLIANCE_ID:-${EVE_WOMP_ALLIANCE_ID:-1042504553}}
+      DISCORD_BOT_CORE_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      CORE_DISCORD_BOT_SECRET: ${DISCORD_BOT_CORE_SECRET:-}
+      BP_DEALS_MAIL_SENDER_CHARACTER_ID: ${BP_DEALS_MAIL_SENDER_CHARACTER_ID:-2124416360}
       MARKET_ESI_TOKEN_ID: ${MARKET_ESI_TOKEN_ID:-58}
       MARKET_ESI_CHARACTER_NAME: ${MARKET_ESI_CHARACTER_NAME:-Lamaashtu}
       AA_FALSE_GODS_CORP_TOKEN_ID: ${AA_FALSE_GODS_CORP_TOKEN_ID:-58}
       AA_CORP_TOKEN_OVERRIDES: ${AA_CORP_TOKEN_OVERRIDES:-}
       AA_STRUCTURES_AUTH_CHARACTER: ${AA_STRUCTURES_AUTH_CHARACTER:-Rexan Darkstar}
       AA_GUNS_R_US_CORP_TOKEN_ID: ${AA_GUNS_R_US_CORP_TOKEN_ID:-}
+      AA_WOMP_MOON_MONITORING: ${AA_WOMP_MOON_MONITORING:-0}
+      # Moon ore ISK/unit: refined goo+minerals (not thin ESI ore averages).
+      # Material buy source: Janice Jita Immediate (janice_buy) or ESI averages (esi_average).
+      MOONMINING_USE_REPROCESS_PRICING: ${MOONMINING_USE_REPROCESS_PRICING:-1}
+      MOONMINING_PRICE_SOURCE: ${MOONMINING_PRICE_SOURCE:-janice_buy}
+      MOONMINING_JANICE_API_KEY: ${MOONMINING_JANICE_API_KEY:-${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}}
+      AA_EMU_MOONS_OBSERVER_CHARACTERS: ${AA_EMU_MOONS_OBSERVER_CHARACTERS:-}
       AA_ENSURE_STRUCTURE_OWNER: ${AA_ENSURE_STRUCTURE_OWNER:-1}
+      AA_INSTALL_AADISCORDBOT: "1"
+      AA_HR_APPLICATIONS_DISCORD: ${AA_HR_APPLICATIONS_DISCORD:-1}
+      AA_HR_APPLICATIONS_DISCORD_CHANNEL_ID: ${AA_HR_APPLICATIONS_DISCORD_CHANNEL_ID:-1524390630749507624}
+      AA_HR_APPLICATIONS_DISCORD_WEBHOOK_URL: ${AA_HR_APPLICATIONS_DISCORD_WEBHOOK_URL:-${AASRP_DISCORD_WEBHOOK_URL:-}}
+      AA_HR_APPLICATIONS_DISCORD_MENTION: ${AA_HR_APPLICATIONS_DISCORD_MENTION:-<@&1456546098444243075>}
+      INDY_HUB_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      <<: *aa-discord-environment
       ESI_CALLBACK_URL: ${ESI_CALLBACK_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}/sso/callback}
-      WIKIJS_URL: ${WIKIJS_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
-      WIKIJS_API_URL: ${WIKIJS_API_URL:-http://wikijs:3000}
-      WIKIJS_API_KEY: ${WIKIJS_API_KEY:-}
+      MEDIAWIKI_URL: ${MEDIAWIKI_URL:-https://wiki.${DOMAIN_NAME:-eve-emu.com}}
+      MEDIAWIKI_API_URL: ${MEDIAWIKI_API_URL:-http://mediawiki}
+      MEDIAWIKI_BOT_USER: ${MEDIAWIKI_BOT_USER:-Admin}
+      MEDIAWIKI_BOT_PASSWORD: ${MEDIAWIKI_BOT_PASSWORD:-${MEDIAWIKI_ADMIN_PASSWORD:-}}
+      BUYBACKPROGRAM_PRICE_JANICE_API_KEY: ${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-${MARKET_JANICE_API_KEY:-}}
+      BUYBACKPROGRAM_PRICE_INSTANT_PRICES: ${BUYBACKPROGRAM_PRICE_INSTANT_PRICES:-1}
+      MARKET_JANICE_API_KEY: ${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}
+      WOMP_REPORTS_DIR: /app/reports
+      WINTER_CO_REPORT_DIR: /app/reports/winter_coalition_losses
+      WINTER_CO_DOCTRINES_JSON: /app/reports/wompa-doctrines.json
+      AA_WINTER_CO_CELERY: ${AA_WINTER_CO_CELERY:-1}
+      # Rorqual: CELERY+ECONOMY on; DISCORD=1 = rename/topic; HELP_DRY_RUN=0 = live @everyone
+      AA_RORQUAL_CELERY: ${AA_RORQUAL_CELERY:-1}
+      AA_KRAB_CELERY: ${AA_KRAB_CELERY:-1}
+      AA_RORQUAL_DISCORD: ${AA_RORQUAL_DISCORD:-0}
+      AA_RORQUAL_ECONOMY: ${AA_RORQUAL_ECONOMY:-1}
+      AA_RORQUAL_HELP: ${AA_RORQUAL_HELP:-0}
+      AA_RORQUAL_HELP_DRY_RUN: ${AA_RORQUAL_HELP_DRY_RUN:-0}
+      AA_RORQUAL_OPS_ALERTS: ${AA_RORQUAL_OPS_ALERTS:-1}
+      # Break-glass Winter Co ingest Bearer (prefer per-session token from session open)
+      AA_RORQUAL_INGEST_TOKEN: ${AA_RORQUAL_INGEST_TOKEN:-}
+      ZOMBOID_DB_PATH: ${ZOMBOID_DB_PATH:-/zomboid-db/EveEmuZomboid.db}
+      ZOMBOID_WORLD: ${ZOMBOID_WORLD:-EveEmuZomboid}
+      ZOMBOID_SERVICE_URL: ${ZOMBOID_SERVICE_URL:-5.9.109.245:16261}
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
+      - ./deploy/aa_docker/rorqual_status:/app/deploy/aa_docker/rorqual_status
+      - ./deploy/aa_docker/freight_bridge:/app/deploy/aa_docker/freight_bridge
+      - ./deploy/aa_docker/penguin_bridge:/app/deploy/aa_docker/penguin_bridge
+      - ./deploy/aa_docker/freight_public_api.py:/app/deploy/aa_docker/freight_public_api.py
+      - ./deploy/aa_docker/freight_discord_reactions.py:/app/deploy/aa_docker/freight_discord_reactions.py
+      - ./deploy/aa_docker/krab_schedule:/app/deploy/aa_docker/krab_schedule
+      - ./deploy/aa_docker/local.py:/app/site/eve_auth/settings/local.py
+      - ./deploy/aa_docker/eve_auth/celery.py:/app/site/eve_auth/celery.py
+      - ./deploy/aa_docker/discord_lookup:/app/deploy/aa_docker/discord_lookup
+      - ./deploy/aa_docker/stream_watch:/app/deploy/aa_docker/stream_watch
+      - ./deploy/aa_docker/zomboid_service:/app/deploy/aa_docker/zomboid_service
+      - ${ZOMBOID_DB_HOST_DIR:-./data/pelican/volumes/f1c68044-73f0-453b-86a1-4afd9ce27f93/.cache/db}:/zomboid-db
+      - ./deploy/aa_docker/package_monitor_ops:/app/deploy/aa_docker/package_monitor_ops
+      - ./deploy/aa_docker/industry_jobs_report:/app/deploy/aa_docker/industry_jobs_report
+      - ./deploy/aa_docker/false_gods_audit:/app/deploy/aa_docker/false_gods_audit
+      - ./deploy/aa_docker/audit_comms_hub:/app/deploy/aa_docker/audit_comms_hub
+      - ./deploy/aa_docker/miningtaxes_summary_perf.py:/app/deploy/aa_docker/miningtaxes_summary_perf.py
+      - ./deploy/aa_docker/miningtaxes_ext:/app/deploy/aa_docker/miningtaxes_ext
+      - ./deploy/aa_docker/miningtaxes_structure_exclusions.py:/app/deploy/aa_docker/miningtaxes_structure_exclusions.py
+      - ./deploy/aa_docker/miningtaxes_negative_balance_patch.py:/app/deploy/aa_docker/miningtaxes_negative_balance_patch.py
+      - ./deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py:/app/deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py
+      - ./deploy/aa_docker/miningtaxes_notify_patch.py:/app/deploy/aa_docker/miningtaxes_notify_patch.py
+      - ./deploy/aa_docker/miningtaxes_unauth_miner_alert.py:/app/deploy/aa_docker/miningtaxes_unauth_miner_alert.py
+      - ./deploy/aa_docker/extensions:/app/deploy/aa_docker/extensions
+      - ./deploy/aa_docker/templates:/app/deploy/aa_docker/templates
+      - ./deploy/aa_docker/requirements-aa-extension-apps.txt:/app/deploy/aa_docker/requirements-aa-extension-apps.txt
+      - ./deploy/aa_docker/requirements-aa-extension-deps.txt:/app/deploy/aa_docker/requirements-aa-extension-deps.txt
+      - ./reports:/app/reports
       - eve_emu_aa_static:/app/site/staticfiles
       - eve_emu_aa_oidc:/app/site/oidc
     depends_on:
@@ -308,7 +576,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      wikijs:
+      mediawiki:
         condition: service_started
     expose:
       - "8080"
@@ -322,6 +590,11 @@ services:
       timeout: 3s
       retries: 30
       start_period: 120s
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-aa-web
 
   # Public market tools — eve-emu.com/margin_finder, /market-browser, … (see docs/MARKET_TOOLS.md).
   market-api:
@@ -333,21 +606,58 @@ services:
         required: false
     environment:
       MARKET_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/${POSTGRES_DB_MARKET:-eve_emu_market}
-      MARKET_REDIS_URL: ${REDIS_URL:-redis://redis:6379/2}
+      MARKET_REDIS_URL: ${MARKET_REDIS_URL:-redis://redis:6379/2}
       MARKET_PUBLIC_BASE_URL: https://${DOMAIN_NAME:-eve-emu.com}
       MARKET_USE_AA_TOKEN: ${MARKET_USE_AA_TOKEN:-1}
       MARKET_AA_TOKEN_BRIDGE_URL: ${MARKET_AA_TOKEN_BRIDGE_URL:-http://aa-web:8080/internal/market/access-token}
+      MARKET_AA_SESSION_CHECK_URL: ${MARKET_AA_SESSION_CHECK_URL:-http://aa-web:8080/internal/market/session-check}
+      MARKET_AA_DOCTRINES_URL: ${MARKET_AA_DOCTRINES_URL:-http://aa-web:8080/internal/market/doctrines}
+      MARKET_AA_FREIGHT_API_URL: ${MARKET_AA_FREIGHT_API_URL:-http://aa-web:8080/public/freight}
+      MARKET_AUTH_BASE_URL: ${MARKET_AUTH_BASE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      MARKET_WOMP_ALLIANCE_ID: ${EVE_SLYCE_ALLIANCE_ID:-${EVE_WOMP_ALLIANCE_ID:-1042504553}}
+      MARKET_WOMP_AUTH_REQUIRED: ${MARKET_WOMP_AUTH_REQUIRED:-1}
       MARKET_INTERNAL_SECRET: ${MARKET_INTERNAL_SECRET:-}
       MARKET_ESI_TOKEN_ID: ${MARKET_ESI_TOKEN_ID:-58}
       MARKET_ESI_CHARACTER_NAME: ${MARKET_ESI_CHARACTER_NAME:-Lamaashtu}
       MARKET_ESI_CLIENT_ID: ${MARKET_ESI_CLIENT_ID:-}
       MARKET_ESI_CLIENT_SECRET: ${MARKET_ESI_CLIENT_SECRET:-}
       MARKET_ESI_REFRESH_TOKEN: ${MARKET_ESI_REFRESH_TOKEN:-}
-      MARKET_WOMPSTAR_STRUCTURE_ID: ${MARKET_WOMPSTAR_STRUCTURE_ID:-1050645565626}
-      MARKET_WOMPSTAR_STRUCTURE_NAME: ${MARKET_WOMPSTAR_STRUCTURE_NAME:-3-FKCZ - W O M P S T A R}
+      MARKET_WOMPSTAR_STRUCTURE_ID: ${MARKET_WOMPSTAR_STRUCTURE_ID:-1051567430261}
+      MARKET_WOMPSTAR_STRUCTURE_NAME: ${MARKET_WOMPSTAR_STRUCTURE_NAME:-3T7-M8 - Citadel of the Holy Procurer (Alpha Republic - Transcenders of Space and Time)}
+      MARKET_WOMPSTAR_SYSTEM_ID: ${MARKET_WOMPSTAR_SYSTEM_ID:-30002938}
+      MARKET_WOMPSTAR_REGION_ID: ${MARKET_WOMPSTAR_REGION_ID:-10000035}
+      MARKET_ANSI_STRUCTURE_ID: ${MARKET_ANSI_STRUCTURE_ID:-1050645565626}
+      MARKET_ANSI_STRUCTURE_NAME: ${MARKET_ANSI_STRUCTURE_NAME:-3-FKCZ - W O M P S T A R}
+      MARKET_ANSI_SYSTEM_ID: ${MARKET_ANSI_SYSTEM_ID:-30004019}
+      MARKET_ANSI_REGION_ID: ${MARKET_ANSI_REGION_ID:-10000050}
       MARKET_BUYBACK_PUBLIC_URL: ${MARKET_BUYBACK_PUBLIC_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}/buyback_v2/}
       MARKET_JANICE_API_KEY: ${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}
       BUYBACKPROGRAM_PRICE_JANICE_API_KEY: ${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}
+      MARKET_WOMP_DOCTRINES_JSON_PATH: /app/data/wompa-doctrines.json
+      MARKET_REGION_SYNC_ENABLED: ${MARKET_REGION_SYNC_ENABLED:-1}
+      MARKET_REGION_SYNC_TICK_SECONDS: ${MARKET_REGION_SYNC_TICK_SECONDS:-60}
+      MARKET_REGION_SYNC_CORE_INTERVAL_SECONDS: ${MARKET_REGION_SYNC_CORE_INTERVAL_SECONDS:-600}
+      MARKET_REGION_SYNC_MAX_PARALLEL: ${MARKET_REGION_SYNC_MAX_PARALLEL:-1}
+      MARKET_REGION_SYNC_MAX_PAGES: ${MARKET_REGION_SYNC_MAX_PAGES:-500}
+      MARKET_HISTORY_SYNC_ENABLED: ${MARKET_HISTORY_SYNC_ENABLED:-1}
+      MARKET_HISTORY_SYNC_INTERVAL_HOURS: ${MARKET_HISTORY_SYNC_INTERVAL_HOURS:-6}
+      MARKET_ESI_MIN_INTERVAL_SECONDS: ${MARKET_ESI_MIN_INTERVAL_SECONDS:-0.12}
+      MARKET_PUBLIC_BP_CONTRACT_SYNC_ENABLED: ${MARKET_PUBLIC_BP_CONTRACT_SYNC_ENABLED:-1}
+      MARKET_PUBLIC_BP_CONTRACT_REGION_IDS: ${MARKET_PUBLIC_BP_CONTRACT_REGION_IDS:-10000002,10000043,10000032,10000030,10000042}
+      MARKET_PUBLIC_BP_CONTRACT_SYNC_INTERVAL_MINUTES: ${MARKET_PUBLIC_BP_CONTRACT_SYNC_INTERVAL_MINUTES:-60}
+      MARKET_BP_DEALS_MIN_SAVINGS_ISK: ${MARKET_BP_DEALS_MIN_SAVINGS_ISK:-500000000}
+      MARKET_BP_DEALS_DISCORD_ENABLED: ${MARKET_BP_DEALS_DISCORD_ENABLED:-1}
+      MARKET_BP_DEALS_DISCORD_WEBHOOK_URL: ${MARKET_BP_DEALS_DISCORD_WEBHOOK_URL:-}
+      MARKET_BP_DEALS_DISCORD_CHANNEL_ID: ${MARKET_BP_DEALS_DISCORD_CHANNEL_ID:-1530168782637633726}
+      MARKET_BP_DEALS_DISCORD_BOT_TOKEN: ${MARKET_BP_DEALS_DISCORD_BOT_TOKEN:-}
+      # emu-bot token — posts deals with interactive "EVE mail me a link" button
+      MARKET_BP_DEALS_DISCORD_INTERACTION_BOT_TOKEN: ${MARKET_BP_DEALS_DISCORD_INTERACTION_BOT_TOKEN:-${EVE_DISCORD_BOT_TOKEN:-}}
+      MARKET_BP_DEALS_DISCORD_TTL_HOURS: ${MARKET_BP_DEALS_DISCORD_TTL_HOURS:-24}
+      MARKET_BP_DEALS_DISCORD_TTL_INTERVAL_MINUTES: ${MARKET_BP_DEALS_DISCORD_TTL_INTERVAL_MINUTES:-15}
+      MARKET_SDE_DATA_DIR: /app/data/sde
+    volumes:
+      - ./reports/wompa-doctrines.json:/app/data/wompa-doctrines.json:ro
+      - market_sde_data:/app/data/sde
     depends_on:
       db:
         condition: service_healthy
@@ -358,6 +668,11 @@ services:
     expose:
       - "8010"
     restart: unless-stopped
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-market-api
 
   market-web:
     build:
@@ -368,34 +683,30 @@ services:
     expose:
       - "8088"
     restart: unless-stopped
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-market-web
 
-  # JetBrains YouTrack — pm.<DOMAIN_NAME> (Linux image; OIDC via Alliance Auth — docs/YOUTRACK.md).
-  youtrack:
-    image: jetbrains/youtrack:${YOUTRACK_VERSION:-2026.1.13570}
+  # OBS RTMP ingest + HLS for Auth Alliance Stream (stream_watch)
+  mediamtx:
+    image: bluenviron/mediamtx:1.11.3
     restart: unless-stopped
-    env_file:
-      - path: .env
-        required: false
-    expose:
-      - "8080"
     volumes:
-      - eve_emu_youtrack_data:/opt/youtrack/data
-      - eve_emu_youtrack_conf:/opt/youtrack/conf
-      - eve_emu_youtrack_logs:/opt/youtrack/logs
-      - eve_emu_youtrack_backups:/opt/youtrack/backups
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 12
-      start_period: 180s
+      - ./deploy/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "${STREAM_RTMP_PUBLISH_PORT:-1935}:1935"
+    expose:
+      - "8888"
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-mediamtx
 
   # Terminates TLS on 443 (and HTTP on 80 for ACME + redirects).
-  # eve-emu.com → market tools + core-web; auth → aa-web; wiki → wikijs; pm → youtrack.
+  # eve-emu.com → market tools + core-web; auth → aa-web; wiki → mediawiki.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -410,6 +721,8 @@ services:
     volumes:
       - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./docker/caddy/Caddyfile.test-routes:/etc/caddy/Caddyfile.test-routes:ro
+      - ./dist/downloads:/srv/downloads:ro
+      - ./dist/apm:/srv/apm:ro
       - eve_emu_caddy_data:/data
       - eve_emu_caddy_config:/config
     networks:
@@ -418,17 +731,19 @@ services:
     depends_on:
       aa-web:
         condition: service_healthy
-      wikijs:
+      mediamtx:
         condition: service_started
-      wanderer:
+      mediawiki:
+        condition: service_started
+      pelican:
+        condition: service_started
+      pelican-wings:
         condition: service_started
       core-web:
         condition: service_started
       market-api:
         condition: service_started
       market-web:
-        condition: service_started
-      youtrack:
         condition: service_started
 
   aa-worker:
@@ -444,8 +759,11 @@ services:
         "worker",
         "-l",
         "INFO",
+        # Do NOT include aadiscordbot — run_authbot owns that queue via Kombu.
+        # If aa-worker steals those tasks it executes stubs that raise
+        # "Failed to queue a message to User N" and customer DMs never deliver.
         "-Q",
-        "celery,services,aadiscordbot",
+        "celery,services",
       ]
     env_file:
       - path: .env
@@ -461,9 +779,59 @@ services:
       AA_DEBUG: ${AA_DEBUG:-0}
       AA_FALSE_GODS_CORP_TOKEN_ID: ${AA_FALSE_GODS_CORP_TOKEN_ID:-58}
       AA_CORP_TOKEN_OVERRIDES: ${AA_CORP_TOKEN_OVERRIDES:-}
+      AA_INSTALL_AADISCORDBOT: "1"
+      AA_HR_APPLICATIONS_DISCORD: ${AA_HR_APPLICATIONS_DISCORD:-1}
+      AA_HR_APPLICATIONS_DISCORD_CHANNEL_ID: ${AA_HR_APPLICATIONS_DISCORD_CHANNEL_ID:-1524390630749507624}
+      AA_HR_APPLICATIONS_DISCORD_WEBHOOK_URL: ${AA_HR_APPLICATIONS_DISCORD_WEBHOOK_URL:-${AASRP_DISCORD_WEBHOOK_URL:-}}
+      AA_HR_APPLICATIONS_DISCORD_MENTION: ${AA_HR_APPLICATIONS_DISCORD_MENTION:-<@&1456546098444243075>}
+      MOONMINING_USE_REPROCESS_PRICING: ${MOONMINING_USE_REPROCESS_PRICING:-1}
+      MOONMINING_PRICE_SOURCE: ${MOONMINING_PRICE_SOURCE:-janice_buy}
+      MOONMINING_JANICE_API_KEY: ${MOONMINING_JANICE_API_KEY:-${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}}
+      MARKET_JANICE_API_KEY: ${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}
+      BUYBACKPROGRAM_PRICE_JANICE_API_KEY: ${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-${MARKET_JANICE_API_KEY:-}}
+      INDY_HUB_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      WINTER_CO_REPORT_DIR: /app/reports/winter_coalition_losses
+      WINTER_CO_DOCTRINES_JSON: /app/reports/wompa-doctrines.json
+      AA_WINTER_CO_CELERY: ${AA_WINTER_CO_CELERY:-1}
+      AA_RORQUAL_CELERY: ${AA_RORQUAL_CELERY:-1}
+      AA_KRAB_CELERY: ${AA_KRAB_CELERY:-1}
+      AA_RORQUAL_DISCORD: ${AA_RORQUAL_DISCORD:-0}
+      AA_RORQUAL_ECONOMY: ${AA_RORQUAL_ECONOMY:-1}
+      AA_RORQUAL_HELP: ${AA_RORQUAL_HELP:-0}
+      AA_RORQUAL_HELP_DRY_RUN: ${AA_RORQUAL_HELP_DRY_RUN:-0}
+      AA_RORQUAL_OPS_ALERTS: ${AA_RORQUAL_OPS_ALERTS:-1}
+      AA_RORQUAL_INGEST_TOKEN: ${AA_RORQUAL_INGEST_TOKEN:-}
+      ZOMBOID_DB_PATH: ${ZOMBOID_DB_PATH:-/zomboid-db/EveEmuZomboid.db}
+      ZOMBOID_WORLD: ${ZOMBOID_WORLD:-EveEmuZomboid}
+      ZOMBOID_SERVICE_URL: ${ZOMBOID_SERVICE_URL:-5.9.109.245:16261}
       <<: *aa-discord-environment
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
+      - ./deploy/aa_docker/rorqual_status:/app/deploy/aa_docker/rorqual_status
+      - ./deploy/aa_docker/freight_bridge:/app/deploy/aa_docker/freight_bridge
+      - ./deploy/aa_docker/penguin_bridge:/app/deploy/aa_docker/penguin_bridge
+      - ./deploy/aa_docker/freight_public_api.py:/app/deploy/aa_docker/freight_public_api.py
+      - ./deploy/aa_docker/freight_discord_reactions.py:/app/deploy/aa_docker/freight_discord_reactions.py
+      - ./deploy/aa_docker/krab_schedule:/app/deploy/aa_docker/krab_schedule
+      - ./deploy/aa_docker/local.py:/app/site/eve_auth/settings/local.py
+      - ./deploy/aa_docker/eve_auth/celery.py:/app/site/eve_auth/celery.py
+      - ./deploy/aa_docker/package_monitor_ops:/app/deploy/aa_docker/package_monitor_ops
+      - ./deploy/aa_docker/industry_jobs_report:/app/deploy/aa_docker/industry_jobs_report
+      - ./deploy/aa_docker/false_gods_audit:/app/deploy/aa_docker/false_gods_audit
+      - ./deploy/aa_docker/audit_comms_hub:/app/deploy/aa_docker/audit_comms_hub
+      - ./deploy/aa_docker/miningtaxes_summary_perf.py:/app/deploy/aa_docker/miningtaxes_summary_perf.py
+      - ./deploy/aa_docker/miningtaxes_ext:/app/deploy/aa_docker/miningtaxes_ext
+      - ./deploy/aa_docker/miningtaxes_structure_exclusions.py:/app/deploy/aa_docker/miningtaxes_structure_exclusions.py
+      - ./deploy/aa_docker/miningtaxes_negative_balance_patch.py:/app/deploy/aa_docker/miningtaxes_negative_balance_patch.py
+      - ./deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py:/app/deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py
+      - ./deploy/aa_docker/miningtaxes_notify_patch.py:/app/deploy/aa_docker/miningtaxes_notify_patch.py
+      - ./deploy/aa_docker/miningtaxes_unauth_miner_alert.py:/app/deploy/aa_docker/miningtaxes_unauth_miner_alert.py
+      - ./deploy/aa_docker/extensions:/app/deploy/aa_docker/extensions
+      - ./deploy/aa_docker/zomboid_service:/app/deploy/aa_docker/zomboid_service
+      - ${ZOMBOID_DB_HOST_DIR:-./data/pelican/volumes/f1c68044-73f0-453b-86a1-4afd9ce27f93/.cache/db}:/zomboid-db
+      - ./deploy/aa_docker/requirements-aa-extension-apps.txt:/app/deploy/aa_docker/requirements-aa-extension-apps.txt
+      - ./deploy/aa_docker/requirements-aa-extension-deps.txt:/app/deploy/aa_docker/requirements-aa-extension-deps.txt
+      - ./reports:/app/reports
       - eve_emu_aa_static:/app/site/staticfiles
     depends_on:
       db:
@@ -490,9 +858,52 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       AA_DJANGO_SECRET_KEY: ${AA_DJANGO_SECRET_KEY:-}
       AA_DEBUG: ${AA_DEBUG:-0}
+      AA_INSTALL_AADISCORDBOT: "1"
+      # Freight pilot Discord pings: sync courier contracts + notify (default 3 min)
+      AA_BEAT_FREIGHT_SECONDS: ${AA_BEAT_FREIGHT_SECONDS:-180}
+      MOONMINING_USE_REPROCESS_PRICING: ${MOONMINING_USE_REPROCESS_PRICING:-1}
+      MOONMINING_PRICE_SOURCE: ${MOONMINING_PRICE_SOURCE:-janice_buy}
+      MOONMINING_JANICE_API_KEY: ${MOONMINING_JANICE_API_KEY:-${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}}
+      MARKET_JANICE_API_KEY: ${MARKET_JANICE_API_KEY:-${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-}}
+      BUYBACKPROGRAM_PRICE_JANICE_API_KEY: ${BUYBACKPROGRAM_PRICE_JANICE_API_KEY:-${MARKET_JANICE_API_KEY:-}}
+      INDY_HUB_SITE_URL: ${AA_SITE_URL:-https://auth.${DOMAIN_NAME:-eve-emu.com}}
+      AA_RORQUAL_CELERY: ${AA_RORQUAL_CELERY:-1}
+      AA_KRAB_CELERY: ${AA_KRAB_CELERY:-1}
+      AA_RORQUAL_DISCORD: ${AA_RORQUAL_DISCORD:-0}
+      AA_RORQUAL_ECONOMY: ${AA_RORQUAL_ECONOMY:-1}
+      AA_RORQUAL_HELP: ${AA_RORQUAL_HELP:-0}
+      AA_RORQUAL_HELP_DRY_RUN: ${AA_RORQUAL_HELP_DRY_RUN:-0}
+      AA_RORQUAL_OPS_ALERTS: ${AA_RORQUAL_OPS_ALERTS:-1}
+      AA_RORQUAL_INGEST_TOKEN: ${AA_RORQUAL_INGEST_TOKEN:-}
+      ZOMBOID_DB_PATH: ${ZOMBOID_DB_PATH:-/zomboid-db/EveEmuZomboid.db}
+      ZOMBOID_WORLD: ${ZOMBOID_WORLD:-EveEmuZomboid}
+      ZOMBOID_SERVICE_URL: ${ZOMBOID_SERVICE_URL:-5.9.109.245:16261}
       <<: *aa-discord-environment
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
+      - ./deploy/aa_docker/rorqual_status:/app/deploy/aa_docker/rorqual_status
+      - ./deploy/aa_docker/freight_bridge:/app/deploy/aa_docker/freight_bridge
+      - ./deploy/aa_docker/penguin_bridge:/app/deploy/aa_docker/penguin_bridge
+      - ./deploy/aa_docker/freight_public_api.py:/app/deploy/aa_docker/freight_public_api.py
+      - ./deploy/aa_docker/freight_discord_reactions.py:/app/deploy/aa_docker/freight_discord_reactions.py
+      - ./deploy/aa_docker/krab_schedule:/app/deploy/aa_docker/krab_schedule
+      - ./deploy/aa_docker/local.py:/app/site/eve_auth/settings/local.py
+      - ./deploy/aa_docker/eve_auth/celery.py:/app/site/eve_auth/celery.py
+      - ./deploy/aa_docker/package_monitor_ops:/app/deploy/aa_docker/package_monitor_ops
+      - ./deploy/aa_docker/industry_jobs_report:/app/deploy/aa_docker/industry_jobs_report
+      - ./deploy/aa_docker/false_gods_audit:/app/deploy/aa_docker/false_gods_audit
+      - ./deploy/aa_docker/audit_comms_hub:/app/deploy/aa_docker/audit_comms_hub
+      - ./deploy/aa_docker/miningtaxes_summary_perf.py:/app/deploy/aa_docker/miningtaxes_summary_perf.py
+      - ./deploy/aa_docker/miningtaxes_ext:/app/deploy/aa_docker/miningtaxes_ext
+      - ./deploy/aa_docker/miningtaxes_structure_exclusions.py:/app/deploy/aa_docker/miningtaxes_structure_exclusions.py
+      - ./deploy/aa_docker/miningtaxes_negative_balance_patch.py:/app/deploy/aa_docker/miningtaxes_negative_balance_patch.py
+      - ./deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py:/app/deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py
+      - ./deploy/aa_docker/miningtaxes_notify_patch.py:/app/deploy/aa_docker/miningtaxes_notify_patch.py
+      - ./deploy/aa_docker/miningtaxes_unauth_miner_alert.py:/app/deploy/aa_docker/miningtaxes_unauth_miner_alert.py
+      - ./deploy/aa_docker/extensions:/app/deploy/aa_docker/extensions
+      - ./deploy/aa_docker/zomboid_service:/app/deploy/aa_docker/zomboid_service
+      - ./deploy/aa_docker/requirements-aa-extension-apps.txt:/app/deploy/aa_docker/requirements-aa-extension-apps.txt
+      - ./deploy/aa_docker/requirements-aa-extension-deps.txt:/app/deploy/aa_docker/requirements-aa-extension-deps.txt
     depends_on:
       db:
         condition: service_healthy
@@ -500,8 +911,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Alliance Auth Discord bot (allianceauth-discordbot). Requires DISCORD_BOT_TOKEN + AA Discord OAuth settings.
+  # Alliance Auth Discord bot (aadiscordbot: /8ball, /auth, name sync, etc.).
+  # Do NOT run with emu-bot on the same DISCORD_BOT_TOKEN — slash commands overwrite each other.
+  # Enable only with a separate Discord application token: docker compose --profile aa-discordbot up -d aa-discordbot
   aa-discordbot:
+    profiles: [aa-discordbot]
     build:
       context: .
       dockerfile: docker/django-aa/Dockerfile
@@ -529,6 +943,28 @@ services:
       <<: *aa-discord-environment
     volumes:
       - ./allianceauth:/opt/allianceauth:ro
+      - ./deploy/aa_docker/rorqual_status:/app/deploy/aa_docker/rorqual_status
+      - ./deploy/aa_docker/freight_bridge:/app/deploy/aa_docker/freight_bridge
+      - ./deploy/aa_docker/penguin_bridge:/app/deploy/aa_docker/penguin_bridge
+      - ./deploy/aa_docker/freight_public_api.py:/app/deploy/aa_docker/freight_public_api.py
+      - ./deploy/aa_docker/freight_discord_reactions.py:/app/deploy/aa_docker/freight_discord_reactions.py
+      - ./deploy/aa_docker/krab_schedule:/app/deploy/aa_docker/krab_schedule
+      - ./deploy/aa_docker/local.py:/app/site/eve_auth/settings/local.py
+      - ./deploy/aa_docker/eve_auth/celery.py:/app/site/eve_auth/celery.py
+      - ./deploy/aa_docker/package_monitor_ops:/app/deploy/aa_docker/package_monitor_ops
+      - ./deploy/aa_docker/industry_jobs_report:/app/deploy/aa_docker/industry_jobs_report
+      - ./deploy/aa_docker/false_gods_audit:/app/deploy/aa_docker/false_gods_audit
+      - ./deploy/aa_docker/audit_comms_hub:/app/deploy/aa_docker/audit_comms_hub
+      - ./deploy/aa_docker/miningtaxes_summary_perf.py:/app/deploy/aa_docker/miningtaxes_summary_perf.py
+      - ./deploy/aa_docker/miningtaxes_ext:/app/deploy/aa_docker/miningtaxes_ext
+      - ./deploy/aa_docker/miningtaxes_structure_exclusions.py:/app/deploy/aa_docker/miningtaxes_structure_exclusions.py
+      - ./deploy/aa_docker/miningtaxes_negative_balance_patch.py:/app/deploy/aa_docker/miningtaxes_negative_balance_patch.py
+      - ./deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py:/app/deploy/aa_docker/miningtaxes_ore_tax_rates_patch.py
+      - ./deploy/aa_docker/miningtaxes_notify_patch.py:/app/deploy/aa_docker/miningtaxes_notify_patch.py
+      - ./deploy/aa_docker/miningtaxes_unauth_miner_alert.py:/app/deploy/aa_docker/miningtaxes_unauth_miner_alert.py
+      - ./deploy/aa_docker/extensions:/app/deploy/aa_docker/extensions
+      - ./deploy/aa_docker/requirements-aa-extension-apps.txt:/app/deploy/aa_docker/requirements-aa-extension-apps.txt
+      - ./deploy/aa_docker/requirements-aa-extension-deps.txt:/app/deploy/aa_docker/requirements-aa-extension-deps.txt
     depends_on:
       db:
         condition: service_healthy
@@ -540,17 +976,18 @@ services:
 
 volumes:
   eve_emu_pgdata: {}
+  eve_emu_image_cache: {}
   eve_emu_redis: {}
   eve_emu_aa_static: {}
   eve_emu_aa_oidc: {}
-  eve_emu_wikijs_data: {}
-  eve_emu_wikijs_config: {}
+  eve_emu_mediawiki_db: {}
+  eve_emu_mediawiki_images: {}
+  eve_emu_mediawiki_es: {}
   eve_emu_caddy_data: {}
   eve_emu_caddy_config: {}
-  eve_emu_youtrack_data: {}
-  eve_emu_youtrack_conf: {}
-  eve_emu_youtrack_logs: {}
-  eve_emu_youtrack_backups: {}
+  eve_emu_pelican_data: {}
+  eve_emu_pelican_logs: {}
+  market_sde_data: {}
 
 networks:
   eve_emu_edge:
