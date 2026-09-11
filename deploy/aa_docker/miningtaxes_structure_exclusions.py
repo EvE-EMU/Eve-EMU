@@ -1,7 +1,7 @@
 """Corp-moon tax rules for aa-miningtaxes.
 
 No moon taxes before 2026-08-08. From 2026-08-08, listed structures are
-ignored (Sevey-owned SEV structures stay taxable for everyone except Sevey).
+ignored for everyone (blanket exemption -- see 2026-09-11 update below).
 
 Stock miningtaxes only has system whitelist/blacklist. Corp-moon taxes are
 merged from ``AdminMiningObsLog`` (observer = structure id).
@@ -11,10 +11,18 @@ observer IDs, not guessed) —
   - MOON_TAX_START_DATE moved 2026-08-04 -> 2026-08-08 (the actual date
     taxes started) and EFFECTIVE_DATE collapsed onto the same date (the
     5-day gap was a one-time rollout artifact, not an ongoing policy).
-  - Added 1053322615480 (U-TJ7Y - F4LSE IX 17 - SEVEY) to
-    SEVEY_OWNED_STRUCTURE_IDS — it had 62 rows of real observer data and
-    was missing from *both* lists, so it was being taxed for everyone
-    including Sevey himself.
+  - Added 1053322615480 (U-TJ7Y - F4LSE IX 17 - SEVEY) to the exemption --
+    it had 62 rows of real observer data and was missing entirely, so it
+    was being taxed for everyone including Sevey himself.
+  - The 3 "SEV"/"SEVEY" structures were initially treated as exempt only
+    for Sevey's own characters (SEVEY_OWNED_STRUCTURE_IDS), since the
+    original report used the same "SEV"/"SEVEY" shorthand as the other
+    blanket-exempt structures without an obvious "conditional" signal.
+    Confirmed wrong later the same day: character Darksend (not a Sevey
+    alt) got taxed for mining 9CK-KZ - F4L5E VIII 1 - SEV, which the user
+    said should not happen. All 3 moved to the blanket IGNORE_ALL list.
+    SEVEY_OWNED_STRUCTURE_IDS/resolve_sevey_miner_ids() kept (now unused
+    unless a future structure needs a Sevey-only exemption again).
 """
 
 from __future__ import annotations
@@ -36,17 +44,16 @@ IGNORE_ALL_STRUCTURE_IDS: frozenset[int] = frozenset(
         1054795904753,  # GY5-26 - F4L5E XII 6 - PFC
         1055308985174,  # U-TJ7Y - VII-3 PRIVATE
         1054795665203,  # 4N-BUI - F4L5E X 20 - MIKEY
-    }
-)
-
-# Ignore from EFFECTIVE_DATE only when the miner is Sevey.
-SEVEY_OWNED_STRUCTURE_IDS: frozenset[int] = frozenset(
-    {
         1054795569320,  # GY5-26 - F4L5E XI - 16 - SEV
         1051756288325,  # 9CK-KZ - F4L5E VIII 1 - SEV
         1053322615480,  # U-TJ7Y - F4LSE IX 17 - SEVEY
     }
 )
+
+# Ignore from EFFECTIVE_DATE only when the miner is Sevey. Currently empty --
+# the 3 SEV/SEVEY structures moved to the blanket list above 2026-09-11.
+# Kept in case a future structure needs a Sevey-only (not blanket) exemption.
+SEVEY_OWNED_STRUCTURE_IDS: frozenset[int] = frozenset()
 
 SEVEY_MAIN_CHARACTER_ID = 715529239
 SEVEY_USERNAMES = frozenset({"sevey"})
