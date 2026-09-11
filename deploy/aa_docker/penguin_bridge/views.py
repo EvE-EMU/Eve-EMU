@@ -69,6 +69,7 @@ PENGUIN_SCOPES = [
     "esi-search.search_structures.v1",
     "esi-ui.write_waypoint.v1",
     "esi-ui.open_window.v1",
+    "esi-killmails.read_killmails.v1",
 ]
 
 
