@@ -29,15 +29,14 @@ self-heals for existing rows, newly created rows, and any new ore/compression
 variant CCP adds later -- no per-row admin entry required, ever). Group IDs
 match ``miningtaxes.helpers.PriceGroups.moon_ore_groups``.
 
-Rate schedule confirmed by the user 2026-09-11 (JRV rates):
+Rate schedule per the user (JRV rates), updated 2026-09-11:
     R64 (group 1923): 45%
     R32 (group 1922): 30%
     R16 (group 1921): 15%
-    R4  (group 1884): 10%
-R8 (group 1920) was not listed in the user's rate schedule; per the user's
-own stated policy ("any non listed ore type should not be taxed") it is
-treated as untaxed (0%) here. Flagged explicitly to the user -- if R8 moons
-are actually taxed too, just add its rate to MOON_GROUP_TAX_RATES.
+    R8  (group 1920): 10%
+    R4  (group 1884): 5%
+(Initial version of this patch treated R8 as untaxed since it wasn't in the
+user's first rate list; the user has since confirmed R8=10%/R4=5%.)
 """
 
 from __future__ import annotations
@@ -48,12 +47,14 @@ logger = logging.getLogger(__name__)
 
 # eve_type.group_id -> tax_rate percentage (matches OrePrices.tax_rate, which
 # is a percentage like 45.0, not a fraction).
+# Updated 2026-09-11 per user: R64/R32/R16 unchanged, R8 now taxed (was 0%),
+# R4 lowered from 10% to 5%.
 MOON_GROUP_TAX_RATES = {
     1923: 45.0,  # R64
     1922: 30.0,  # R32
     1921: 15.0,  # R16
-    1920: 0.0,   # R8 - not in the user's rate schedule, treated as untaxed
-    1884: 10.0,  # R4
+    1920: 10.0,  # R8
+    1884: 5.0,   # R4
 }
 
 
