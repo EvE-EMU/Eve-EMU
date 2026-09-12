@@ -59,7 +59,14 @@ PENGUIN_SCOPES = [
     "esi-industry.read_corporation_jobs.v1",
     "esi-corporations.read_divisions.v1",
     "esi-corporations.read_structures.v1",
-    "esi-corporations.read_projects.v1",
+    # esi-corporations.read_projects.v1 removed 2026-09-12: not a real ESI
+    # scope (confirmed against ESI's own OpenAPI spec, and the corp_projects
+    # plugin's ESI call 404s with a route-not-found signature for every
+    # corp -- CCP never shipped a read endpoint for the in-game feature).
+    # EVE's SSO can never grant a scope that doesn't exist, so every
+    # character's Token permanently lacked it, making `missing_scopes` below
+    # report every single character as needing reauth forever, no matter how
+    # many times they actually reauthed.
     "esi-contracts.read_character_contracts.v1",
     "esi-contracts.read_corporation_contracts.v1",
     "esi-markets.read_character_orders.v1",
