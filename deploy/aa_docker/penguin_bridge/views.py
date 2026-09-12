@@ -202,11 +202,7 @@ def esi_char(request, character_id: int, esi_path: str):
     tokens = list(
         Token.objects.filter(user=user, character_id=character_id).prefetch_related("scopes")
     )
-    token = esi_proxy.pick_widest_token(tokens)
-    if token is None:
-        return JsonResponse({"error": "no_token_for_character"}, status=409)
-
-    return esi_proxy.proxy(request, token, esi_path)
+    return esi_proxy.proxy_with_fallback(request, tokens, esi_path)
 
 
 @csrf_exempt
@@ -231,14 +227,13 @@ def esi_corp(request, corporation_id: int, esi_path: str):
     tokens = list(
         Token.objects.filter(user=user, character_id__in=char_ids).prefetch_related("scopes")
     )
-    token = esi_proxy.pick_widest_token(
-        tokens, prefer_scopes=esi_proxy.CORP_SCOPE_HINTS
-    )
-    if token is None:
+    if not tokens:
         return JsonResponse({"error": "no_token_in_corp"}, status=409)
-
-    # ESI enforces the in-game role; a 403 from upstream is forwarded as-is.
-    return esi_proxy.proxy(request, token, esi_path)
+    # ESI enforces the in-game role; a 403 from upstream (after every token's
+    # been tried) is forwarded as-is.
+    return esi_proxy.proxy_with_fallback(
+        request, tokens, esi_path, prefer_scopes=esi_proxy.CORP_SCOPE_HINTS
+    )
 
 
 @csrf_exempt

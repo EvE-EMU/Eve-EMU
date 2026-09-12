@@ -146,3 +146,51 @@ def proxy(request, token, esi_path: str) -> HttpResponse:
             resp[h] = r.headers[h]
     resp["X-Penguin-Esi-Url"] = url
     return resp
+
+
+def proxy_with_fallback(
+    request, tokens: list, esi_path: str, *, prefer_scopes: tuple[str, ...] = ()
+) -> HttpResponse:
+    """Try a character's/corp's tokens widest-scope-match first, falling
+    through to the next one on a 403, instead of committing to a single
+    "best guess" token and living with whatever it gets back.
+
+    A character can hold more than one django-esi `Token` row: AA's SSO flow
+    creates a new row per distinct scope grant rather than merging into an
+    existing one, so a character re-authorised after `PENGUIN_SCOPES` grew
+    (it has grown more than once) ends up with an old, narrower token *and*
+    a new, wider one both on file. Picking "whichever token has the most
+    scopes overall" (the old behaviour, still available as
+    `pick_widest_token` for the corp-route scope hint) is right in the
+    common case but isn't guaranteed to be the one holding the *specific*
+    scope this call needs — a user can also uncheck individual boxes at
+    ESI's own consent screen on any given re-auth, producing a token that's
+    wider in total but narrower for one particular grant. Silently 403ing
+    every call for a scope that a *different*, real token on the same
+    account actually holds is exactly the bug class this guards against:
+    from the desktop client's point of view `missing_scopes` (computed by
+    unioning every token's scopes — see `me()`) says the grant is fine, so
+    it has no way to explain a 403 it can't distinguish from "genuinely
+    missing".
+    """
+    if not tokens:
+        return JsonResponse({"error": "no_token_for_character"}, status=409)
+    ordered = sorted(
+        tokens,
+        key=lambda t: (len(token_scope_names(t) & set(prefer_scopes)), len(token_scope_names(t))),
+        reverse=True,
+    )
+    # 403 = ESI itself rejecting this token's scopes for this route; 401 = a
+    # bad/invalid token; 502 here is this proxy's own "token_refresh_failed"
+    # (a revoked/expired token) — none of those mean the *route* is wrong,
+    # only that *this* token can't serve it, so try the next one. Any other
+    # status (a real 2xx, 404, 420 error-limited, ESI 500, …) reflects the
+    # request itself and retrying with a different token wouldn't change it.
+    retry_statuses = (401, 403, 502)
+    last_resp = None
+    for token in ordered:
+        resp = proxy(request, token, esi_path)
+        if resp.status_code not in retry_statuses:
+            return resp
+        last_resp = resp
+    return last_resp
