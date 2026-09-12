@@ -723,6 +723,7 @@ services:
       - ./docker/caddy/Caddyfile.test-routes:/etc/caddy/Caddyfile.test-routes:ro
       - ./dist/downloads:/srv/downloads:ro
       - ./dist/apm:/srv/apm:ro
+      - ./dist/eve-icons:/srv/eve-icons:ro
       - eve_emu_caddy_data:/data
       - eve_emu_caddy_config:/config
     networks:

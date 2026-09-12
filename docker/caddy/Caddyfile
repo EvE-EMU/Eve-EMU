@@ -1,22 +1,42 @@
 # SITE_HOST = public apex (e.g. eve-emu.com), from compose env DOMAIN_NAME.
-# Alliance Auth: auth.<SITE_HOST> — YouTrack: pm.<SITE_HOST> (see docs/YOUTRACK.md).
+# Alliance Auth: auth.<SITE_HOST>.
 # Caddy obtains certificates when DNS points here and ports 80/443 reach this host.
+#
+# Production upstreams use explicit prod-* DNS aliases on eve_emu_edge so they never
+# collide with the isolated test stack (eve-emu-test), which also attaches to eve_emu_edge.
 
 wiki.{$SITE_HOST} {
-	reverse_proxy wikijs:3000
+	# Apache mod_deflate + Content-Length behind Caddy causes truncated
+	# upstream bodies ("unexpected EOF") → browser ERR_HTTP2_PROTOCOL_ERROR.
+	# Ask Apache for uncompressed responses; Caddy encodes for the client.
+	encode gzip zstd
+	reverse_proxy http://prod-mediawiki:80 {
+		header_up Host {host}
+		header_up Accept-Encoding identity
+		transport http {
+			resolvers 127.0.0.11
+			versions 1.1
+			keepalive 0
+			read_timeout 5m
+			write_timeout 5m
+		}
+	}
 }
 
 wh.{$SITE_HOST} {
 	handle /intel/* {
 		uri strip_prefix /intel
-		reverse_proxy wh-intel:8020 {
+		reverse_proxy http://prod-wh-intel:8020 {
 			transport http {
 				resolvers 127.0.0.11
 			}
 		}
 	}
 	handle {
-		reverse_proxy wanderer:8000 {
+		reverse_proxy http://prod-pelican:80 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
 			transport http {
 				resolvers 127.0.0.11
 			}
@@ -26,27 +46,67 @@ wh.{$SITE_HOST} {
 	}
 }
 
-pm.{$SITE_HOST} {
-	reverse_proxy youtrack:8080 {
-		header_up Host {host}
-		header_up X-Forwarded-Host {host}
-		header_up X-Forwarded-Proto {scheme}
-		transport http {
-			resolvers 127.0.0.11
+emums.{$SITE_HOST} {
+	@emums_api path /v1/* /docs /redoc /openapi.json
+	handle @emums_api {
+		reverse_proxy http://prod-emums-api:8020 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			transport http {
+				resolvers 127.0.0.11
+			}
 		}
-		lb_try_duration 90s
-		lb_try_interval 500ms
+	}
+
+	handle {
+		reverse_proxy http://prod-emums-web:3020 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
 	}
 }
 
 auth.{$SITE_HOST} {
-	reverse_proxy {
-		dynamic a {
-			name aa-web
-			port 8080
-			refresh 3s
-			resolvers 127.0.0.11
+	encode gzip zstd
+
+	# MediaMTX HLS for Alliance Stream (OBS → RTMP :1935 → /live/<key>/index.m3u8)
+	@stream_hls path /live/*
+	handle @stream_hls {
+		reverse_proxy http://prod-mediamtx:8888 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			transport http {
+				resolvers 127.0.0.11
+			}
 		}
+	}
+
+	@ads_admin path /content/uploads/ads/
+	handle @ads_admin {
+		reverse_proxy http://prod-aa-web:8080 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
+	}
+
+	@content_uploads path /content/uploads/*
+	handle @content_uploads {
+		handle_path /content/uploads/* {
+			root * /srv/aa-media
+			file_server
+		}
+	}
+
+	reverse_proxy http://prod-aa-web:8080 {
 		header_up Host {host}
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-Proto {scheme}
@@ -58,16 +118,10 @@ auth.{$SITE_HOST} {
 	}
 }
 
-# YouTrack Hub may cache http:// OIDC endpoints from discovery; POST + 308 redirect
-# returns an empty body and breaks token exchange. Proxy plain HTTP directly to AA.
+# Some OIDC clients cache http:// discovery URLs; POST + 308 redirect
+# returns an empty body and breaks token exchange. Proxy plain HTTP to AA.
 http://auth.{$SITE_HOST} {
-	reverse_proxy {
-		dynamic a {
-			name aa-web
-			port 8080
-			refresh 3s
-			resolvers 127.0.0.11
-		}
+	reverse_proxy http://prod-aa-web:8080 {
 		header_up Host {host}
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-Proto https
@@ -80,33 +134,118 @@ http://auth.{$SITE_HOST} {
 }
 
 {$SITE_HOST} {
+	header Permissions-Policy "clipboard-read=(self), clipboard-write=(self)"
+
 	@aa_dashboard path /dashboard /dashboard/*
 	handle @aa_dashboard {
 		redir https://auth.{host}{uri} temporary
 	}
 
-	@market_api path /api/market/*
-	handle @market_api {
-		reverse_proxy market-api:8010 {
-			transport http {
-				read_timeout 10m
-				write_timeout 10m
+	@aa_account path /account /account/*
+	handle @aa_account {
+		redir https://auth.{host}{uri} temporary
+	}
+
+	@ads_admin_redirect path /content/uploads/ads /content/uploads/ads/
+	handle @ads_admin_redirect {
+		redir https://auth.{host}{uri} temporary
+	}
+
+	@content_uploads path /content/uploads/*
+	handle @content_uploads {
+		handle_path /content/uploads/* {
+			root * /srv/aa-media
+			file_server
+		}
+	}
+
+	@download_singular path /download /download/
+	redir @download_singular /downloads/ permanent
+
+	@downloads_exact path /downloads
+	redir @downloads_exact /downloads/ permanent
+
+	@downloads path /downloads/*
+	handle @downloads {
+		handle_path /downloads/* {
+			root * /srv/downloads
+			file_server {
+				index index.html
+				browse
 			}
 		}
 	}
 
-	@market_pages path /margin_finder* /market_trends* /contract_price* /tradeVol_type* /price_compare* /pi_rank* /market-browser* /appraisal*
-	handle @market_pages {
-		reverse_proxy market-web:8088
+	# Turtle's Alternate Icons (CCP's Image Export Collection, "Service
+	# Bundle" release) — item/ship icons + renders, self-hosted since the
+	# upstream project ships only as a downloadable GitHub Release, not a
+	# live CDN. Flat by type ID (built from service_metadata.json's hash
+	# filenames — see ~/eve-emu/dist/eve-icons/): /eve-icons/type/<id>.png,
+	# /eve-icons/type/<id>_render.jpg where a render exists. Immutable
+	# content once published (a new upstream release replaces the whole
+	# dir), so a long cache lifetime is safe.
+	@eve_icons path /eve-icons/*
+	handle @eve_icons {
+		handle_path /eve-icons/* {
+			root * /srv/eve-icons
+			file_server
+			header Cache-Control "public, max-age=2592000, immutable"
+		}
 	}
+
+	# FastAPI core (EVE SSO, /v1/auth/me, commerce, etc.)
+	@core_api path /v1/* /openapi.json
+	handle @core_api {
+		reverse_proxy http://prod-core-api:8000 {
+			header_up Host {host}
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
+	}
+
+	@market_api path /api/market/*
+	handle @market_api {
+		reverse_proxy http://prod-market-api:8010 {
+			transport http {
+				read_timeout 10m
+				write_timeout 10m
+				resolvers 127.0.0.11
+			}
+		}
+	}
+
+	@market_pages path /margin_finder* /market_trends* /contract_price* /tradeVol_type* /price_compare* /pi_rank* /market-browser* /appraisal* /sell_orders* /blueprint-prices* /alliance_rankings* /fitting-seeding*
+	handle @market_pages {
+		reverse_proxy http://prod-market-web:8088 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
+	}
+
+	# Doctrine seeding page removed — send bookmarks to home
+	@womp_seeding path /womp-fitting-seeding /womp-fitting-seeding/*
+	redir @womp_seeding / permanent
+
 
 	@market_static path /static/*
 	handle @market_static {
-		reverse_proxy market-web:8088
+		reverse_proxy http://prod-market-web:8088 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
 	}
 
 	handle {
-		reverse_proxy core-web:3000
+		reverse_proxy http://prod-core-web:3000 {
+			transport http {
+				resolvers 127.0.0.11
+			}
+		}
 	}
 }
 
