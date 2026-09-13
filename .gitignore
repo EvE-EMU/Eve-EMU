@@ -88,3 +88,10 @@ Desktop.ini
 
 # Fleet tracker / app local data (if generated)
 fleet-tracker/**/*.log
+
+# =============================================================================
+# Database backups & runtime logs — real user/game data, never belongs in a
+# public repo. 2.3GB of real dumps sat here untracked-but-unignored before
+# this rule existed (scripts/backup_databases.sh, scripts/uptime_check.sh).
+# =============================================================================
+/backups/

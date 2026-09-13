@@ -101,6 +101,40 @@ docker exec -w /app/site eve-emu-aa-web-1 python3 manage.py migrate <app>
 # 5. Commit the model + migration together, then do the normal deploy above.
 ```
 
+## External reachability heartbeat
+
+`scripts/uptime_check.sh` (added 2026-09-13, cron every 5 min) checks
+`eve-emu.com`, `auth.eve-emu.com/penguin/health`, `wiki.eve-emu.com`, and
+`wh.eve-emu.com` from outside Docker entirely — a container healthcheck only
+knows the container itself is up, not that Caddy/DNS actually routes to it.
+Added after a real incident the same day: a `docker compose up -d` aborted
+partway through (see below) and left `caddy`/`aa-web`/`core-api`/etc. down
+for several minutes with nothing paging anyone — it was only caught by a
+manual check.
+
+Logs every run to `backups/auto/uptime_check.log` regardless of config.
+Posts to Discord only on a status *transition* (so a real outage doesn't
+spam the channel every 5 minutes) if `INFRA_ALERTS_DISCORD_WEBHOOK_URL` is
+set in `.env` — unset by default; pick whichever channel should get paged
+and set it, see `.env.example`.
+
+## `docker compose up -d` across the whole stack — the dependency-timeout trap
+
+Recreating **every** service at once (e.g. after a `docker-compose.yml`
+edit that touches all of them, like the logging-rotation change) can abort
+partway through: if `db` needs to run WAL recovery from an unclean prior
+shutdown, it can take 1-2+ minutes to report healthy, and compose's
+dependency wait has a timeout shorter than that. When it times out, compose
+does **not** retry — it stops, leaving every service that `depends_on: db`
+(which is most of them, including `caddy`) sitting in `Created` state,
+i.e. stopped. This actually happened 2026-09-13.
+
+The fix is simply to run `docker compose up -d` again once `db` is healthy
+(`docker inspect eve-emu-db-1 --format '{{.State.Health.Status}}'`) — compose
+picks up where it left off and starts everything still in `Created`. Always
+re-check `docker compose ps` (not just the command's own exit output) after
+a whole-stack `up -d` to make sure nothing was left behind.
+
 ## Database backup, before anything risky
 
 `scripts/backup_databases.sh` (added 2026-09-13, nightly at 03:00 via cron)
