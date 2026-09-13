@@ -1,0 +1,89 @@
+name: CI
+
+# The first CI workflow in this repo (added 2026-09-13, alongside a hygiene
+# pass that found .gitignore itself had been deleted locally, a 1,507-file
+# virtualenv and 2,623 files of vendored third-party wheels committed
+# directly). Deliberately scoped to checks that need no deployment secrets
+# and no live services — real, cheap, and green from day one — rather than
+# an ambitious pipeline that's immediately red and gets ignored. Extending
+# it to build/deploy the aa_docker image (like tonight's manual releases)
+# is real follow-up work, not attempted here blind.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-syntax:
+    name: Python syntax (py_compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile every tracked .py file
+        run: |
+          git ls-files '*.py' -z | xargs -0 python3 -m py_compile
+          echo "OK — every tracked .py file parses."
+
+  repo-hygiene:
+    name: No vendored/scratch content committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard against re-committing what 2026-09-13's cleanup removed
+        run: |
+          set -e
+          # A committed .venv/ (1,507 files, discord-bot/bot) and 2,623 files
+          # of extracted third-party wheels under 16 `.tmp_*/` dirs both
+          # predated .gitignore actually covering them — this keeps either
+          # class of file from silently coming back.
+          bad=$(git ls-files \
+            | grep -E '(^|/)(\.venv|venv|__pycache__)/|\.tmp_[^/]+/|\.pyc$|(^|/)\.env$' \
+            || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Tracked files that should be .gitignore'd instead:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK — no venv/__pycache__/.tmp_*/.env content tracked."
+
+  yaml-syntax:
+    name: YAML syntax (compose files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Parse every tracked YAML file
+        run: |
+          git ls-files '*.yml' '*.yaml' -z \
+            | xargs -0 -I{} python3 -c "import yaml,sys; yaml.safe_load_all(open(sys.argv[1])).__next__() if False else list(yaml.safe_load_all(open(sys.argv[1])))" {}
+          echo "OK — every tracked YAML file parses."
+
+  core-web-build:
+    name: core-web (Next.js) build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: core-web/package-lock.json
+      - run: npm ci
+      # Build-time-only placeholder values — this job checks the app
+      # actually compiles, not that it's wired to real infrastructure.
+      - name: next build
+        env:
+          DOMAIN_NAME: eve-emu.com
+          CORE_API_INTERNAL_URL: http://core-api:8000
+        run: npm run build
