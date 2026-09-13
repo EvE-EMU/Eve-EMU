@@ -1,0 +1,312 @@
+/** Coalition tool definitions — drives hub launcher and neocom. */
+
+export type ToolDef = {
+  slug: string;
+  label: string;
+  description: string;
+  category: "commerce" | "intelligence" | "operations" | "administration" | "sde" | "map";
+  public?: boolean;
+  windowId?: string;
+  href?: string;
+};
+
+export const TOOL_CATEGORIES = [
+  { slug: "commerce", label: "Commerce", href: "/commerce", tip: "Buyback, appraisal, market" },
+  { slug: "intelligence", label: "Intelligence", href: "/intelligence", tip: "Audit, killboard, routes" },
+  { slug: "operations", label: "Industrial", href: "https://eve-emu.com/industrial", tip: "Plan · Orders · Ops · Tools (eve-emu.com/industrial)" },
+  { slug: "sde", label: "SDE", href: "/sde", tip: "SDE browser + coalition wiki knowledge" },
+  { slug: "map", label: "Map", href: "/map", tip: "Routes and jump ranges" },
+  { slug: "administration", label: "Administration", href: "/administration", tip: "HR, ratting, SRP, services" },
+] as const;
+
+export const TOOLS: ToolDef[] = [
+  {
+    slug: "buyback",
+    label: "Buyback",
+    description: "Paste in-game inventory for buyback contract value and shareable quote link.",
+    category: "commerce",
+    public: true,
+    windowId: "buyback",
+    href: "/commerce",
+  },
+  {
+    slug: "appraisal",
+    label: "Appraisal",
+    description: "Janice-style paste appraisal with EMUMS share links and hub pricing.",
+    category: "commerce",
+    public: true,
+    windowId: "appraisal",
+    href: "/commerce",
+  },
+  {
+    slug: "refine",
+    label: "Refine vs Sell",
+    description: "Compare reprocessing value vs selling unrefined at Jita (Janice pricing).",
+    category: "commerce",
+    public: true,
+    windowId: "refine-calc",
+    href: "/commerce",
+  },
+  {
+    slug: "market",
+    label: "Market Tracker",
+    description: "Watchlist prices across Jita and authed structure markets.",
+    category: "commerce",
+    windowId: "market-watch",
+    href: "/commerce",
+  },
+  {
+    slug: "market-browser",
+    label: "Market Browser",
+    description: "Browse NPC station and shared structure order books with regional price history.",
+    category: "commerce",
+    public: true,
+    windowId: "market-browser",
+    href: "/commerce",
+  },
+  {
+    slug: "corp-market",
+    label: "Corp Market",
+    description: "Alliance-wide buy/sell/haul listings with in-game contract confirmation.",
+    category: "commerce",
+    windowId: "corp-market",
+    href: "/commerce",
+  },
+  {
+    slug: "audit",
+    label: "Character Audit",
+    description: "Character sheet — skills, wallet, assets, scopes (your pilot + director audit).",
+    category: "intelligence",
+    windowId: "char-audit",
+    href: "/intelligence",
+  },
+  {
+    slug: "interactions",
+    label: "Interaction Audit",
+    description: "Spy-o-meter: fleet co-attackers, trades, contracts, blacklist tags, and likely alts.",
+    category: "intelligence",
+    windowId: "interaction-audit",
+    href: "/intelligence",
+  },
+  {
+    slug: "webhook-alerts",
+    label: "Webhook Notifications",
+    description: "Configurable alerts for skills, contracts, wallet, and mail — instant or digest webhooks.",
+    category: "intelligence",
+    windowId: "webhook-alerts",
+    href: "/intelligence",
+  },
+  {
+    slug: "killboard",
+    label: "Killboard",
+    description: "Coalition top killers and losers via zKillboard aggregation.",
+    category: "intelligence",
+    windowId: "killboard",
+    href: "/intelligence",
+  },
+  {
+    slug: "routes",
+    label: "Route Bookmarks",
+    description: "Saved route bookmarks.",
+    category: "intelligence",
+    windowId: "route-planner",
+    href: "/intelligence",
+  },
+  {
+    slug: "sde",
+    label: "Knowledge & SDE",
+    description: "Unified SDE type browser with coalition wiki articles, categories, and cross-linked item profiles.",
+    category: "sde",
+    public: true,
+    windowId: "sde-browser",
+    href: "/sde",
+  },
+  {
+    slug: "wiki-article",
+    label: "Wiki Article",
+    description: "Photon-styled wiki article viewer with SDE cross-links.",
+    category: "sde",
+    windowId: "wiki-article",
+    href: "/sde",
+  },
+  {
+    slug: "map",
+    label: "Route Map",
+    description: "Visual stargate and jump-drive planner with fuel calculations.",
+    category: "map",
+    public: true,
+    windowId: "map-visual",
+    href: "/map",
+  },
+  {
+    slug: "jump-range",
+    label: "Jump Range",
+    description: "Systems within N jumps of origin — cap and cyno planning.",
+    category: "map",
+    windowId: "jump-range",
+    href: "/map",
+  },
+  {
+    slug: "pi",
+    label: "Planetary Interaction",
+    description: "Colony layouts, extractor timers, storage fill, and idle planet alerts.",
+    category: "operations",
+    windowId: "pi-overview",
+    href: "https://eve-emu.com/industrial?tab=pi",
+  },
+  {
+    slug: "ip-planner",
+    label: "Build Planner",
+    description: "Calculate fittings and blueprints — best structure, stock location, or station filter.",
+    category: "operations",
+    windowId: "ip-planner",
+    href: "https://eve-emu.com/industrial?tab=forge",
+  },
+  {
+    slug: "ip-blueprints",
+    label: "Blueprints & Contracts",
+    description: "Your blueprint library, copy requests, and public contract browse.",
+    category: "operations",
+    windowId: "ip-blueprints",
+    href: "https://eve-emu.com/industrial/bp-copy",
+  },
+  {
+    slug: "ip-projects",
+    label: "Project Costing",
+    description: "Project IDs, named containers, true material and job cost tracking.",
+    category: "operations",
+    windowId: "ip-projects",
+    href: "https://eve-emu.com/industrial?tab=projects",
+  },
+  {
+    slug: "ip-jobs",
+    label: "Industry Jobs",
+    description: "Track manufacturing, research, invention, and copy jobs.",
+    category: "operations",
+    windowId: "ip-jobs",
+    href: "https://eve-emu.com/industrial?tab=jobs",
+  },
+  {
+    slug: "ip-storefront",
+    label: "Storefront",
+    description: "Public inventory with alliance/corp pricing and standings tiers.",
+    category: "operations",
+    public: true,
+    windowId: "ip-storefront",
+    href: "https://eve-emu.com/industrial?tab=market",
+  },
+  {
+    slug: "services",
+    label: "Service Links",
+    description: "Connect Discord, Mumble, Wiki, and other coalition services.",
+    category: "administration",
+    windowId: "services",
+    href: "/administration",
+  },
+  {
+    slug: "ratting",
+    label: "Ratting Tax",
+    description: "Alliance ratting tax periods, payments, and automatic billing.",
+    category: "administration",
+    windowId: "ratting-tax",
+    href: "/administration",
+  },
+  {
+    slug: "hr",
+    label: "HR Directorate",
+    description: "Leave of absence, blacklist, and admin-configurable account flags.",
+    category: "administration",
+    windowId: "hr-directorate",
+    href: "/administration",
+  },
+  {
+    slug: "pni",
+    label: "P&I Statements",
+    description: "Alliance-wide profit & loss with bill tracking.",
+    category: "administration",
+    windowId: "pni-statements",
+    href: "/administration",
+  },
+  {
+    slug: "srp",
+    label: "SRP Program",
+    description: "ESI + zKill loss polling with pilot SRP confirmation workflow.",
+    category: "administration",
+    windowId: "srp-program",
+    href: "/administration",
+  },
+  {
+    slug: "infra",
+    label: "Infrastructure",
+    description: "Celery/Redis telemetry — workers, queues, and beat schedules.",
+    category: "administration",
+    windowId: "admin-infra",
+    href: "/administration",
+  },
+  {
+    slug: "moon-tax-admin",
+    label: "Moon Tax Config",
+    description: "Corporate moon tax brackets and rarity rate configuration.",
+    category: "administration",
+    windowId: "moon-tax",
+    href: "/administration",
+  },
+  {
+    slug: "identity-rbac",
+    label: "Permissions Manager",
+    description: "Edit group permissions, state rules, member assignment, and Discord sync.",
+    category: "administration",
+    windowId: "identity-rbac",
+    href: "/administration",
+  },
+  {
+    slug: "onboarding",
+    label: "Onboarding Manager",
+    description: "Step-by-step tasks and achievements for new members.",
+    category: "administration",
+    windowId: "onboarding",
+    href: "/",
+  },
+  {
+    slug: "admission",
+    label: "Admission Ranking",
+    description: "Configurable KPI score for corp admit/review decisions.",
+    category: "administration",
+    windowId: "admission-rank",
+    href: "/",
+  },
+  {
+    slug: "standings",
+    label: "Standings Sync",
+    description: "Pull character standings from ESI for admission and intel.",
+    category: "intelligence",
+    windowId: "standings-sync",
+    href: "/",
+  },
+  {
+    slug: "calendar",
+    label: "Operations Calendar",
+    description: "ESI calendar, moon timing, and structure fuel expiry.",
+    category: "operations",
+    windowId: "ops-calendar",
+    href: "/",
+  },
+
+
+  {
+    slug: "security-audit",
+    label: "Security Audit",
+    description: "Active security flags and coalition asset search.",
+    category: "administration",
+    windowId: "admin-audit",
+    href: "/administration",
+  },
+];
+
+export function toolsForCategory(category: ToolDef["category"]) {
+  return TOOLS.filter((t) => t.category === category);
+}
+
+export function toolHref(_tool: ToolDef): string {
+  return "/";
+}

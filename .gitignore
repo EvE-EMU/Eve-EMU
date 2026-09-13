@@ -55,7 +55,14 @@ staticfiles/
 # =============================================================================
 # Tooling / build output
 # =============================================================================
-# Node (eve-emu core-web)
+# Node — general (was core-web-only; emu-manager-suite/frontend and any
+# future Node project need this too, not just core-web specifically)
+node_modules/
+.next/
+out/
+
+# Node (eve-emu core-web) — kept for clarity even though the general rules
+# above already cover these paths
 core-web/node_modules/
 core-web/.next/
 core-web/out/
