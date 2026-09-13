@@ -1005,6 +1005,109 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  # =====================================================================
+  # Observability (Phase 2, self-hosted per 2026-09-13 direction) — errors.
+  # {$SITE_HOST} and grafana.{$SITE_HOST}. Both share the existing db/redis
+  # containers (own database / redis db index) rather than standing up
+  # dedicated postgres+redis per service.
+  # =====================================================================
+
+  # Sentry-SDK-compatible error tracking. Modern GlitchTip (v6+) is a single
+  # process — the image's own bin/start.sh serves HTTP, consumes the task
+  # queue, and runs the scheduler together; there is deliberately no
+  # separate worker/beat container to run (see glitchtip-backend's
+  # bin/run-worker.sh, which now refuses to start standalone).
+  glitchtip:
+    image: glitchtip/glitchtip:v6.0.3
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-eve}:${POSTGRES_PASSWORD:-eve}@db:5432/glitchtip
+      VALKEY_URL: redis://redis:6379/6
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:?set a random secret in .env — see .env.example}
+      GLITCHTIP_DOMAIN: https://errors.${DOMAIN_NAME:-eve-emu.com}
+      ALLOWED_HOSTS: errors.${DOMAIN_NAME:-eve-emu.com}
+      CSRF_TRUSTED_ORIGINS: https://errors.${DOMAIN_NAME:-eve-emu.com}
+      DEBUG: "false"
+      ENABLE_ORGANIZATION_CREATION: "false"
+      EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-alerts@eve-emu.com}
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-glitchtip
+
+  # Log storage/query engine — monolithic single-node mode (filesystem
+  # storage, tsdb index), not the read/write/backend split meant for
+  # multi-tenant scale. 30-day retention (compactor below) so this doesn't
+  # repeat the unbounded-growth mistake docker's own json-file logs had
+  # before today.
+  loki:
+    image: grafana/loki:3.7.7
+    restart: unless-stopped
+    logging: *default-logging
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - eve_emu_loki_data:/loki
+    expose:
+      - "3100"
+    networks:
+      - default
+
+  # Ships every container's docker logs to Loki via the Docker API (service
+  # discovery — no need to list containers by name, new ones are picked up
+  # automatically). Promtail itself is in maintenance mode upstream (Grafana
+  # Alloy is the eventual successor) but still fully supported for this —
+  # simpler config, and this is exactly the well-trodden use case.
+  promtail:
+    image: grafana/promtail:3.6.11
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - default
+
+  # Log/metrics UI — grafana.{$SITE_HOST}. Loki wired in automatically via
+  # provisioning (docker/grafana/provisioning/), no manual "add data source"
+  # click needed on first boot.
+  grafana:
+    image: grafana/grafana:13.2.1
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set a real password in .env — see .env.example}
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN_NAME:-eve-emu.com}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - eve_emu_grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+    expose:
+      - "3000"
+    networks:
+      default: {}
+      eve_emu_edge:
+        aliases:
+          - prod-grafana
+
 volumes:
   eve_emu_pgdata: {}
   eve_emu_image_cache: {}
@@ -1019,6 +1122,8 @@ volumes:
   eve_emu_pelican_data: {}
   eve_emu_pelican_logs: {}
   market_sde_data: {}
+  eve_emu_loki_data: {}
+  eve_emu_grafana_data: {}
 
 networks:
   eve_emu_edge:

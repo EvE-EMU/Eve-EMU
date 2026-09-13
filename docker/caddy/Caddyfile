@@ -46,27 +46,29 @@ wh.{$SITE_HOST} {
 	}
 }
 
+# emums (Emu Manager Suite) decommissioned 2026-09-13 — confirmed abandoned.
+# Containers stopped, not removed; data backed up to
+# backups/auto/emums-decommission-2026-09-13/. Route now returns a plain
+# 410 instead of proxying to a stopped backend (see docs/DEPLOY_ROLLBACK.md
+# for how to bring a service back if ever needed).
 emums.{$SITE_HOST} {
-	@emums_api path /v1/* /docs /redoc /openapi.json
-	handle @emums_api {
-		reverse_proxy http://prod-emums-api:8020 {
-			header_up Host {host}
-			header_up X-Forwarded-Host {host}
-			header_up X-Forwarded-Proto {scheme}
-			transport http {
-				resolvers 127.0.0.11
-			}
+	respond "This service has been decommissioned." 410
+}
+
+errors.{$SITE_HOST} {
+	reverse_proxy http://prod-glitchtip:8000 {
+		header_up Host {host}
+		transport http {
+			resolvers 127.0.0.11
 		}
 	}
+}
 
-	handle {
-		reverse_proxy http://prod-emums-web:3020 {
-			header_up Host {host}
-			header_up X-Forwarded-Host {host}
-			header_up X-Forwarded-Proto {scheme}
-			transport http {
-				resolvers 127.0.0.11
-			}
+grafana.{$SITE_HOST} {
+	reverse_proxy http://prod-grafana:3000 {
+		header_up Host {host}
+		transport http {
+			resolvers 127.0.0.11
 		}
 	}
 }
