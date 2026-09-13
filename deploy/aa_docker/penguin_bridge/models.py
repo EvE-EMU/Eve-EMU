@@ -136,6 +136,121 @@ class PenguinPing(models.Model):
         }
 
 
+class PenguinBuildJob(models.Model):
+    """A corp-project or divisional-manufacturing build job — EVE-Penguin's
+    own model (not Auth Indy Hub's `ProductionProject`, which the desktop
+    client's *solo* mode already uses directly): those are personal, this is
+    a shared, org-scoped board with claim/deliver tracking, the divisional
+    D0-D3 tier a solo project has no concept of, and a manager/line-member
+    split solo mode doesn't need either.
+
+    The desktop client computes and owns the actual cost/margin numbers
+    (verified against the same real CCP formulas the solo calculator uses)
+    — `corp_profit_margin_pct`/`*_share_isk` are just where it stores the
+    result, not something this backend derives on its own.
+    """
+
+    MODE_CHOICES = [
+        ("corp", "Corp Project"),
+        ("divisional", "Divisional Manufacturing"),
+    ]
+    TIER_CHOICES = [
+        ("d0", "D0 — quick builds"),
+        ("d1", "D1 — capital components"),
+        ("d2", "D2 — T2 / advanced components"),
+        ("d3", "D3 — final builds"),
+    ]
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("claimed", "Claimed"),
+        ("in_progress", "In progress"),
+        ("delivered", "Delivered"),
+        ("cancelled", "Cancelled"),
+    ]
+    SOURCE_CHOICES = [
+        ("manual", "Manual"),
+        ("fit", "From a fit"),
+        ("auto_restock", "Auto-restock (corp minimum)"),
+    ]
+
+    owner_user_id = models.BigIntegerField(db_index=True)
+    owner_name = models.CharField(max_length=100, blank=True, default="")
+    corp_id = models.BigIntegerField(default=0, db_index=True)
+    alliance_id = models.BigIntegerField(default=0, db_index=True)
+
+    mode = models.CharField(max_length=16, choices=MODE_CHOICES, default="corp", db_index=True)
+    tier = models.CharField(max_length=4, choices=TIER_CHOICES, default="d0", db_index=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="open", db_index=True)
+
+    type_id = models.IntegerField(default=0)
+    type_name = models.CharField(max_length=255)
+    quantity = models.BigIntegerField(default=1)
+    blueprint_type_id = models.IntegerField(null=True, blank=True)
+
+    source_kind = models.CharField(max_length=16, choices=SOURCE_CHOICES, default="manual")
+    source_ref = models.CharField(max_length=255, blank=True, default="")
+
+    notes = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+
+    corp_profit_margin_pct = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    builder_share_isk = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    corp_share_isk = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+
+    claimed_by_user_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+    claimed_by_name = models.CharField(max_length=100, blank=True, default="")
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    expected_delivery_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "penguin_bridge"
+        ordering = ["-created_at", "-id"]
+        default_permissions = ()
+        permissions = [
+            ("can_manage_build_jobs", "Can create/manage corp and divisional build jobs"),
+        ]
+        indexes = [
+            models.Index(fields=["corp_id", "mode", "tier", "status"]),
+            models.Index(fields=["alliance_id", "mode", "tier", "status"]),
+            models.Index(fields=["claimed_by_user_id", "status"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.get_mode_display()} [{self.tier}] {self.type_name} x{self.quantity} ({self.status})"
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "owner_name": self.owner_name,
+            "corp_id": self.corp_id,
+            "alliance_id": self.alliance_id,
+            "mode": self.mode,
+            "tier": self.tier,
+            "status": self.status,
+            "type_id": self.type_id,
+            "type_name": self.type_name,
+            "quantity": self.quantity,
+            "blueprint_type_id": self.blueprint_type_id,
+            "source_kind": self.source_kind,
+            "source_ref": self.source_ref,
+            "notes": self.notes,
+            "metadata": self.metadata or {},
+            "corp_profit_margin_pct": float(self.corp_profit_margin_pct or 0),
+            "builder_share_isk": float(self.builder_share_isk) if self.builder_share_isk is not None else None,
+            "corp_share_isk": float(self.corp_share_isk) if self.corp_share_isk is not None else None,
+            "claimed_by_name": self.claimed_by_name,
+            "claimed_at": self.claimed_at.isoformat() if self.claimed_at else None,
+            "expected_delivery_at": self.expected_delivery_at.isoformat() if self.expected_delivery_at else None,
+            "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
 class PenguinPingChannel(models.Model):
     """Maps a Discord channel to a EVE-Penguin ping target.
 
