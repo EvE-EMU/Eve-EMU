@@ -19,6 +19,7 @@ class PenguinBridgeConfig(AppConfig):
         import eve_auth.urls as root_urls
 
         from penguin_bridge.fittings import fittings
+        from penguin_bridge.industry import freight_quote, freight_systems, structures
         from penguin_bridge.pings import pings
         from penguin_bridge.wh import wh
         from penguin_bridge.views import (
@@ -38,6 +39,9 @@ class PenguinBridgeConfig(AppConfig):
             path("penguin/fittings", fittings, name="penguin_fittings"),
             path("penguin/wh", wh, name="penguin_wh"),
             path("penguin/pings", pings, name="penguin_pings"),
+            path("penguin/structures", structures, name="penguin_structures"),
+            path("penguin/freight/systems", freight_systems, name="penguin_freight_systems"),
+            path("penguin/freight/quote", freight_quote, name="penguin_freight_quote"),
             re_path(
                 r"^penguin/esi/corp/(?P<corporation_id>\d+)/(?P<esi_path>.+)$",
                 esi_corp,
