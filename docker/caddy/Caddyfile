@@ -5,11 +5,22 @@
 # Production upstreams use explicit prod-* DNS aliases on eve_emu_edge so they never
 # collide with the isolated test stack (eve-emu-test), which also attaches to eve_emu_edge.
 
+# Speed plan (2026-09-13): only wiki./auth. had `encode` — every other block,
+# including the main {$SITE_HOST} one, served market-web's static JS/CSS and
+# core-api's JSON completely uncompressed even when the client asked for
+# gzip (measured: a 198KB app.js, a 130KB openapi.json, both plain). A
+# Caddyfile *global options* block does NOT cascade directives like `encode`
+# into site blocks below it — that was wrong in the original plan writeup —
+# a named snippet imported per-block is the actual mechanism.
+(compress) {
+	encode gzip zstd
+}
+
 wiki.{$SITE_HOST} {
 	# Apache mod_deflate + Content-Length behind Caddy causes truncated
 	# upstream bodies ("unexpected EOF") → browser ERR_HTTP2_PROTOCOL_ERROR.
 	# Ask Apache for uncompressed responses; Caddy encodes for the client.
-	encode gzip zstd
+	import compress
 	reverse_proxy http://prod-mediawiki:80 {
 		header_up Host {host}
 		header_up Accept-Encoding identity
@@ -24,6 +35,7 @@ wiki.{$SITE_HOST} {
 }
 
 wh.{$SITE_HOST} {
+	import compress
 	handle /intel/* {
 		uri strip_prefix /intel
 		reverse_proxy http://prod-wh-intel:8020 {
@@ -56,6 +68,7 @@ emums.{$SITE_HOST} {
 }
 
 errors.{$SITE_HOST} {
+	import compress
 	reverse_proxy http://prod-glitchtip:8000 {
 		header_up Host {host}
 		transport http {
@@ -65,6 +78,7 @@ errors.{$SITE_HOST} {
 }
 
 grafana.{$SITE_HOST} {
+	import compress
 	reverse_proxy http://prod-grafana:3000 {
 		header_up Host {host}
 		transport http {
@@ -74,7 +88,7 @@ grafana.{$SITE_HOST} {
 }
 
 auth.{$SITE_HOST} {
-	encode gzip zstd
+	import compress
 
 	# MediaMTX HLS for Alliance Stream (OBS → RTMP :1935 → /live/<key>/index.m3u8)
 	@stream_hls path /live/*
@@ -136,6 +150,7 @@ http://auth.{$SITE_HOST} {
 }
 
 {$SITE_HOST} {
+	import compress
 	header Permissions-Policy "clipboard-read=(self), clipboard-write=(self)"
 
 	@aa_dashboard path /dashboard /dashboard/*
