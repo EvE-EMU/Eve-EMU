@@ -21,6 +21,7 @@ class PenguinBridgeConfig(AppConfig):
         from penguin_bridge.fittings import fittings
         from penguin_bridge.industry import freight_quote, freight_systems, structures
         from penguin_bridge.jobs import job_detail, jobs
+        from penguin_bridge.pi import pi_colonies
         from penguin_bridge.pings import pings
         from penguin_bridge.projects import project_detail, projects
         from penguin_bridge.wh import wh
@@ -52,6 +53,7 @@ class PenguinBridgeConfig(AppConfig):
             ),
             path("penguin/jobs", jobs, name="penguin_jobs"),
             path("penguin/jobs/<int:job_id>", job_detail, name="penguin_job_detail"),
+            path("penguin/pi", pi_colonies, name="penguin_pi_colonies"),
             re_path(
                 r"^penguin/esi/corp/(?P<corporation_id>\d+)/(?P<esi_path>.+)$",
                 esi_corp,
