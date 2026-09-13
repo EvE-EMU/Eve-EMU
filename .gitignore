@@ -20,6 +20,14 @@ deploy/youtrack/keystore/*.jks
 bot/.env
 
 # =============================================================================
+# Scratch / investigation dirs (extracted third-party wheels, etc. — the
+# established `.tmp_<name>` convention for "download this package to read its
+# source", never meant to be committed; 2,623 files of exactly this got
+# committed anyway across 16 `.tmp_*` dirs before this rule existed)
+# =============================================================================
+.tmp_*/
+
+# =============================================================================
 # Python bytecode / virtualenvs
 # =============================================================================
 __pycache__/

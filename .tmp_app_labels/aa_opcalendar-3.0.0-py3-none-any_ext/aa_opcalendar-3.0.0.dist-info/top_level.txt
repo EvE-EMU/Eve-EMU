@@ -1,3 +1,0 @@
-eventcalendar
-opcalendar
-testauth
