@@ -2,6 +2,16 @@
 # FastAPI core is the canonical EVE SSO callback host (`ESI_CALLBACK_URL` → `/v1/auth/eve/callback`).
 # Alliance Auth submodule is required to build `aa-*` images; optional bind-mount refreshes `/opt/allianceauth` at runtime.
 
+# No service below had log rotation configured — json-file's default is
+# unbounded growth, which on a ~20-container host is a real disk-fill risk
+# nobody was watching for. Capped uniformly; bump max-size per-service later
+# if a particular container's history needs to go back further.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 x-aa-discord-environment: &aa-discord-environment
   DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
   DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
@@ -14,6 +24,7 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     # Default Docker shm (64MB) is too small once shared_buffers > ~64MB.
     shm_size: 1gb
     environment:
@@ -58,6 +69,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *default-logging
     entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -80,6 +92,7 @@ services:
 
   core-api:
     restart: unless-stopped
+    logging: *default-logging
     build:
       context: ./core
       dockerfile: Dockerfile
@@ -116,6 +129,7 @@ services:
 
   core-web:
     restart: unless-stopped
+    logging: *default-logging
     build:
       context: .
       dockerfile: core-web/Dockerfile
@@ -202,11 +216,13 @@ services:
       aa-web:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   # Pelican game server panel at https://wh.<DOMAIN_NAME> (see docs/PELICAN.md).
   pelican:
     image: ghcr.io/pelican-dev/panel:latest
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - path: .env
         required: false
@@ -246,6 +262,7 @@ services:
   pelican-wings:
     image: ghcr.io/pelican-dev/wings:latest
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       - pelican
     environment:
@@ -274,6 +291,7 @@ services:
       context: .
       dockerfile: wh_intel/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - path: .env
         required: false
@@ -309,6 +327,7 @@ services:
   mediawiki-db:
     image: mariadb:10.11
     restart: unless-stopped
+    logging: *default-logging
     environment:
       MARIADB_DATABASE: ${MEDIAWIKI_DB_NAME:-mediawiki}
       MARIADB_USER: ${MEDIAWIKI_DB_USER:-mediawiki}
@@ -328,6 +347,7 @@ services:
   mediawiki-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     restart: unless-stopped
+    logging: *default-logging
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
@@ -355,6 +375,7 @@ services:
       context: .
       dockerfile: docker/mediawiki/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - path: .env
         required: false
@@ -408,6 +429,7 @@ services:
       context: .
       dockerfile: docker/mediawiki/Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - path: .env
         required: false
@@ -447,6 +469,7 @@ services:
 
   aa-web:
     restart: unless-stopped
+    logging: *default-logging
     build:
       context: .
       dockerfile: docker/django-aa/Dockerfile
@@ -668,6 +691,7 @@ services:
     expose:
       - "8010"
     restart: unless-stopped
+    logging: *default-logging
     networks:
       default: {}
       eve_emu_edge:
@@ -683,6 +707,7 @@ services:
     expose:
       - "8088"
     restart: unless-stopped
+    logging: *default-logging
     networks:
       default: {}
       eve_emu_edge:
@@ -693,6 +718,7 @@ services:
   mediamtx:
     image: bluenviron/mediamtx:1.11.3
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./deploy/mediamtx/mediamtx.yml:/mediamtx.yml:ro
     ports:
@@ -710,6 +736,7 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - path: .env
         required: false
@@ -840,6 +867,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   aa-beat:
     build:
@@ -911,6 +939,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   # Alliance Auth Discord bot (aadiscordbot: /8ball, /auth, name sync, etc.).
   # Do NOT run with emu-bot on the same DISCORD_BOT_TOKEN — slash commands overwrite each other.
@@ -974,6 +1003,7 @@ services:
       aa-web:
         condition: service_started
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   eve_emu_pgdata: {}
