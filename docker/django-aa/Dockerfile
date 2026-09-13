@@ -178,7 +178,8 @@ COPY deploy/aa_docker/freight_charlink.py /app/deploy/aa_docker/freight_charlink
 COPY deploy/aa_docker/freight_charlink_hooks.py /app/deploy/aa_docker/freight_charlink_hooks.py
 COPY deploy/aa_docker/extensions /app/deploy/aa_docker/extensions
 COPY deploy/aa_docker/moon_rentals /app/deploy/aa_docker/moon_rentals
-COPY deploy/aa_docker/emu_moons /app/deploy/aa_docker/emu_moons
+# emu_moons removed 2026-09-13 (confirmed dead — not in local.py's
+# _LOCAL_APPS, every reference elsewhere already defensively guarded).
 COPY deploy/aa_docker/moonmining_discord_events.py /app/deploy/aa_docker/moonmining_discord_events.py
 COPY deploy/aa_docker/miningtaxes_ext /app/deploy/aa_docker/miningtaxes_ext
 COPY deploy/aa_docker/market_bridge /app/deploy/aa_docker/market_bridge
