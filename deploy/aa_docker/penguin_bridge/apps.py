@@ -18,6 +18,7 @@ class PenguinBridgeConfig(AppConfig):
 
         import eve_auth.urls as root_urls
 
+        from penguin_bridge.feedback import feedback_screenshot
         from penguin_bridge.fittings import fittings
         from penguin_bridge.industry import freight_quote, freight_systems, structures
         from penguin_bridge.jobs import job_detail, jobs
@@ -57,6 +58,11 @@ class PenguinBridgeConfig(AppConfig):
             path("penguin/pi", pi_colonies, name="penguin_pi_colonies"),
             path("penguin/pi/sync", pi_force_sync, name="penguin_pi_force_sync"),
             path("penguin/krab", krab_schedule_view, name="penguin_krab_schedule"),
+            path(
+                "penguin/feedback/screenshot",
+                feedback_screenshot,
+                name="penguin_feedback_screenshot",
+            ),
             re_path(
                 r"^penguin/esi/corp/(?P<corporation_id>\d+)/(?P<esi_path>.+)$",
                 esi_corp,

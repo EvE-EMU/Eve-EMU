@@ -273,3 +273,35 @@ class PenguinPingChannel(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.discord_channel_id} → {self.scope}:{self.key} ({self.label})"
+
+
+class PenguinFeedbackScreenshot(models.Model):
+    """A user-submitted screenshot ("Send screenshot" in Settings) — a
+    manual, opt-in capture of exactly one screen, uploaded straight from
+    the desktop client. Never automatic/background.
+
+    Stored as a plain bytea rather than a file: aa-web/aa-worker/aa-beat
+    have no persistent volume (everything baked in at build time is
+    ephemeral across a redeploy), and these are small/infrequent enough
+    that the DB is the simplest thing that's actually durable here.
+    Deliberately no read endpoint — pulled directly from the DB (or
+    exported to files) by whoever's triaging feedback, same access model
+    as a crash report.
+    """
+
+    user_id = models.BigIntegerField(db_index=True)
+    username = models.CharField(max_length=150, blank=True, default="")
+    main_character_name = models.CharField(max_length=100, blank=True, default="")
+    app_version = models.CharField(max_length=32, blank=True, default="")
+    note = models.TextField(blank=True, default="")
+    image = models.BinaryField()
+    content_type = models.CharField(max_length=32, default="image/png")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        app_label = "penguin_bridge"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        who = self.main_character_name or self.username or self.user_id
+        return f"screenshot from {who} @ {self.created_at:%Y-%m-%d %H:%M}"
