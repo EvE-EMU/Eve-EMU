@@ -19,20 +19,58 @@ means one shared poll total, on `emu_pi`'s own schedule
 (`EMU_PI_SYNC_MINUTES`, set to daily per the user's direction for this
 item), regardless of how many desktop clients have the PI screen open.
 
-GET /penguin/pi -> every non-archived `PiPlanetState` row across every
-                   character on this account.
+A daily sync is a long wait after actually doing something in-game
+(dropped a new extractor, want to confirm the storage numbers) — the
+follow-up direction was to let a user force a real sync on demand, capped
+at once per 30 minutes so "force update" can't just recreate the live
+per-client ESI polling this whole change exists to get away from. The
+cooldown is enforced server-side via an atomic Redis `cache.add` (one key
+per user, real TTL) rather than trusting the client to self-limit, and
+shared across every desktop client / session for that user — it's a limit
+on how often *this account* hits ESI, not a per-client allowance.
+
+GET  /penguin/pi      -> every non-archived `PiPlanetState` row across
+                          every character on this account, plus whether a
+                          force-sync is currently available.
+POST /penguin/pi/sync -> queue a real sync now (emu_pi's own
+                          `sync_user_task`, real AA tokens) if the 30-min
+                          cooldown has elapsed; 429 with the remaining
+                          wait otherwise. Queues async (Celery), doesn't
+                          block on ESI itself — the client just polls
+                          GET /penguin/pi again a few seconds later to see
+                          the fresh snapshot, same latency shape as
+                          waiting for any other bridge-backed sync.
 """
 
 from __future__ import annotations
 
 import logging
 
+from django.core.cache import cache
 from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_http_methods
 
 from penguin_bridge.views import _session_user
 
 logger = logging.getLogger("penguin_bridge")
+
+FORCE_SYNC_COOLDOWN_SECONDS = 30 * 60
+
+
+def _force_sync_key(user_id: int) -> str:
+    return f"penguin_pi_force_sync:{user_id}"
+
+
+def _force_sync_status(user_id: int) -> dict:
+    """Peek at the cooldown without claiming it — used by GET /penguin/pi
+    so the client can grey out its own "Force update" button without an
+    extra round trip."""
+    key = _force_sync_key(user_id)
+    if cache.get(key) is None:
+        return {"available": True, "retry_after_seconds": 0}
+    ttl = cache.ttl(key) if hasattr(cache, "ttl") else None
+    return {"available": False, "retry_after_seconds": int(ttl or FORCE_SYNC_COOLDOWN_SECONDS)}
 
 
 def _planet_payload(p) -> dict:
@@ -76,4 +114,38 @@ def pi_colonies(request):
         PiPlanetState.objects.filter(user=user, archived=False)
         .order_by("system_name", "planet_type")
     )
-    return JsonResponse({"planets": [_planet_payload(p) for p in rows]})
+    return JsonResponse(
+        {
+            "planets": [_planet_payload(p) for p in rows],
+            "force_sync": _force_sync_status(user.id),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def pi_force_sync(request):
+    user, _ = _session_user(request)
+    if user is None:
+        return JsonResponse({"error": "invalid_session"}, status=401)
+    try:
+        from emu_pi.tasks import sync_user_task
+    except Exception:
+        logger.warning("penguin pi: emu_pi app unavailable", exc_info=True)
+        return JsonResponse({"error": "pi_unavailable"}, status=502)
+
+    key = _force_sync_key(user.id)
+    # Atomic claim-or-fail — the actual guard. Two requests racing each
+    # other (two desktop clients on the same account, both hitting
+    # "force update" at once) can only ever have one of them succeed;
+    # `_force_sync_status`'s GET-side peek is display-only and never the
+    # thing enforcing the limit.
+    if not cache.add(key, True, timeout=FORCE_SYNC_COOLDOWN_SECONDS):
+        ttl = cache.ttl(key) if hasattr(cache, "ttl") else None
+        return JsonResponse(
+            {"error": "cooldown", "retry_after_seconds": int(ttl or FORCE_SYNC_COOLDOWN_SECONDS)},
+            status=429,
+        )
+
+    sync_user_task.delay(user.id)
+    return JsonResponse({"ok": True, "queued": True, "cooldown_seconds": FORCE_SYNC_COOLDOWN_SECONDS})
